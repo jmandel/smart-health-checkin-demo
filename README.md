@@ -33,7 +33,7 @@ The demo is live at: https://joshuamandel.com/shl-share-picker
 All components run under the same origin at different subpaths:
 - Requester: `/requester/`
 - Gateway: `/gateway/`
-- Data sources: `/wallet-flexpa/`, `/wallet-bwell/`, `/wallet-premera/`
+- Data sources: `/source-flexpa/`, `/source-bwell/`, `/source-premera/`
 
 ### Local Testing (Multi-Origin)
 
@@ -105,11 +105,11 @@ shl-share-picker/
 │   └── index.html
 ├── gateway/            # App selection gateway
 │   └── gateway.html
-├── wallet-flexpa/      # Flexpa data source
+├── source-flexpa/      # Flexpa data source
 │   └── index.html
-├── wallet-bwell/       # b.well data source
+├── source-bwell/       # b.well data source
 │   └── index.html
-└── wallet-premera/     # Premera data source
+└── source-premera/     # Premera data source
     └── index.html
 ```
 

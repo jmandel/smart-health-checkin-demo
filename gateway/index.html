@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>ZTWR Gateway - Choose Your Wallet</title>
+  <title>ZTWR Gateway - Choose Your Health Data Source</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     * {
@@ -158,11 +158,11 @@
     </div>
 
     <div id="apps" class="apps"></div>
-    <div id="loading" class="loading">Loading wallets...</div>
+    <div id="loading" class="loading">Loading health data sources...</div>
     <div id="error" class="error" style="display:none;"></div>
   </main>
 
-  <script src="../config.js"></script>
+  <script src="./config.js"></script>
   <script>
   (() => {
     const td = new TextDecoder();
@@ -211,7 +211,7 @@
 
     if (!apps || apps.length === 0) {
       document.getElementById('error').style.display = 'block';
-      document.getElementById('error').textContent = 'No wallets available.';
+      document.getElementById('error').textContent = 'No health data sources available.';
       return;
     }
 
@@ -239,7 +239,7 @@
 
           const desc = document.createElement('div');
           desc.className = 'card-desc';
-          desc.textContent = app.description || 'Digital wallet application';
+          desc.textContent = app.description || 'Health data source';
 
           card.appendChild(name);
           card.appendChild(desc);
@@ -264,7 +264,7 @@
 
             const handoff = 'req=' + encodeURIComponent(b64u(te.encode(JSON.stringify(handoffEnvelope))));
 
-            // Launch the wallet app with handoff data
+            // Launch the health data source with handoff data
             const launchUrl = app.launchBase + '#' + handoff;
             console.log('[Gateway] Launch URL:', launchUrl);
 
@@ -281,7 +281,7 @@
                 // If we can't close, show feedback
                 el.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8">' +
                   '<div style="font-size:24px;margin-bottom:12px">✓</div>' +
-                  '<div>Wallet opened</div>' +
+                  '<div>Health data source opened</div>' +
                   '<div style="font-size:14px;margin-top:12px">You can close this tab.</div>' +
                   '</div>';
               }

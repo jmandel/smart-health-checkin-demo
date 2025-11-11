@@ -3,6 +3,18 @@
 # Zero-Trust Web Rails - Multi-Origin Local Testing
 # Starts 5 servers on different localhost subdomains/ports
 
+# Cleanup function to kill all child processes
+cleanup() {
+  echo ""
+  echo "🛑 Stopping all servers..."
+  pkill -P $$ 2>/dev/null
+  pkill -f "bunx http-server" 2>/dev/null
+  exit 0
+}
+
+# Set up trap to catch Ctrl+C and other termination signals
+trap cleanup SIGINT SIGTERM
+
 echo "🚀 Starting Zero-Trust Web Rails demo in multi-origin mode..."
 echo ""
 echo "This will start 5 servers:"
@@ -22,18 +34,18 @@ start_server() {
   local name=$3
 
   echo "Starting $name on port $port..."
-  (cd "$dir" && python3 -m http.server $port 2>&1 | sed "s/^/[$name] /") &
+  (cd "$dir" && bunx http-server -p $port 2>&1 | sed "s/^/[$name] /") &
 }
 
 # Start all servers
 start_server "requester" 3000 "Requester"
 start_server "gateway" 3001 "Gateway"
-start_server "wallet-flexpa" 3002 "Flexpa"
-start_server "wallet-bwell" 3003 "b.well"
-start_server "wallet-premera" 3004 "Premera"
+start_server "source-flexpa" 3002 "Flexpa"
+start_server "source-bwell" 3003 "b.well"
+start_server "source-premera" 3004 "Premera"
 
 # Wait a moment for servers to start
-sleep 1
+sleep 2
 
 echo ""
 echo "✓ All servers started!"
