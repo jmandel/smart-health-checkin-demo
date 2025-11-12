@@ -291,7 +291,7 @@
     const state = req.state;
     const returnUrl = req.returnUrl;
     const protocol = req.digital?.requests?.[0]?.protocol || 'Not specified';
-    const requestedData = req.digital?.requests?.[0]?.data || {};
+    const requestItems = req.digital?.requests?.[0]?.data?.items || [];
 
     if (!state || !returnUrl) {
       document.getElementById('content').innerHTML = '<div style="text-align:center;color:#dc2626;padding:40px">Invalid request parameters</div>';
@@ -302,16 +302,16 @@
     document.getElementById('returnUrl').textContent = returnUrl;
 
     // Parse and display requested FHIR profiles
-    if (Object.keys(requestedData).length > 0) {
-      const profiles = Object.keys(requestedData).map(key => {
-        const profile = requestedData[key]._profile;
-        return profile ? profile.split('/').pop() : key;
-      }).join(', ');
+    if (requestItems.length > 0) {
+      const profiles = requestItems
+        .filter(item => item.type === 'fhir-profile')
+        .map(item => item.profile ? item.profile.split('/').pop() : item.resourceType)
+        .join(', ');
       document.getElementById('profiles').textContent = profiles;
       document.getElementById('profilesDetail').style.display = 'block';
     }
 
-    console.log('[b.well Connected Health] Request:', { protocol, state, returnUrl, requestedData });
+    console.log('[b.well Connected Health] Request:', { protocol, state, returnUrl, requestItems });
 
     window.handleCancel = () => {
       window.close();
@@ -370,10 +370,16 @@
         });
       }
 
+      // Get profile request IDs
+      const profileRequests = requestItems.filter(item => item.type === 'fhir-profile');
+      const coverageRequests = profileRequests.filter(r => r.resourceType === 'Coverage');
+
       const payload = {
         v: 1,
         items: [
           {
+            requestIds: profileRequests.map(r => r.id),
+            type: 'fhir-resource',
             contentType: 'application/fhir+json;fhirVersion=4.0.1',
             label: `Health Summary (${Object.values(selected).filter(Boolean).length} categories)`,
             body: {
@@ -383,6 +389,8 @@
             }
           },
           {
+            requestIds: coverageRequests.map(r => r.id),
+            type: 'fhir-resource',
             contentType: 'application/smart-health-card',
             label: 'Insurance Card',
             body: {

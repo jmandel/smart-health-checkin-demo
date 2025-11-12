@@ -191,13 +191,13 @@
   <div class="container">
     <header>
       <h1>🏥 Healthcare Portal</h1>
-      <div class="tagline">Zero-Trust Web Rails Demo</div>
+      <div class="tagline">SHL Share Picker Demo</div>
     </header>
 
     <div class="card">
       <h2>Request Health Credentials</h2>
       <p>
-        This demo shows how to securely request health credentials using the Zero-Trust Web Rails pattern.
+        This demo shows secure credential sharing where the app picker never sees your data.
         Select what you'd like to request below, then choose from available health data sources.
       </p>
 
@@ -218,6 +218,13 @@
               <div style="font-size: 13px; color: #64748b;">Request your health records (US Core Patient Bundle)</div>
             </div>
           </label>
+          <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='transparent'">
+            <input type="checkbox" id="req-questionnaire" style="width: 20px; height: 20px; accent-color: #8b5cf6; cursor: pointer;" onchange="updateBorder(this)">
+            <div>
+              <div style="font-weight: 600; color: #1e3a8a; margin-bottom: 4px;">📝 Patient Intake Form</div>
+              <div style="font-size: 13px; color: #64748b;">Complete a brief questionnaire about your health</div>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -229,10 +236,10 @@
         <h3>🔒 How it works</h3>
         <p>
           <strong>1.</strong> Select what data you want to request<br>
-          <strong>2.</strong> A gateway opens to choose your health data source<br>
+          <strong>2.</strong> An app picker opens to choose your health data source<br>
           <strong>3.</strong> Select a source (Flexpa, b.well, or Premera Blue Cross)<br>
-          <strong>4.</strong> The source returns data directly to THIS page (bypassing the gateway)<br>
-          <strong>5.</strong> Gateway never sees your data — true zero-trust architecture
+          <strong>4.</strong> The source returns data directly to THIS page (bypassing the app picker)<br>
+          <strong>5.</strong> App picker never sees your data — secure architecture
         </p>
       </div>
 
@@ -336,27 +343,80 @@
     window.makeCustomRequest = () => {
       const wantInsurance = document.getElementById('req-insurance').checked;
       const wantClinical = document.getElementById('req-clinical').checked;
+      const wantQuestionnaire = document.getElementById('req-questionnaire').checked;
 
-      if (!wantInsurance && !wantClinical) {
+      if (!wantInsurance && !wantClinical && !wantQuestionnaire) {
         showResult('⚠️ Selection Required', '<p style="color:#92400e">Please select at least one type of data to request.</p>', 'error');
         return;
       }
 
-      const data = {};
+      const items = [];
       const descriptions = [];
 
       if (wantInsurance) {
-        data.Coverage = {
-          _profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage'
-        };
+        items.push({
+          id: 'coverage-1',
+          type: 'fhir-profile',
+          resourceType: 'Coverage',
+          profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage'
+        });
         descriptions.push('Insurance Card');
       }
 
       if (wantClinical) {
-        data.USCorePatientBundle = {
-          _profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient'
-        };
+        items.push({
+          id: 'patient-1',
+          type: 'fhir-profile',
+          resourceType: 'Patient',
+          profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient'
+        });
         descriptions.push('Clinical Data');
+      }
+
+      if (wantQuestionnaire) {
+        items.push({
+          id: 'intake-questionnaire-1',
+          type: 'fhir-questionnaire',
+          questionnaire: {
+            resourceType: 'Questionnaire',
+            id: 'patient-intake',
+            title: 'Patient Intake Form',
+            status: 'active',
+            item: [
+              {
+                linkId: '1',
+                text: 'Full Name',
+                type: 'string',
+                required: true
+              },
+              {
+                linkId: '2',
+                text: 'Date of Birth',
+                type: 'date',
+                required: true
+              },
+              {
+                linkId: '3',
+                text: 'Primary Health Concerns',
+                type: 'text',
+                required: false
+              },
+              {
+                linkId: '4',
+                text: 'Current Medications',
+                type: 'text',
+                required: false
+              },
+              {
+                linkId: '5',
+                text: 'Known Allergies',
+                type: 'string',
+                required: false
+              }
+            ]
+          }
+        });
+        descriptions.push('Questionnaire');
       }
 
       const description = descriptions.join(' + ');
@@ -365,8 +425,8 @@
       makeRequest({
         digital: {
           requests: [{
-            protocol: 'smart-health-card',
-            data: data
+            protocol: 'smart-health-data',
+            data: { items }
           }]
         }
       }, description);

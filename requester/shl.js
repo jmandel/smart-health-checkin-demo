@@ -109,10 +109,10 @@
         const msg = ev.data;
         console.log('[SHL] Received message on channel:', msg);
 
-        if (!msg || msg.state !== state || !msg.shl) return;
+        if (!msg || msg.state !== state || !msg.res) return;
 
         try {
-          const ret = decJ(msg.shl);
+          const ret = decJ(msg.res);
           if (ret.state !== state) {
             console.warn('[SHL] State mismatch');
             return;
@@ -184,13 +184,13 @@
     if (!h) return false;
 
     const p = new URLSearchParams(h);
-    const shl = p.get('shl'); // base64url(JSON) blob
-    if (!shl) return false;
+    const res = p.get('res'); // base64url(JSON) blob
+    if (!res) return false;
 
     console.log('[SHL] Detected return context');
 
     try {
-      const ret = decJ(shl); // { v, state, payload | jwe }
+      const ret = decJ(res); // { v, state, payload | jwe }
       if (!ret?.state) {
         console.warn('[SHL] Return data missing state');
         return false;
@@ -199,7 +199,7 @@
       console.log('[SHL] Broadcasting result to original tab, state:', ret.state);
 
       const bc = new BroadcastChannel('shl-' + ret.state);
-      bc.postMessage({ state: ret.state, shl });
+      bc.postMessage({ state: ret.state, res });
       bc.close();
 
       // Show user-friendly message
