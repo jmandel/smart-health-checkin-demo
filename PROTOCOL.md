@@ -1,25 +1,25 @@
-# Zero-Trust Web Rails (ZTWR) Protocol
+# SHL Share Picker Protocol
 
 ## Overview
 
-Zero-Trust Web Rails (ZTWR) is a protocol for secure credential sharing where a **gateway** helps users select their data source, but **never sees the actual data** being shared. All sensitive information travels directly from source to requester.
+The SHL Share Picker protocol enables secure credential sharing where an **app picker** helps users select their data source, but **never sees the actual data** being shared. All sensitive information travels directly from source to requester.
 
 The protocol uses the same data model as the [W3C Digital Credentials API](https://wicg.github.io/digital-credentials/) (`navigator.credentials.get()`), specifically the `digital` credential type with a `requests` array.
 
 ## Protocol Actors
 
 - **Requester**: Healthcare portal or app requesting health credentials
-- **Gateway**: Trusted intermediary that presents data source options (zero-knowledge)
+- **App Picker**: Trusted intermediary that presents data source options (zero-knowledge)
 - **Data Source**: Health data provider (insurer, EHR, PHR) that authorizes and returns data
 
 ## Protocol Flow
 
 ### Step 1: Request Initiation
 
-Requester opens gateway in a popup with request in hash fragment:
+Requester opens app picker in a popup with request in hash fragment:
 
 ```
-{gatewayBase}/#req={base64url(request_envelope)}
+{appPickerBase}/#req={base64url(request_envelope)}
 ```
 
 **Request Envelope** (W3C Digital Credentials format):
@@ -41,15 +41,15 @@ Requester opens gateway in a popup with request in hash fragment:
 }
 ```
 
-### Step 2: Gateway Selection
+### Step 2: App Selection
 
-Gateway displays available data sources. When user selects one, gateway forwards the request envelope to the data source:
+App picker displays available data sources. When user selects one, app picker forwards the request envelope to the data source:
 
 ```
 {sourceBase}/#req={base64url(request_envelope)}
 ```
 
-Gateway then closes. It never stores or logs the request.
+App picker then closes. It never stores or logs the request.
 
 ### Step 3: Data Source Authorization
 
@@ -149,14 +149,14 @@ All sensitive data is in URL hash fragments (`#req=...`, `#res=...`):
 - Not logged by servers or proxies
 - Not visible in referrer headers
 
-### Zero-Trust Gateway
+### Zero-Trust App Picker
 
-The gateway:
+The app picker:
 - Sees what's being requested (non-sensitive)
 - Never sees response data (zero-knowledge)
 - Cannot intercept the response flow
 
-Response goes directly: **Data Source → Requester** (bypassing gateway).
+Response goes directly: **Data Source → Requester** (bypassing app picker).
 
 ### State Validation
 
@@ -176,9 +176,9 @@ Used for same-origin communication between tabs:
 
 ### For Patient Portal Developers (Requesters)
 
-1. Include ZTWR library
+1. Include SHL Share Picker library
 2. Call `SHL.request()` with W3C Digital Credentials format
-3. Specify trusted gateway URL
+3. Specify trusted app picker URL
 4. Handle return flow with `SHL.maybeHandleReturn()`
 
 ### For Health Data Providers (Data Sources)
@@ -192,7 +192,7 @@ Used for same-origin communication between tabs:
    - SMART Health Links for shareable access
 5. Navigate to `{returnUrl}/#res={response}`
 
-### For Gateway Operators
+### For App Picker Operators
 
 1. Parse `#req=` hash parameter
 2. Display available data sources
@@ -201,13 +201,13 @@ Used for same-origin communication between tabs:
 
 ## W3C Compatibility
 
-ZTWR uses the same data model as W3C Digital Credentials API:
+The SHL Share Picker uses the same data model as W3C Digital Credentials API:
 
-**Current (ZTWR):**
+**Current (SHL Share Picker):**
 ```javascript
 await SHL.request({
   digital: { requests: [...] }
-}, { gatewayBase: '...' })
+}, { appPickerBase: '...' })
 ```
 
 **Future (Native):**
@@ -296,39 +296,39 @@ The `digital.requests` structure is identical, enabling smooth migration to nati
 ## Protocol Diagram
 
 ```
-┌──────────┐                                     ┌─────────┐
-│Requester │                                     │ Gateway │
-└────┬─────┘                                     └────┬────┘
-     │                                                │
-     │  1. Open popup: #req={...}                    │
-     ├──────────────────────────────────────────────>│
-     │                                                │
-     │                           2. User selects     │
-     │                              data source      │
-     │                                                │
-     │                                     ┌──────────▼────────┐
+┌──────────┐                                     ┌────────────┐
+│Requester │                                     │ App Picker │
+└────┬─────┘                                     └─────┬──────┘
+     │                                                 │
+     │  1. Open popup: #req={...}                     │
+     ├────────────────────────────────────────────────>│
+     │                                                 │
+     │                           2. User selects      │
+     │                              data source       │
+     │                                                 │
+     │                                     ┌───────────▼───────┐
      │                                     │   Data Source     │
-     │                                     └──────────┬────────┘
-     │                                                │
-     │                           3. Open: #req={...} │
-     │                              (gateway closed) │
-     │                                                │
-     │                         4. User authorizes    │
-     │                                                │
-     │  5. Navigate: #res={...}                      │
-     │<───────────────────────────────────────────────┤
-     │                                                │
-     │  6. BroadcastChannel                          │
-     │     (internal, same-origin)                   │
-     └───────────────────┐                           │
-                         │                           │
+     │                                     └───────────┬───────┘
+     │                                                 │
+     │                           3. Open: #req={...}  │
+     │                           (app picker closed)  │
+     │                                                 │
+     │                         4. User authorizes     │
+     │                                                 │
+     │  5. Navigate: #res={...}                       │
+     │<────────────────────────────────────────────────┤
+     │                                                 │
+     │  6. BroadcastChannel                           │
+     │     (internal, same-origin)                    │
+     └───────────────────┐                            │
+                         │                            │
      ┌───────────────────┘
      │
      │  7. Response received!
      ▼
 ```
 
-Gateway never sees the response - true zero-trust architecture.
+App picker never sees the response - true zero-trust architecture.
 
 ## References
 

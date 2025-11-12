@@ -1,23 +1,23 @@
-# Zero-Trust Web Rails (ZTWR) Demo
+# SHL Share Picker Demo
 
-A demonstration of secure credential sharing using the Zero-Trust Web Rails pattern, compatible with the Navigator Credentials API.
+A demonstration of secure credential sharing using a zero-trust pattern, compatible with the Navigator Credentials API.
 
 ## 🌐 Live Demo
 
 Visit [joshuamandel.com/shl-share-picker](https://joshuamandel.com/shl-share-picker) to try it out!
 
-## 🔐 What is Zero-Trust Web Rails?
+## 🔐 What is the SHL Share Picker?
 
-Zero-Trust Web Rails (ZTWR) is a security pattern for credential sharing where:
-- A **gateway** helps users select their data source
-- The **gateway never sees the actual data** being shared
+The SHL Share Picker is a pattern for secure credential sharing where:
+- An **app picker** helps users select their data source
+- The **app picker never sees the actual data** being shared
 - All sensitive information travels directly from source to requester
 - Works across different origins using BroadcastChannel API
 - Compatible with Navigator Credentials API format
 
 ## ✨ Features
 
-- **Zero-Trust Architecture**: Gateway provides zero-knowledge mediation
+- **Zero-Trust Architecture**: App picker provides zero-knowledge mediation
 - **Cross-Origin Support**: Works across different domains
 - **Navigator Credentials Compatible**: Follows `navigator.credentials.get()` pattern
 - **Static Hosting Only**: No server-side state required
@@ -32,7 +32,7 @@ The demo is live at: https://joshuamandel.com/shl-share-picker
 
 All components run under the same origin at different subpaths:
 - Requester: `/requester/`
-- Gateway: `/gateway/`
+- App Picker: `/gateway/`
 - Data sources: `/source-flexpa/`, `/source-bwell/`, `/source-premera/`
 
 ### Local Testing (Multi-Origin)
@@ -46,7 +46,7 @@ For local development with true cross-origin testing:
 
 This starts 5 servers on different localhost ports:
 - Requester: http://requester.localhost:3000
-- Gateway: http://gateway.localhost:3001
+- App Picker: http://gateway.localhost:3001
 - Flexpa: http://flexpa.localhost:3002
 - b.well: http://bwell.localhost:3003
 - Premera: http://premera.localhost:3004
@@ -56,11 +56,11 @@ Visit http://requester.localhost:3000 to start.
 ## 📋 How It Works
 
 1. **Requester** initiates a credential request using Navigator Credentials API format
-2. **Gateway** opens showing available health data sources
+2. **App Picker** opens showing available health data sources
 3. **User** selects their preferred source (Flexpa, b.well, or Premera)
 4. **Source** opens, user reviews the request and authorizes
 5. **Data** returns directly to requester via BroadcastChannel
-6. **Gateway** never sees the response - zero-trust achieved!
+6. **App Picker** never sees the response - zero-trust achieved!
 
 **📖 For detailed protocol documentation, see [PROTOCOL.md](PROTOCOL.md)**
 
@@ -73,7 +73,7 @@ Visit http://requester.localhost:3000 to start.
        │
        v
 ┌─────────────┐
-│   Gateway   │ User selects data source (never sees response)
+│ App Picker  │ User selects data source (never sees response)
 └──────┬──────┘
        │
        v
@@ -102,10 +102,10 @@ Configuration is handled in `config.js` which sets up the appropriate URLs for e
 shl-share-picker/
 ├── index.html           # Landing page
 ├── config.js            # Environment-aware configuration
-├── shl.js              # Core ZTWR library
+├── shl.js              # Core SHL Share Picker library
 ├── requester/          # Healthcare portal demo
 │   └── index.html
-├── gateway/            # App selection gateway
+├── gateway/            # App picker
 │   └── gateway.html
 ├── source-flexpa/      # Flexpa data source
 │   └── index.html
@@ -135,7 +135,7 @@ const result = await SHL.request({
     }]
   }
 }, {
-  gatewayBase: 'https://joshuamandel.com/shl-share-picker/gateway'
+  appPickerBase: 'https://joshuamandel.com/shl-share-picker/gateway'
 });
 ```
 
@@ -143,7 +143,7 @@ const result = await SHL.request({
 
 - All sensitive data transported in hash fragments (never logged or sent to servers)
 - BroadcastChannel for same-origin communication
-- Gateway uses zero-knowledge architecture
+- App picker uses zero-knowledge architecture
 - No server-side state or storage required
 - Compatible with Content Security Policy
 
