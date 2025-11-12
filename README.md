@@ -62,6 +62,8 @@ Visit http://requester.localhost:3000 to start.
 5. **Data** returns directly to requester via BroadcastChannel
 6. **Gateway** never sees the response - zero-trust achieved!
 
+**📖 For detailed protocol documentation, see [PROTOCOL.md](PROTOCOL.md)**
+
 ## 🏗️ Architecture
 
 ```
@@ -155,6 +157,7 @@ Contributions welcome! Please open an issue or pull request.
 
 ## 📚 Learn More
 
+- **[PROTOCOL.md](PROTOCOL.md)** - Complete protocol specification and developer guide
 - [Navigator Credentials API](https://developer.mozilla.org/en-US/docs/Web/API/Credential_Management_API)
 - [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel)
 - [SMART Health Cards](https://smarthealth.cards/)
