@@ -15,11 +15,11 @@ cleanup() {
 # Set up trap to catch Ctrl+C and other termination signals
 trap cleanup SIGINT SIGTERM
 
-echo "🚀 Starting Zero-Trust Web Rails demo in multi-origin mode..."
+echo "🚀 Starting SMART Health Check-in demo in multi-origin mode..."
 echo ""
 echo "This will start 5 servers:"
 echo "  • Requester:  http://requester.localhost:3000"
-echo "  • Gateway:    http://gateway.localhost:3001"
+echo "  • Check-in:   http://checkin.localhost:3001"
 echo "  • Flexpa:     http://flexpa.localhost:3002"
 echo "  • b.well:     http://bwell.localhost:3003"
 echo "  • Premera:    http://premera.localhost:3004"
@@ -39,7 +39,7 @@ start_server() {
 
 # Start all servers
 start_server "requester" 3000 "Requester"
-start_server "gateway" 3001 "Gateway"
+start_server "checkin" 3001 "Check-in"
 start_server "source-flexpa" 3002 "Flexpa"
 start_server "source-bwell" 3003 "b.well"
 start_server "source-premera" 3004 "Premera"

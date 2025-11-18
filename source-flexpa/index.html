@@ -179,6 +179,29 @@
       margin-bottom: 6px;
       color: #1e293b;
     }
+    .auto-filled-banner {
+      background: #fef3c7;
+      border: 2px solid #fbbf24;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .auto-filled-banner-icon {
+      font-size: 24px;
+    }
+    .auto-filled-banner-text {
+      flex: 1;
+      color: #92400e;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .auto-filled-field {
+      background: #fef3c7 !important;
+      border-color: #fbbf24 !important;
+    }
     .actions {
       display: flex;
       gap: 12px;
@@ -316,45 +339,53 @@
       </div>
     `;
 
-    // Check for profile requests
-    const hasProfileRequests = requestItems.some(item => item.type === 'fhir-profile');
-    if (hasProfileRequests) {
+    // Show selection checkboxes for what was requested
+    html += `<div class="section"><h3>Select Data to Share</h3><div class="note">Choose which requested items to share with the provider</div>`;
+
+    // Check for insurance/coverage requests
+    const hasCoverageRequest = requestItems.some(item =>
+      item.type === 'fhir-profile' && item.resourceType === 'Coverage'
+    );
+    if (hasCoverageRequest) {
       html += `
-        <div class="section">
-          <h3>📋 Insurance Coverage</h3>
-          <div class="card-preview">
-            <h4>Aetna PPO Plan</h4>
-            <div class="card-info">
-              <div><strong>Member:</strong> Jane Doe</div>
-              <div><strong>Member ID:</strong> W123456789</div>
-              <div><strong>Group:</strong> TECH-2024</div>
-              <div><strong>Effective:</strong> 2024-01-01</div>
+        <label style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:white;border:2px solid #e2e8f0;border-radius:8px;margin:12px 0;cursor:pointer;">
+          <input type="checkbox" id="share-insurance" checked style="margin-top:4px">
+          <div style="flex:1">
+            <div style="font-weight:600;color:#0d9488;margin-bottom:8px">📋 Insurance Card</div>
+            <div class="card-preview" style="margin:0">
+              <div class="card-info">
+                <div><strong>Member:</strong> Jane Doe</div>
+                <div><strong>Member ID:</strong> W123456789</div>
+                <div><strong>Plan:</strong> Aetna PPO</div>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div class="section">
-          <h3>🏥 Health Records to Share</h3>
-          <div class="note">Select which categories from your health record to include</div>
-          <div class="checkbox-group">
-            <label><input type="checkbox" id="allergies" checked> Allergies</label>
-            <label><input type="checkbox" id="medications" checked> Medications</label>
-            <label><input type="checkbox" id="conditions" checked> Conditions</label>
-            <label><input type="checkbox" id="procedures" checked> Procedures</label>
-            <label><input type="checkbox" id="immunizations" checked> Immunizations</label>
-            <label><input type="checkbox" id="labs" checked> Lab Results</label>
-            <label><input type="checkbox" id="vitals" checked> Vital Signs</label>
-            <label><input type="checkbox" id="encounters" checked> Encounters</label>
-            <label><input type="checkbox" id="careplans"> Care Plans</label>
-            <label><input type="checkbox" id="documents"> Clinical Notes</label>
-          </div>
-        </div>
+        </label>
       `;
     }
+
+    // Check for clinical/patient requests
+    const hasClinicalRequest = requestItems.some(item =>
+      item.type === 'fhir-profile' && item.resourceType === 'Patient'
+    );
+    if (hasClinicalRequest) {
+      html += `
+        <label style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:white;border:2px solid #e2e8f0;border-radius:8px;margin:12px 0;cursor:pointer;">
+          <input type="checkbox" id="share-clinical" checked style="margin-top:4px">
+          <div style="flex:1">
+            <div style="font-weight:600;color:#0d9488;margin-bottom:8px">🏥 Clinical Summary</div>
+            <div style="font-size:13px;color:#64748b">Health records including medications, allergies, conditions, and vital signs</div>
+          </div>
+        </label>
+      `;
+    }
+
+    html += `</div>`;
 
     // Check for questionnaire requests
     const questionnaireItems = requestItems.filter(item => item.type === 'fhir-questionnaire');
     if (questionnaireItems.length > 0) {
+      html += `<div class="section">`;
       questionnaireItems.forEach((qItem, idx) => {
         const questionnaire = qItem.questionnaire;
         const title = questionnaire?.title || qItem.id;
@@ -379,9 +410,15 @@
         const randomIdx = Math.floor(Math.random() * 4);
 
         html += `
-          <div class="section">
-            <h3>📝 ${title}</h3>
-            <div class="questionnaire-form" id="q-form-${idx}">
+          <label style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:white;border:2px solid #e2e8f0;border-radius:8px;margin:12px 0;cursor:pointer;">
+            <input type="checkbox" id="share-questionnaire-${idx}" data-q-idx="${idx}" checked style="margin-top:4px">
+            <div style="flex:1">
+              <div style="font-weight:600;color:#0d9488;margin-bottom:8px">📝 ${title}</div>
+              <div class="auto-filled-banner" style="margin:12px 0">
+                <div class="auto-filled-banner-icon">✓</div>
+                <div class="auto-filled-banner-text">We found matching records. We have auto-filled your Intake Form below using data from your health records.</div>
+              </div>
+              <div class="questionnaire-form" id="q-form-${idx}">
         `;
 
         // Render each question based on the questionnaire structure
@@ -401,12 +438,13 @@
             else if (question.linkId === '4') defaultValue = randomMeds[randomIdx];
             else if (question.linkId === '5') defaultValue = randomAllergies[randomIdx];
 
+            const fieldClass = defaultValue ? 'auto-filled-field' : '';
             if (question.type === 'text') {
-              html += `<textarea id="${fieldId}" rows="3">${defaultValue}</textarea>`;
+              html += `<textarea id="${fieldId}" rows="3" class="${fieldClass}">${defaultValue}</textarea>`;
             } else if (question.type === 'date') {
-              html += `<input type="date" id="${fieldId}" value="${defaultValue}">`;
+              html += `<input type="date" id="${fieldId}" value="${defaultValue}" class="${fieldClass}">`;
             } else {
-              html += `<input type="text" id="${fieldId}" value="${defaultValue}">`;
+              html += `<input type="text" id="${fieldId}" value="${defaultValue}" class="${fieldClass}">`;
             }
 
             html += `</div>`;
@@ -414,10 +452,12 @@
         }
 
         html += `
+              </div>
             </div>
-          </div>
+          </label>
         `;
       });
+      html += `</div>`; // Close section
     }
 
     html += `
@@ -436,80 +476,77 @@
     window.handleShare = () => {
       const responseItems = [];
 
-      // Handle profile requests
-      const profileRequests = requestItems.filter(item => item.type === 'fhir-profile');
-      if (profileRequests.length > 0) {
-        // Get selected categories
-        const selected = {
-          allergies: document.getElementById('allergies')?.checked || false,
-          medications: document.getElementById('medications')?.checked || false,
-          conditions: document.getElementById('conditions')?.checked || false,
-          procedures: document.getElementById('procedures')?.checked || false,
-          immunizations: document.getElementById('immunizations')?.checked || false,
-          labs: document.getElementById('labs')?.checked || false,
-          vitals: document.getElementById('vitals')?.checked || false,
-          encounters: document.getElementById('encounters')?.checked || false,
-          careplans: document.getElementById('careplans')?.checked || false,
-          documents: document.getElementById('documents')?.checked || false
-        };
+      console.log('[Flexpa] Starting share process');
+      console.log('[Flexpa] Request items:', requestItems);
+      console.log('[Flexpa] State:', state);
+      console.log('[Flexpa] Return URL:', returnUrl);
 
-        console.log('[Flexpa] Sharing categories:', selected);
+      // Check if insurance card should be shared
+      const shareInsurance = document.getElementById('share-insurance')?.checked;
+      const shareClinical = document.getElementById('share-clinical')?.checked;
 
-        // Build FHIR Bundle with selected categories
+      // Handle insurance card if selected
+      const coverageRequests = requestItems.filter(item => item.type === 'fhir-profile' && item.resourceType === 'Coverage');
+      if (shareInsurance && coverageRequests.length > 0) {
+        console.log('[Flexpa] Adding insurance card');
+
+        responseItems.push({
+          requestIds: coverageRequests.map(r => r.id),
+          type: 'fhir-resource',
+          contentType: 'application/fhir+json;fhirVersion=4.0.1',
+          label: 'Insurance Card',
+          body: {
+            resourceType: 'Coverage',
+            id: 'coverage-1',
+            status: 'active',
+            subscriberId: 'W123456789',
+            beneficiary: { reference: 'Patient/patient-1', display: 'Jane Doe' },
+            payor: [{ display: 'Aetna' }],
+            class: [
+              { type: { coding: [{ code: 'group' }] }, value: 'TECH-2024' }
+            ]
+          }
+        });
+      }
+
+      // Handle clinical summary if selected
+      const patientRequests = requestItems.filter(item => item.type === 'fhir-profile' && item.resourceType === 'Patient');
+      if (shareClinical && patientRequests.length > 0) {
+        console.log('[Flexpa] Adding clinical summary');
+
         const entries = [
           {
-            fullUrl: 'urn:uuid:coverage-1',
+            fullUrl: 'urn:uuid:patient-1',
             resource: {
-              resourceType: 'Coverage',
-              id: 'coverage-1',
-              status: 'active',
-              subscriberId: 'W123456789',
-              beneficiary: { display: 'Jane Doe' },
-              payor: [{ display: 'Aetna' }]
+              resourceType: 'Patient',
+              id: 'patient-1',
+              name: [{ text: 'Jane Doe', family: 'Doe', given: ['Jane'] }],
+              birthDate: '1985-06-15'
             }
+          },
+          {
+            fullUrl: 'urn:uuid:allergy-1',
+            resource: { resourceType: 'AllergyIntolerance', id: 'allergy-1', patient: { reference: 'Patient/patient-1' }, code: { text: 'Penicillin' } }
+          },
+          {
+            fullUrl: 'urn:uuid:med-1',
+            resource: { resourceType: 'MedicationStatement', id: 'med-1', subject: { reference: 'Patient/patient-1' }, medicationCodeableConcept: { text: 'Lisinopril 10mg daily' } }
+          },
+          {
+            fullUrl: 'urn:uuid:condition-1',
+            resource: { resourceType: 'Condition', id: 'condition-1', subject: { reference: 'Patient/patient-1' }, code: { text: 'Essential Hypertension' } }
           }
         ];
 
-        if (selected.allergies) {
-          entries.push({
-            fullUrl: 'urn:uuid:allergy-1',
-            resource: { resourceType: 'AllergyIntolerance', id: 'allergy-1', code: { text: 'Penicillin' } }
-          });
-        }
-
-        if (selected.medications) {
-          entries.push({
-            fullUrl: 'urn:uuid:med-1',
-            resource: { resourceType: 'MedicationStatement', id: 'med-1', medicationCodeableConcept: { text: 'Lisinopril 10mg' } }
-          });
-        }
-
-        if (selected.conditions) {
-          entries.push({
-            fullUrl: 'urn:uuid:condition-1',
-            resource: { resourceType: 'Condition', id: 'condition-1', code: { text: 'Essential Hypertension' } }
-          });
-        }
-
         responseItems.push({
-          requestIds: profileRequests.map(r => r.id),
+          requestIds: patientRequests.map(r => r.id),
           type: 'fhir-resource',
           contentType: 'application/fhir+json;fhirVersion=4.0.1',
-          label: `Health Summary (${Object.values(selected).filter(Boolean).length} categories)`,
+          label: 'Health Summary',
           body: {
             resourceType: 'Bundle',
             type: 'collection',
             entry: entries
-          }
-        });
-
-        responseItems.push({
-          requestIds: profileRequests.filter(r => r.resourceType === 'Coverage').map(r => r.id),
-          type: 'fhir-resource',
-          contentType: 'application/smart-health-card',
-          label: 'Insurance Card',
-          body: {
-            verifiableCredential: ['eyJ6aXAiOiJERUYiLCJhbGciOiJFUzI1NiIsImtpZCI6IjNLZmRnLVh3UC03Z0g1OS1xdWQtYjU0S18zNGRfOHlvLWY0Zy1reUQifQ.flexpa-insurance.sig']
           }
         });
       }
@@ -517,6 +554,13 @@
       // Handle questionnaire requests
       const questionnaireRequests = requestItems.filter(item => item.type === 'fhir-questionnaire');
       questionnaireRequests.forEach((qItem, idx) => {
+        const shareQuestionnaire = document.getElementById(`share-questionnaire-${idx}`)?.checked;
+        if (!shareQuestionnaire) {
+          console.log(`[Flexpa] Skipping questionnaire ${idx} (not selected)`);
+          return;
+        }
+
+        console.log(`[Flexpa] Adding questionnaire ${idx}`);
         const questionnaire = qItem.questionnaire;
         const items = [];
 
@@ -556,17 +600,23 @@
         });
       });
 
+      console.log('[Flexpa] Response items:', responseItems);
+
       const payload = {
-        v: 1,
         items: responseItems
       };
 
       const result = { v: 1, state, payload };
+      console.log('[Flexpa] Result envelope:', result);
+
       const resB64 = b64u(te.encode(JSON.stringify(result)));
+      console.log('[Flexpa] Encoded response (first 100 chars):', resB64.substring(0, 100));
+
       const returnURL = new URL(returnUrl);
       returnURL.hash = 'res=' + resB64;
 
       console.log('[Flexpa] Returning to:', returnURL.toString());
+      console.log('[Flexpa] Response will be delivered via location change');
       location.href = returnURL.toString();
     };
   })();

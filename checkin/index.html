@@ -1,0 +1,334 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SMART Health Check-in - Choose Your Health Data Source</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 32px 20px;
+      text-align: center;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .shield-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .subtitle {
+      margin-top: 8px;
+      font-size: 15px;
+      color: #64748b;
+    }
+    main {
+      flex: 1;
+      padding: 32px 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 32px 0 16px 0;
+    }
+    .section-title:first-child {
+      margin-top: 0;
+    }
+    .apps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      padding: 24px;
+      border: 2px solid transparent;
+      border-radius: 16px;
+      cursor: pointer;
+      background: white;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--brand-color);
+    }
+    .card:hover {
+      border-color: var(--brand-color);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    .card:active {
+      transform: translateY(-2px);
+    }
+    .card-logo {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: var(--brand-color);
+      color: white;
+      font-size: 28px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .card-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    footer {
+      padding: 24px 20px;
+      text-align: center;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 13px;
+    }
+    footer .footer-title {
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .error {
+      padding: 20px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      color: #991b1b;
+    }
+    .loading {
+      padding: 40px;
+      text-align: center;
+      color: #64748b;
+    }
+    .requester-name {
+      font-weight: 700;
+      color: #0284c7;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shield-icon">🛡️</div>
+    <h1 id="header-title">Choose Your Health Data Source</h1>
+    <div class="subtitle" id="subtitle">Select where to retrieve your health information</div>
+  </header>
+  <main>
+    <div id="content">
+      <div id="loading" class="loading">Loading health data sources...</div>
+      <div id="error" class="error" style="display:none;"></div>
+    </div>
+  </main>
+  <footer>
+    <div class="footer-title">Secure Routing by SMART Health Check-in</div>
+    <div>We do not store your data</div>
+  </footer>
+
+  <script src="./config.js"></script>
+  <script>
+  (() => {
+    const td = new TextDecoder();
+
+    // Base64url decode
+    const ub64 = (s) => {
+      const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
+      const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + pad;
+      const bin = atob(b64);
+      const a = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+      return a.buffer;
+    };
+
+    const decJ = (s) => JSON.parse(td.decode(ub64(s)));
+
+    // Parse request from hash
+    const reqB64 = new URLSearchParams(location.hash.slice(1)).get('req');
+    if (!reqB64) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Missing request parameter. This page should be opened by the SMART Health Check-in library.';
+      return;
+    }
+
+    let req;
+    try {
+      req = decJ(reqB64); // { v, state, returnUrl, digital: { requests: [...] } }
+      console.log('[Check-in] Request:', req);
+
+      // Extract client name if provided
+      const clientName = req.clientName || req.digital?.requests?.[0]?.clientName;
+
+      // Update header if we have a client name
+      if (clientName) {
+        document.getElementById('header-title').innerHTML =
+          `Connect <span class="requester-name">${clientName}</span> to...`;
+      }
+
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Invalid request format: ' + e.message;
+      return;
+    }
+
+    // Load apps from config
+    const apps = ZTWRConfig.checkin.apps;
+    document.getElementById('loading').style.display = 'none';
+
+    if (!apps || apps.length === 0) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'No health data sources available.';
+      return;
+    }
+
+    // Group apps by category
+    const categories = {
+      'healthplan': { title: 'Health Plans', apps: [] },
+      'ehr': { title: 'Health Systems', apps: [] },
+      'phr': { title: 'Connected Apps', apps: [] }
+    };
+
+    apps.forEach(app => {
+      const category = app.category || 'phr';
+      if (categories[category]) {
+        categories[category].apps.push(app);
+      } else {
+        categories.phr.apps.push(app);
+      }
+    });
+
+    // Render apps by category
+    const contentEl = document.getElementById('content');
+    contentEl.innerHTML = '';
+
+    Object.entries(categories).forEach(([key, category]) => {
+      if (category.apps.length === 0) return;
+
+      const sectionTitle = document.createElement('div');
+      sectionTitle.className = 'section-title';
+      sectionTitle.textContent = category.title;
+      contentEl.appendChild(sectionTitle);
+
+      const appsGrid = document.createElement('div');
+      appsGrid.className = 'apps';
+
+      category.apps.forEach(app => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // Set brand color as CSS variable
+        if (app.color) {
+          card.style.setProperty('--brand-color', app.color);
+        }
+
+        // Add logo
+        if (app.logo) {
+          const logo = document.createElement('div');
+          logo.className = 'card-logo';
+          logo.textContent = app.logo;
+          card.appendChild(logo);
+        }
+
+        const name = document.createElement('div');
+        name.className = 'card-name';
+        name.textContent = app.name || app.id;
+
+        const desc = document.createElement('div');
+        desc.className = 'card-desc';
+        desc.textContent = app.description || 'Health data source';
+
+        card.appendChild(name);
+        card.appendChild(desc);
+
+        card.onclick = () => {
+          console.log('[Check-in] Launching app:', app.id);
+
+          // Pass through the digital credentials request structure
+          const te = new TextEncoder();
+          const b64u = (buf) => {
+            const bin = String.fromCharCode(...new Uint8Array(buf));
+            return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          };
+
+          const handoffEnvelope = {
+            v: 1,
+            state: req.state,
+            returnUrl: req.returnUrl,
+            digital: req.digital
+          };
+
+          const handoff = 'req=' + encodeURIComponent(b64u(te.encode(JSON.stringify(handoffEnvelope))));
+
+          // Launch the health data source with handoff data
+          const launchUrl = app.launchBase + '#' + handoff;
+          console.log('[Check-in] Launch URL:', launchUrl);
+
+          const w = window.open(launchUrl, '_blank');
+          if (!w) {
+            // Fallback: navigate this window
+            console.warn('[Check-in] Popup blocked, navigating check-in window');
+            location.href = launchUrl;
+          } else {
+            // Close this check-in tab immediately
+            try {
+              window.close();
+            } catch (e) {
+              // If we can't close, show feedback
+              contentEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8">' +
+                '<div style="font-size:24px;margin-bottom:12px">✓</div>' +
+                '<div>Health data source opened</div>' +
+                '<div style="font-size:14px;margin-top:12px">You can close this tab.</div>' +
+                '</div>';
+            }
+          }
+        };
+
+        appsGrid.appendChild(card);
+      });
+
+      contentEl.appendChild(appsGrid);
+    });
+  })();
+  </script>
+</body>
+</html>

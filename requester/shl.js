@@ -31,7 +31,7 @@
   /**
    * Initiate a credential request (Navigator Credentials API compatible)
    * @param {Object} credentialRequest - { digital: { requests: [{ protocol, data }] } }
-   * @param {Object} opts - Options { gatewayBase }
+   * @param {Object} opts - Options { checkinBase }
    * @returns {Promise<Object>} - { type, protocol, data }
    */
   async function request(credentialRequest, opts) {
@@ -39,8 +39,8 @@
       throw new Error('digital.requests[0] required');
     }
 
-    const gatewayBase = (opts?.gatewayBase || '').replace(/\/+$/, '');
-    if (!gatewayBase) throw new Error('gatewayBase required');
+    const checkinBase = (opts?.checkinBase || opts?.gatewayBase || '').replace(/\/+$/, '');
+    if (!checkinBase) throw new Error('checkinBase required');
 
     const state = rand();
     const returnUrl = location.origin + location.pathname;
@@ -112,8 +112,8 @@
       digital: credentialRequest.digital
     });
 
-    const url = `${gatewayBase}/#req=${encodeURIComponent(reqEnvelope)}`;
-    console.log('[SHL] Opening app picker:', url);
+    const url = `${checkinBase}/#req=${encodeURIComponent(reqEnvelope)}`;
+    console.log('[SHL] Opening check-in:', url);
 
     pop = window.open(url, '_blank');
     if (!pop) {

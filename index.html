@@ -2,248 +2,379 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SHL Share Picker Demo</title>
+  <title>SMART Health Check-in Pattern</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
-      padding: 40px 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
+      padding: 0;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
       color: white;
+      padding: 60px 20px 80px;
+      text-align: center;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
     }
     h1 {
-      font-size: 48px;
-      margin: 0 0 16px 0;
+      font-size: 42px;
+      margin: 0 0 12px 0;
       font-weight: 700;
     }
     .subtitle {
-      font-size: 20px;
-      margin-bottom: 40px;
-      opacity: 0.9;
+      font-size: 22px;
+      margin: 0 0 32px 0;
+      opacity: 0.95;
+      font-weight: 300;
     }
-    .card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 12px;
-      padding: 32px;
-      margin-bottom: 24px;
-      color: #1e293b;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-    .card h2 {
-      margin: 0 0 16px 0;
-      font-size: 24px;
-      color: #1e3a8a;
-    }
-    .card p {
-      margin: 0 0 16px 0;
-      line-height: 1.6;
-      color: #475569;
-    }
-    .buttons {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 24px;
-      border: none;
+    .cta-button {
+      display: inline-block;
+      padding: 16px 40px;
+      background: white;
+      color: #0284c7;
       border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
       text-decoration: none;
+      font-size: 18px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
       transition: all 0.2s;
     }
-    .btn-primary {
-      background: #3b82f6;
-      color: white;
-    }
-    .btn-primary:hover {
-      background: #2563eb;
+    .cta-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-    .btn-secondary {
-      background: #10b981;
-      color: white;
-    }
-    .btn-secondary:hover {
-      background: #059669;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-    }
-    .feature-list {
-      margin: 24px 0;
-      padding: 0;
-      list-style: none;
-    }
-    .feature-list li {
-      padding: 12px 0;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      gap: 12px;
-    }
-    .feature-list li:last-child {
-      border-bottom: none;
-    }
-    .feature-icon {
-      font-size: 20px;
-      flex-shrink: 0;
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
     }
     .mode-badge {
       display: inline-block;
-      padding: 6px 12px;
-      background: rgba(59, 130, 246, 0.2);
-      border-radius: 6px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
       font-size: 14px;
       font-weight: 600;
-      color: #1e40af;
-      margin-bottom: 16px;
+      margin-bottom: 32px;
     }
-    .code {
+    .content {
+      padding: 40px 20px;
+    }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .section h2 {
+      margin: 0 0 20px 0;
+      font-size: 28px;
+      color: #0f172a;
+    }
+    .section h3 {
+      margin: 24px 0 12px 0;
+      font-size: 20px;
+      color: #334155;
+    }
+    .section p {
+      margin: 0 0 16px 0;
+      color: #475569;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+    .feature-card {
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border-left: 4px solid #0284c7;
+    }
+    .feature-card h4 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: #0f172a;
+    }
+    .feature-card p {
+      margin: 0;
+      font-size: 14px;
+      color: #64748b;
+    }
+    .highlight-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .highlight-box strong {
+      color: #92400e;
+    }
+    ul {
+      margin: 16px 0;
+      padding-left: 24px;
+    }
+    li {
+      margin: 8px 0;
+      color: #475569;
+    }
+    .footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .footer a {
+      color: #0284c7;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    code {
       background: #f1f5f9;
       padding: 2px 6px;
       border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.9em;
+      color: #0f172a;
+    }
+    .code-block {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 24px 0;
       font-family: monospace;
       font-size: 14px;
-      color: #1e293b;
+      overflow-x: auto;
+      line-height: 1.6;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🔐 SHL Share Picker</h1>
-    <div class="subtitle">Secure credential sharing where the app picker never sees your data</div>
+  <div class="hero">
+    <div class="mode-badge" id="mode-badge">Loading...</div>
+    <div class="container">
+      <h1>SMART Health Check-in Pattern</h1>
+      <div class="subtitle">A web-standard approach to "Kill the Clipboard"</div>
+      <a href="./requester/" class="cta-button">
+        Launch Simulation: Dr. Mandel's Clinic
+      </a>
+    </div>
+  </div>
 
-    <div class="card">
-      <div class="mode-badge" id="mode-badge">Loading...</div>
-      <h2>Try the Demo</h2>
-      <p>
-        This demonstrates a secure credential sharing flow where an app picker helps users select their
-        health data source, but never sees the actual data being shared. All sensitive information
-        travels directly from the source to the requester.
-      </p>
-      <div class="buttons">
-        <a href="./requester/" class="btn btn-primary">
-          <span>🏥</span>
-          <span>Launch Requester Demo</span>
-        </a>
+  <div class="content">
+    <div class="container">
+      <div class="section">
+        <h2>The CMS Interoperability Framework: Kill the Clipboard by 2026</h2>
+        <p>
+          The CMS Interoperability Framework aims to "Kill the Clipboard" by 2026, enabling patients
+          to digitally share health records and insurance data with providers.
+        </p>
+        <p>
+          We already have robust data standards for this: <strong>SMART Health Cards (SHC)</strong> and
+          <strong>SMART Health Links (SHL)</strong>. These standards excel at modeling the data and work
+          beautifully for in-person interactions: a patient simply shows a QR code on their phone, and
+          a receptionist scans it.
+        </p>
+        <p>
+          However, the most efficient time to collect registration data is <strong>before the patient
+          arrives at the clinic</strong>, while they are at home. In this remote context, the workflow
+          breaks down.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>The Problem: Friction in Remote Exchange</h2>
+        <p>
+          Without a dedicated browser standard for data sharing, current remote workflows force patients
+          into complex, manual processes:
+        </p>
+        <ul>
+          <li>
+            <strong>File System:</strong> Providers ask patients to "Upload your Health Card," assuming
+            the patient knows how to export a file from their health app, locate it in their device's
+            file system, and upload it.
+          </li>
+          <li>
+            <strong>Copy-Paste:</strong> Patients must switch contexts, opening a health app to generate
+            a sharing link, copying a long URL, switching back to the registration portal, and pasting it.
+          </li>
+          <li>
+            <strong>"Self-Scan":</strong> If a provider displays a QR code on a registration screen for
+            the patient to scan, a patient using a mobile phone physically cannot scan the screen they
+            are looking at.
+          </li>
+        </ul>
+        <p>
+          These barriers prevent widespread adoption. To solve this, we propose the <strong>SMART Health Picker</strong>.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Design Philosophy: Anchored in W3C Standards</h2>
+        <p>
+          This proposal is architecturally inspired by the
+          <a href="https://wicg.github.io/digital-credentials/" target="_blank">W3C Digital Credentials API</a>.
+          The long-term vision for the web is that browsers will natively handle requests for credentials via
+          <code>navigator.credentials.get()</code>, much like they handle location or camera access.
+        </p>
+        <p>
+          However, strictly relying on the native browser API is not viable today for three practical reasons:
+        </p>
+        <ul>
+          <li><strong>Availability:</strong> Native support is inconsistent across operating systems and browsers.</li>
+          <li><strong>Maturity:</strong> The specifications are still evolving.</li>
+          <li><strong>Interaction Requirements:</strong> Health data sharing requires more flexibility than simple
+              credential presentation. A patient may need to curate which clinical history to share, write a note
+              to the provider, or answer an intake questionnaire.</li>
+        </ul>
+        <p>
+          The SMART Health Picker acts as a <strong>pragmatic bridge</strong>. It mimics the request and response
+          structure of the W3C Digital Credentials API but implements the flow using standard web redirects and
+          messaging. This ensures reliability on all current devices while aligning data structures for a future
+          migration to native browser capabilities.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>The Architecture and Workflow</h2>
+        <p>
+          The architecture involves two primary entities: the <strong>Requester</strong> (e.g., a provider's
+          registration site) and the <strong>Patient App</strong> (e.g., a personal health record or payer app).
+          To connect them, we utilize a transient UI component called the <strong>Picker</strong>.
+        </p>
+
+        <h3>1. The Request</h3>
+        <p>
+          The Requester initiates the flow by constructing a JSON object defining what is needed. This isn't
+          limited to a single credential; it can request a bundle of information.
+        </p>
+        <div class="highlight-box">
+          <strong>Example Request:</strong> "We need a Digital Insurance Card, a US Core Clinical Data Bundle,
+          and a response to this specific FHIR Questionnaire."
+        </div>
+
+        <h3>2. The Picker</h3>
+        <p>
+          The user is presented with a list of compatible Patient Apps.
+        </p>
+        <p>
+          <em>Note:</em> This "picker" experience serves as a directory to help the user find where their data
+          lives. While we can publish a shared directory to make this easy for developers, the picker logic acts
+          only as a router and can be hosted anywhere (including directly by the Requester) without requiring
+          centralized infrastructure.
+        </p>
+
+        <h3>3. Authorization & Enrichment (The Patient App)</h3>
+        <p>
+          The user selects their preferred Patient App and decides what to share. Because this happens within a
+          rich application environment rather than a static file uploader, the Patient App can offer a superior
+          experience:
+        </p>
+        <ul>
+          <li>
+            <strong>Pre-filling Forms:</strong> If the Requester asked for a Questionnaire (e.g., a Patient
+            Intake Form), the Patient App can render that form natively. It can pre-fill known fields (Name,
+            DOB, Medications) from its own database, sparing the patient from typing, while allowing them to
+            answer subjective questions like "Reason for visit."
+          </li>
+          <li>
+            <strong>Granular Consent:</strong> The patient can review the specific data being requested (e.g.,
+            unchecking "Mental Health Notes" while keeping "Immunizations") before hitting "Share."
+          </li>
+          <li>
+            <strong>Annotations:</strong> The patient can add commentary or context to the data during the
+            sharing process.
+          </li>
+        </ul>
+
+        <h3>4. The Return</h3>
+        <p>
+          The Patient App packages the data (typically as Signed SMART Health Cards or FHIR Bundles) and
+          returns it directly to the Requester.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Security Architecture: The "Pass-Through" Model</h2>
+        <p>
+          A defining feature of this proposal is how it handles data privacy. The Picker component serves
+          strictly as a router for the request.
+        </p>
+        <p>
+          When the patient selects an app, the request parameters are passed through the Picker to the
+          Patient App. However, when the Patient App generates the response, the sensitive payload is
+          transmitted directly to the Requester using the browser's <code>BroadcastChannel</code> API.
+        </p>
+        <p>
+          Crucially, this means <strong>the Picker never sees the patient's health data</strong>. The
+          response payload travels directly from the holder (Patient App) to the verifier (Requester).
+          This "pass-through" model allows the Picker to be integrated into the requesting app or hosted
+          on static infrastructure (like a CDN) with zero server-side state, ensuring no data is logged
+          or stored by intermediaries.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>UX Goals</h2>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h4>Familiarity</h4>
+            <p>The flow mirrors the standard "Sign in with..." experience that users already trust.</p>
+          </div>
+          <div class="feature-card">
+            <h4>Traceability</h4>
+            <p>The protocol supports unique requestIds. If a provider requests three distinct items,
+               the response maps back to those specific IDs for automatic processing.</p>
+          </div>
+          <div class="feature-card">
+            <h4>Flexibility</h4>
+            <p>This pattern unifies the transport of static credentials (insurance cards) and dynamic,
+               patient-generated inputs (questionnaire responses) into a single, secure transaction.</p>
+          </div>
+        </div>
+        <p style="margin-top: 24px;">
+          By building on the conceptual foundation of the W3C Digital Credentials API but deploying on
+          standard web rails, the SMART Health Picker offers a scalable path to meet the "Kill the Clipboard"
+          objective immediately, without waiting for browser vendors to catch up.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Try the Demo</h2>
+        <p>
+          Experience the SMART Health Check-in pattern in action with our interactive simulation
+          of <strong>Dr. Mandel's Family Medicine</strong> clinic. The demo shows:
+        </p>
+        <ul>
+          <li>A realistic patient registration workflow</li>
+          <li>Integration with multiple health data sources (health plans, EHRs, PHRs)</li>
+          <li>Pre-population of forms using patient health records</li>
+          <li>Transparent JSON transaction logs showing the protocol in action</li>
+        </ul>
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="./requester/" class="cta-button">
+            Launch Dr. Mandel's Clinic Demo
+          </a>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="card">
-      <h2>Key Features</h2>
-      <ul class="feature-list">
-        <li>
-          <span class="feature-icon">🔧</span>
-          <div>
-            <strong>Flexible Hosting</strong><br>
-            Requester chooses the app picker - self-hosted or public
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🔒</span>
-          <div>
-            <strong>Secure Architecture</strong><br>
-            App picker never sees response data - all sensitive information travels directly
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🌐</span>
-          <div>
-            <strong>Cross-Origin Support</strong><br>
-            Works across different domains using BroadcastChannel API
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">📱</span>
-          <div>
-            <strong>Navigator Credentials Compatible</strong><br>
-            Follows <span class="code">navigator.credentials.get()</span> API pattern with <span class="code">digital</span> credential type
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🏗️</span>
-          <div>
-            <strong>Static Hosting Only</strong><br>
-            No server-side state required - works on GitHub Pages, Netlify, etc.
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🔐</span>
-          <div>
-            <strong>Hash-Based Transport</strong><br>
-            Sensitive data never in query params - only in hash fragments (never logged)
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🏥</span>
-          <div>
-            <strong>Health Data Standards</strong><br>
-            Supports FHIR profiles, SMART Health Cards and Links, US Core
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">📝</span>
-          <div>
-            <strong>Questionnaire Support</strong><br>
-            Request and receive FHIR Questionnaire responses inline or by URL
-          </div>
-        </li>
-        <li>
-          <span class="feature-icon">🎯</span>
-          <div>
-            <strong>Request Traceability</strong><br>
-            Each request item has unique ID; responses map back via <span class="code">requestIds</span>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2>How It Works</h2>
+  <div class="footer">
+    <div class="container">
       <p>
-        <strong>1.</strong> Requester initiates credential request using Navigator Credentials API format<br>
-        <strong>2.</strong> App picker opens showing available health data sources<br>
-        <strong>3.</strong> User selects their preferred source (Flexpa, b.well, or Premera)<br>
-        <strong>4.</strong> Source opens, user reviews request and authorizes<br>
-        <strong>5.</strong> Data returns directly to requester via BroadcastChannel<br>
-        <strong>6.</strong> App picker never sees the response - secure architecture
+        <strong>SMART Health Check-in Pattern</strong><br>
+        A demonstration of W3C-aligned credential sharing for healthcare<br>
+        <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">View on GitHub</a>
       </p>
-    </div>
-
-    <div class="card">
-      <h2>Testing Modes</h2>
-      <p>
-        <strong>Multi-Origin (localhost):</strong><br>
-        When running on <span class="code">*.localhost</span> domains, the demo uses different
-        subdomains/ports to demonstrate true cross-origin flow.
-      </p>
-      <p style="margin-top: 16px;">
-        <strong>Single-Origin (GitHub Pages):</strong><br>
-        When deployed to GitHub Pages, all components run under the same origin at different
-        subpaths, using BroadcastChannel for same-origin communication.
-      </p>
-    </div>
-
-    <div class="card">
-      <h2>Learn More</h2>
-      <div class="buttons">
-        <a href="https://github.com/jmandel/shl-share-picker" class="btn btn-secondary" target="_blank">
-          <span>📚</span>
-          <span>View on GitHub</span>
-        </a>
-      </div>
     </div>
   </div>
 
@@ -252,8 +383,8 @@
     // Show current mode
     const modeBadge = document.getElementById('mode-badge');
     modeBadge.textContent = ZTWRConfig.mode === 'multi-origin'
-      ? '🌐 Multi-Origin Mode (localhost)'
-      : '🌍 Single-Origin Mode (GitHub Pages)';
+      ? 'Multi-Origin Mode (localhost)'
+      : 'Single-Origin Mode (GitHub Pages)';
   </script>
 </body>
 </html>

@@ -9,7 +9,7 @@ const ZTWRConfig = (() => {
   const isGitHubPages = location.hostname.includes('joshuamandel.com');
 
   // Base path for GitHub Pages (or empty for root deployment)
-  const ghPagesBase = '/shl-share-picker';
+  const ghPagesBase = '/smart-health-checkin-demo';
 
   let config;
 
@@ -19,10 +19,10 @@ const ZTWRConfig = (() => {
       mode: 'multi-origin',
       requester: {
         url: 'http://requester.localhost:3000',
-        gateway: 'http://gateway.localhost:3001'
+        checkin: 'http://checkin.localhost:3001'
       },
-      gateway: {
-        url: 'http://gateway.localhost:3001',
+      checkin: {
+        url: 'http://checkin.localhost:3001',
         apps: [
           {
             id: 'flexpa',
@@ -60,10 +60,10 @@ const ZTWRConfig = (() => {
       mode: 'single-origin',
       requester: {
         url: `${base}/requester`,
-        gateway: `${base}/gateway`
+        checkin: `${base}/checkin`
       },
-      gateway: {
-        url: `${base}/gateway`,
+      checkin: {
+        url: `${base}/checkin`,
         apps: [
           {
             id: 'flexpa',
@@ -101,10 +101,10 @@ const ZTWRConfig = (() => {
       mode: 'single-origin',
       requester: {
         url: `${base}/requester`,
-        gateway: `${base}/gateway`
+        checkin: `${base}/checkin`
       },
-      gateway: {
-        url: `${base}/gateway`,
+      checkin: {
+        url: `${base}/checkin`,
         apps: [
           {
             id: 'flexpa',
