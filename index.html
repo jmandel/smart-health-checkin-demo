@@ -193,7 +193,7 @@
       <div class="section">
         <h2>The Problem: Friction in Remote Exchange</h2>
         <p>
-          Without a dedicated browser standard for data sharing, current remote workflows force patients
+          Without a streamlined browser-based standard for data sharing, current remote workflows force patients
           into complex, manual processes:
         </p>
         <ul>
@@ -213,137 +213,132 @@
           </li>
         </ul>
         <p>
-          These barriers prevent widespread adoption. To solve this, we propose the <strong>SMART Health Picker</strong>.
+          These barriers prevent widespread adoption. This demo shows how a browser-based protocol can solve these challenges.
         </p>
       </div>
 
       <div class="section">
-        <h2>Design Philosophy: Anchored in W3C Standards</h2>
+        <h2>The Solution: Browser-Based Health Data Exchange</h2>
         <p>
-          This proposal is architecturally inspired by the
-          <a href="https://wicg.github.io/digital-credentials/" target="_blank">W3C Digital Credentials API</a>.
-          The long-term vision for the web is that browsers will natively handle requests for credentials via
-          <code>navigator.credentials.get()</code>, much like they handle location or camera access.
+          This demo implements a browser-based protocol for seamless health data sharing using modern web standards.
+          The protocol is built on <strong>OID4VP (OpenID for Verifiable Presentations)</strong> and
+          <strong>DCQL (Digital Credentials Query Language)</strong>, enabling patients to securely share
+          health information from their personal health apps directly with healthcare providers.
         </p>
         <p>
-          However, strictly relying on the native browser API is not viable today for three practical reasons:
+          The approach provides several key benefits:
         </p>
         <ul>
-          <li><strong>Availability:</strong> Native support is inconsistent across operating systems and browsers.</li>
-          <li><strong>Maturity:</strong> The specifications are still evolving.</li>
-          <li><strong>Interaction Requirements:</strong> Health data sharing requires more flexibility than simple
-              credential presentation. A patient may need to curate which clinical history to share, write a note
-              to the provider, or answer an intake questionnaire.</li>
+          <li><strong>User-Friendly:</strong> Patients can share data with a familiar "Sign in with..." experience,
+              without manual file uploads or copy-pasting URLs.</li>
+          <li><strong>Privacy-Preserving:</strong> Data flows directly from the patient's health app to the provider,
+              with no intermediary storage or logging.</li>
+          <li><strong>Flexible:</strong> Supports sharing various types of health information including insurance cards,
+              clinical records, and completed intake forms.</li>
         </ul>
         <p>
-          The SMART Health Picker acts as a <strong>pragmatic bridge</strong>. It mimics the request and response
-          structure of the W3C Digital Credentials API but implements the flow using standard web redirects and
-          messaging. This ensures reliability on all current devices while aligning data structures for a future
-          migration to native browser capabilities.
+          For complete technical details about the protocol specification, implementation, and security model,
+          see the <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">GitHub repository</a>.
         </p>
       </div>
 
       <div class="section">
-        <h2>The Architecture and Workflow</h2>
+        <h2>How It Works</h2>
         <p>
-          The architecture involves two primary entities: the <strong>Requester</strong> (e.g., a provider's
-          registration site) and the <strong>Patient App</strong> (e.g., a personal health record or payer app).
-          To connect them, we utilize a transient UI component called the <strong>Picker</strong>.
+          The workflow connects healthcare providers with patients' personal health apps through
+          a simple, secure exchange:
         </p>
 
-        <h3>1. The Request</h3>
+        <h3>1. Provider Requests Information</h3>
         <p>
-          The Requester initiates the flow by constructing a JSON object defining what is needed. This isn't
-          limited to a single credential; it can request a bundle of information.
-        </p>
-        <div class="highlight-box">
-          <strong>Example Request:</strong> "We need a Digital Insurance Card, a US Core Clinical Data Bundle,
-          and a response to this specific FHIR Questionnaire."
-        </div>
-
-        <h3>2. The Picker</h3>
-        <p>
-          The user is presented with a list of compatible Patient Apps.
-        </p>
-        <p>
-          <em>Note:</em> This "picker" experience serves as a directory to help the user find where their data
-          lives. While we can publish a shared directory to make this easy for developers, the picker logic acts
-          only as a router and can be hosted anywhere (including directly by the Requester) without requiring
-          centralized infrastructure.
+          A healthcare provider's registration site initiates the flow by specifying what information
+          is needed — for example, an insurance card, clinical history, and a completed intake form.
         </p>
 
-        <h3>3. Authorization & Enrichment (The Patient App)</h3>
+        <h3>2. Patient Selects Their Health App</h3>
         <p>
-          The user selects their preferred Patient App and decides what to share. Because this happens within a
-          rich application environment rather than a static file uploader, the Patient App can offer a superior
-          experience:
+          The patient chooses their health app from a list of compatible options (such as their
+          health plan app, personal health record, or EHR patient portal).
+        </p>
+
+        <h3>3. Patient Reviews and Authorizes</h3>
+        <p>
+          Within their chosen health app, the patient can:
         </p>
         <ul>
           <li>
-            <strong>Pre-filling Forms:</strong> If the Requester asked for a Questionnaire (e.g., a Patient
-            Intake Form), the Patient App can render that form natively. It can pre-fill known fields (Name,
-            DOB, Medications) from its own database, sparing the patient from typing, while allowing them to
-            answer subjective questions like "Reason for visit."
+            <strong>Review requested information:</strong> See exactly what data the provider is asking for
           </li>
           <li>
-            <strong>Granular Consent:</strong> The patient can review the specific data being requested (e.g.,
-            unchecking "Mental Health Notes" while keeping "Immunizations") before hitting "Share."
+            <strong>Auto-fill forms:</strong> Let the app pre-populate intake forms with known information
+            like name, date of birth, and current medications
           </li>
           <li>
-            <strong>Annotations:</strong> The patient can add commentary or context to the data during the
-            sharing process.
+            <strong>Control what to share:</strong> Select which records to include or exclude
+          </li>
+          <li>
+            <strong>Add notes:</strong> Provide additional context or information as needed
           </li>
         </ul>
 
-        <h3>4. The Return</h3>
+        <h3>4. Data Securely Delivered</h3>
         <p>
-          The Patient App packages the data (typically as Signed SMART Health Cards or FHIR Bundles) and
-          returns it directly to the Requester.
+          The health app packages the authorized information and sends it directly to the provider's
+          system, completing the registration process instantly.
         </p>
       </div>
 
       <div class="section">
-        <h2>Security Architecture: The "Pass-Through" Model</h2>
+        <h2>Privacy and Security</h2>
         <p>
-          A defining feature of this proposal is how it handles data privacy. The Picker component serves
-          strictly as a router for the request.
+          Privacy and security are fundamental to the design:
         </p>
+        <ul>
+          <li>
+            <strong>Direct Data Transfer:</strong> Health information flows directly from the patient's
+            health app to the healthcare provider, with no intermediary storage or logging.
+          </li>
+          <li>
+            <strong>Patient Control:</strong> Patients explicitly authorize each data sharing transaction
+            and can select exactly what information to share.
+          </li>
+          <li>
+            <strong>Standards-Based:</strong> Built on established healthcare interoperability standards
+            including FHIR and verifiable credential formats.
+          </li>
+          <li>
+            <strong>No Central Infrastructure:</strong> The protocol requires no centralized servers or
+            databases that could become a privacy risk or single point of failure.
+          </li>
+        </ul>
         <p>
-          When the patient selects an app, the request parameters are passed through the Picker to the
-          Patient App. However, when the Patient App generates the response, the sensitive payload is
-          transmitted directly to the Requester using the browser's <code>BroadcastChannel</code> API.
-        </p>
-        <p>
-          Crucially, this means <strong>the Picker never sees the patient's health data</strong>. The
-          response payload travels directly from the holder (Patient App) to the verifier (Requester).
-          This "pass-through" model allows the Picker to be integrated into the requesting app or hosted
-          on static infrastructure (like a CDN) with zero server-side state, ensuring no data is logged
-          or stored by intermediaries.
+          For detailed information about the security model and protocol implementation, see the
+          <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">technical documentation</a>.
         </p>
       </div>
 
       <div class="section">
-        <h2>UX Goals</h2>
+        <h2>Key Benefits</h2>
         <div class="feature-grid">
           <div class="feature-card">
-            <h4>Familiarity</h4>
-            <p>The flow mirrors the standard "Sign in with..." experience that users already trust.</p>
+            <h4>Familiar Experience</h4>
+            <p>The flow mirrors the standard "Sign in with..." experience that users already trust
+               from other web applications.</p>
           </div>
           <div class="feature-card">
-            <h4>Traceability</h4>
-            <p>The protocol supports unique requestIds. If a provider requests three distinct items,
-               the response maps back to those specific IDs for automatic processing.</p>
+            <h4>Reduces Manual Work</h4>
+            <p>Automates data entry by pulling information directly from patients' existing health apps,
+               eliminating clipboard-based workflows.</p>
           </div>
           <div class="feature-card">
-            <h4>Flexibility</h4>
-            <p>This pattern unifies the transport of static credentials (insurance cards) and dynamic,
-               patient-generated inputs (questionnaire responses) into a single, secure transaction.</p>
+            <h4>Comprehensive Data</h4>
+            <p>Supports sharing multiple types of health information — from insurance cards to clinical
+               records to intake questionnaires — in a single transaction.</p>
           </div>
         </div>
         <p style="margin-top: 24px;">
-          By building on the conceptual foundation of the W3C Digital Credentials API but deploying on
-          standard web rails, the SMART Health Picker offers a scalable path to meet the "Kill the Clipboard"
-          objective immediately, without waiting for browser vendors to catch up.
+          This approach provides a practical, deployable solution to meet the CMS "Kill the Clipboard"
+          objective using current web technologies.
         </p>
       </div>
 
@@ -371,9 +366,9 @@
   <div class="footer">
     <div class="container">
       <p>
-        <strong>SMART Health Check-in Pattern</strong><br>
-        A demonstration of W3C-aligned credential sharing for healthcare<br>
-        <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">View on GitHub</a>
+        <strong>SMART Health Check-in Protocol</strong><br>
+        A demonstration of browser-based health data sharing using OID4VP and DCQL<br>
+        <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">View Protocol Details on GitHub</a>
       </p>
     </div>
   </div>
