@@ -28,17 +28,19 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Install dependencies
+        run: bun install
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Build project
-        run: ./build.sh
+        run: bun build.ts
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository (it's all static files)
-          path: '.'
+          path: 'build/smart-health-checkin-demo'
 
       - name: Deploy to GitHub Pages
         id: deployment
