@@ -274,10 +274,10 @@ To enable this protocol in pure browser environments (without backend OID4VP han
 **Via npm/bun (from GitHub):**
 ```bash
 # npm
-npm install github:jmandel/smart-health-checkin
+npm install github:jmandel/smart-health-checkin-demo
 
 # bun
-bun add github:jmandel/smart-health-checkin
+bun add github:jmandel/smart-health-checkin-demo
 ```
 
 **ES Module import:**
@@ -287,7 +287,7 @@ import { request, maybeHandleReturn } from 'smart-health-checkin';
 
 **Script tag (IIFE bundle):**
 ```html
-<script src="https://cdn.jsdelivr.net/gh/jmandel/smart-health-checkin@main/dist/smart-health-checkin.iife.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/jmandel/smart-health-checkin-demo@main/dist/smart-health-checkin.iife.min.js"></script>
 <script>
   // Use window.SHL.request(), window.SHL.maybeHandleReturn()
 </script>
