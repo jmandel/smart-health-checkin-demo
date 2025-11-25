@@ -65,6 +65,31 @@
       margin-bottom: 24px;
     }
 
+    .requester-origin {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .requester-origin-label {
+      font-size: 12px;
+      color: #92400e;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .requester-origin-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #78350f;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
     .request-box {
       background: #f1f5f9;
       border: 2px solid #e2e8f0;
@@ -315,110 +340,71 @@
 
   <script>
     (() => {
-      const te = new TextEncoder();
-      const td = new TextDecoder();
-      const b64u = (buf) => {
-        const bin = String.fromCharCode(...new Uint8Array(buf));
-        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      };
-
-      const ub64 = (s) => {
-        const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
-        const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + pad;
-        const bin = atob(b64);
-        const a = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-        return a.buffer;
-      };
-
-      const decJ = (s) => JSON.parse(td.decode(ub64(s)));
       const contentEl = document.getElementById('content');
       const showError = (msg) => {
         contentEl.textContent = msg;
         contentEl.style.cssText = 'text-align:center;color:#dc2626;padding:40px';
       };
 
-      // Parse Navigator Credentials request from hash OR query
-      const hashParams = new URLSearchParams(location.hash.slice(1));
+      // Parse Navigator Credentials request from query
       const queryParams = new URLSearchParams(location.search);
 
-      // Helper to get param from either source
-      const getParam = (k) => queryParams.get(k) || hashParams.get(k);
+      const getParam = (k) => queryParams.get(k);
 
-      // Detect OID4VP vs Legacy
+      // Detect OID4VP
       const isOid4vp = getParam('response_type') === 'vp_token';
 
       let req = {};
       let state, returnUrl, protocol, requestItems, nonce;
 
-      if (isOid4vp) {
-        state = getParam('state');
-        // Extract redirect_uri from client_id (remove 'redirect_uri:' prefix)
-        const clientId = getParam('client_id');
-        const redirectPrefix = 'redirect_uri:';
-        if (!clientId || !clientId.startsWith(redirectPrefix)) {
-          showError('Invalid client_id: must start with redirect_uri:');
-          return;
-        }
-
-        returnUrl = clientId.substring(redirectPrefix.length);
-        nonce = getParam('nonce');
-        if (!nonce) {
-          showError('Missing nonce in authorization request');
-          return;
-        }
-
-        protocol = 'openid4vp';
-        const dcql = JSON.parse(getParam('dcql_query') || '{}');
-        req = { dcql_query: dcql };
-
-
-        console.log('[Flexpa] DCQL Credentials:', JSON.stringify(dcql.credentials, null, 2));
-        requestItems = (dcql.credentials || []).map((c, idx) => {
-          const meta = c.meta || {};
-          const profile = meta.profile || c.profile;
-          const questionnaire = meta.questionnaire || c.questionnaire;
-          const questionnaireUrl = meta.questionnaireUrl || c.questionnaireUrl;
-
-          const isQuestionnaire = !!questionnaire || !!questionnaireUrl;
-          console.log(`[Flexpa] Credential ${idx}:`, {
-            id: c.id,
-            format: c.format,
-            profile: profile,
-            hasQuestionnaire: isQuestionnaire
-          });
-          return {
-            type: isQuestionnaire ? 'fhir-questionnaire' : 'fhir-profile',
-            id: c.id,
-            profile: profile,
-            questionnaire: questionnaire,
-            questionnaireUrl: questionnaireUrl
-          };
-        });
-        console.log('[Flexpa] Mapped RequestItems:', requestItems);
-        console.log('[Flexpa] Questionnaire items:', requestItems.filter(i => i.type === 'fhir-questionnaire'));
-      } else {
-        const reqB64 = hashParams.get('req');
-
-        if (!reqB64) {
-          document.getElementById('content').textContent = 'Invalid request parameters';
-          document.getElementById('content').style.cssText = 'text-align:center;color:#dc2626;padding:40px';
-          return;
-        }
-
-        try {
-          req = decJ(reqB64); // { v, state, returnUrl, digital: { requests: [...] } }
-        } catch (e) {
-          document.getElementById('content').textContent = 'Invalid request format';
-          document.getElementById('content').style.cssText = 'text-align:center;color:#dc2626;padding:40px';
-          return;
-        }
-
-        state = req.state;
-        returnUrl = req.returnUrl;
-        protocol = req.digital?.requests?.[0]?.protocol || 'Not specified';
-        requestItems = req.digital?.requests?.[0]?.data?.items || [];
+      if (!isOid4vp) {
+        showError('Invalid request parameters');
+        return;
       }
+
+      state = getParam('state');
+      const clientId = getParam('client_id');
+      const redirectPrefix = 'redirect_uri:';
+      if (!clientId || !clientId.startsWith(redirectPrefix)) {
+        showError('Invalid client_id: must start with redirect_uri:');
+        return;
+      }
+
+      returnUrl = clientId.substring(redirectPrefix.length);
+      nonce = getParam('nonce');
+      if (!nonce) {
+        showError('Missing nonce in authorization request');
+        return;
+      }
+
+      protocol = 'smart-health-checkin-v1';
+      const dcql = JSON.parse(getParam('dcql_query') || '{}');
+      req = { dcql_query: dcql };
+
+      console.log('[Flexpa] DCQL Credentials:', JSON.stringify(dcql.credentials, null, 2));
+      requestItems = (dcql.credentials || []).map((c, idx) => {
+        const meta = c.meta || {};
+        const profile = meta.profile || c.profile;
+        const questionnaire = meta.questionnaire || c.questionnaire;
+        const questionnaireUrl = meta.questionnaireUrl || c.questionnaireUrl;
+
+        const isQuestionnaire = !!questionnaire || !!questionnaireUrl;
+        console.log(`[Flexpa] Credential ${idx}:`, {
+          id: c.id,
+          format: c.format,
+          profile: profile,
+          hasQuestionnaire: isQuestionnaire
+        });
+        return {
+          type: isQuestionnaire ? 'fhir-questionnaire' : 'fhir-profile',
+          id: c.id,
+          profile: profile,
+          questionnaire: questionnaire,
+          questionnaireUrl: questionnaireUrl
+        };
+      });
+      console.log('[Flexpa] Mapped RequestItems:', requestItems);
+      console.log('[Flexpa] Questionnaire items:', requestItems.filter(i => i.type === 'fhir-questionnaire'));
 
       if (!state || !returnUrl) {
         document.getElementById('content').innerHTML = '<div style="text-align:center;color:#dc2626;padding:40px">Invalid request parameters</div>';
@@ -431,12 +417,30 @@
 
       contentEl.textContent = ''; // Clear existing
 
-      // Render Request Box
+      // Extract and display requester origin prominently
+      const requesterOrigin = new URL(returnUrl).origin;
+
+      const originBox = document.createElement('div');
+      originBox.className = 'requester-origin';
+
+      const originLabel = document.createElement('div');
+      originLabel.className = 'requester-origin-label';
+      originLabel.textContent = 'This site is requesting your health data';
+      originBox.appendChild(originLabel);
+
+      const originValue = document.createElement('div');
+      originValue.className = 'requester-origin-value';
+      originValue.textContent = requesterOrigin;
+      originBox.appendChild(originValue);
+
+      contentEl.appendChild(originBox);
+
+      // Render Request Box (technical details)
       const requestBox = document.createElement('div');
       requestBox.className = 'request-box';
 
       const h2 = document.createElement('h2');
-      h2.textContent = 'Share Request';
+      h2.textContent = 'Technical Details';
       requestBox.appendChild(h2);
 
       const addDetail = (label, value) => {
@@ -454,15 +458,11 @@
       };
 
       addDetail('Protocol:', protocol);
-      if (protocol === 'openid4vp') {
-        addDetail('client_id:', getParam('client_id'));
-        addDetail('response_type:', getParam('response_type'));
-        addDetail('response_mode:', getParam('response_mode'));
-        addDetail('state:', state);
-        addDetail('nonce:', nonce);
-      } else {
-        addDetail('Requesting site:', returnUrl);
-      }
+      addDetail('client_id:', getParam('client_id'));
+      addDetail('response_type:', getParam('response_type'));
+      addDetail('response_mode:', getParam('response_mode'));
+      addDetail('state:', state);
+      addDetail('nonce:', nonce);
 
       const itemsDetail = document.createElement('div');
       itemsDetail.className = 'request-detail';
@@ -699,7 +699,12 @@
       contentEl.appendChild(actions);
 
       window.handleCancel = () => {
-        window.close();
+        // Send error response per OID4VP
+        const errorUrl = returnUrl + '#error=' + encodeURIComponent('access_denied') +
+          '&error_description=' + encodeURIComponent('User declined to share') +
+          '&state=' + encodeURIComponent(state);
+        console.log('[Flexpa] User cancelled, redirecting with error:', errorUrl);
+        location.href = errorUrl;
       };
 
       window.handleShare = () => {
@@ -783,7 +788,7 @@
         // Handle questionnaire requests
         const questionnaireRequests = requestItems.filter(item => item.type === 'fhir-questionnaire');
         questionnaireRequests.forEach((qItem, idx) => {
-          const shareQuestionnaire = document.getElementById(`share - questionnaire - ${idx} `)?.checked;
+          const shareQuestionnaire = document.getElementById(`share-${qItem.id}`)?.checked;
           if (!shareQuestionnaire) {
             console.log(`[Flexpa] Skipping questionnaire ${idx} (not selected)`);
             return;
@@ -836,7 +841,7 @@
         };
 
         // OID4VP Response - Split Payload Format
-        if (protocol === 'openid4vp') {
+        if (protocol === 'smart-health-checkin-v1') {
           const vp_token = {}; // Map: request_id -> [artifact_indices]
           const smart_artifacts = []; // Array: [actual_data]
           const artifactCache = new Map(); // De-duplication cache: data_hash -> index
@@ -957,16 +962,16 @@
                   console.log(`[Flexpa] Found ${resources.length} resources for ${resourceType}`);
 
                   // Wrap each resource with typed format and add to artifacts
-                  const indices = resources.map(res => {
+                  const presentations = resources.map(res => {
                     const wrapped = {
                       type: 'fhir_resource',
                       data: res
                     };
                     const idx = addArtifact(wrapped);
                     console.log(`[Flexpa] Added artifact at index ${idx}`, wrapped);
-                    return idx;
+                    return { artifact: idx };
                   });
-                  vp_token[cred.id] = indices;
+                  vp_token[cred.id] = presentations;
                 }
               } else {
                 console.log(`[Flexpa] User declined to share ${cred.id}`);
@@ -978,20 +983,11 @@
           }
 
           console.log('[Flexpa] Response items:', { vp_token, artifactCount: smart_artifacts.length });
-          const redirectUrl = returnUrl + '#vp_token=' + encodeURIComponent(JSON.stringify(vp_token)) + '&smart_artifacts=' + encodeURIComponent(JSON.stringify(smart_artifacts)) + '&state=' + encodeURIComponent(state) + '&nonce=' + encodeURIComponent(nonce);
+          const redirectUrl = returnUrl + '#vp_token=' + encodeURIComponent(JSON.stringify(vp_token)) + '&smart_artifacts=' + encodeURIComponent(JSON.stringify(smart_artifacts)) + '&state=' + encodeURIComponent(state);
           console.log('[Flexpa] Redirecting to:', redirectUrl);
           location.href = redirectUrl;
           return;
         }
-
-        // Legacy Response
-        const result = { v: 1, state, payload };
-        const resB64 = b64u(te.encode(JSON.stringify(result)));
-        const returnURL = new URL(returnUrl);
-        returnURL.hash = 'res=' + resB64;
-
-        console.log('[Flexpa] Returning to:', returnURL.toString());
-        location.href = returnURL.toString();
       };
     })();
   </script>

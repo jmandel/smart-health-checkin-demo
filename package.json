@@ -1,0 +1,39 @@
+{
+  "name": "smart-health-checkin",
+  "version": "0.1.0",
+  "description": "Browser library for SMART Health Check-in protocol (OID4VP profile)",
+  "type": "module",
+  "main": "./dist/smart-health-checkin.js",
+  "module": "./dist/smart-health-checkin.js",
+  "types": "./dist/smart-health-checkin.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/smart-health-checkin.js",
+      "types": "./dist/smart-health-checkin.d.ts"
+    },
+    "./browser": "./dist/smart-health-checkin.iife.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "bun run build.ts",
+    "prepare": "bun run build.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jmandel/smart-health-checkin.git"
+  },
+  "keywords": [
+    "smart",
+    "health",
+    "fhir",
+    "oid4vp",
+    "verifiable-credentials"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

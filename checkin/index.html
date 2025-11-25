@@ -190,39 +190,29 @@
   <script src="./config.js"></script>
   <script>
     (() => {
-      const td = new TextDecoder();
-
-      // Base64url decode
-      const ub64 = (s) => {
-        const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
-        const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + pad;
-        const bin = atob(b64);
-        const a = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-        return a.buffer;
-      };
-
-      const decJ = (s) => JSON.parse(td.decode(ub64(s)));
 
       // Parse request
       // Check for OID4VP Query Params first
       const urlParams = new URLSearchParams(window.location.search);
-      const protocol = urlParams.get('protocol');
+      const protocol = urlParams.get('protocol') || 'smart-health-checkin-v1';
 
       let req;
 
-      if (protocol === 'openid4vp') {
-        // OID4VP Flow
+      if (protocol === 'smart-health-checkin-v1' || urlParams.get('response_type') === 'vp_token') {
         try {
           const clientIdRaw = urlParams.get('client_id');
+          const responseType = urlParams.get('response_type');
+          const responseMode = urlParams.get('response_mode');
+          const nonce = urlParams.get('nonce');
+          const state = urlParams.get('state');
 
           req = {
-            protocol: 'openid4vp',
+            protocol: 'smart-health-checkin-v1',
             client_id: clientIdRaw,
-            response_type: urlParams.get('response_type'),
-            response_mode: urlParams.get('response_mode'),
-            nonce: urlParams.get('nonce'),
-            state: urlParams.get('state'),
+            response_type: responseType,
+            response_mode: responseMode,
+            nonce: nonce,
+            state: state,
             dcql_query: JSON.parse(urlParams.get('dcql_query') || '{}')
           };
           console.log('[Check-in] Request (OID4VP):', req);
@@ -233,25 +223,10 @@
           return;
         }
       } else {
-        // Legacy Flow
-        const reqB64 = new URLSearchParams(location.hash.slice(1)).get('req');
-        if (!reqB64) {
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('error').style.display = 'block';
-          document.getElementById('error').textContent = 'Missing request parameter. This page should be opened by the SMART Health Check-in library.';
-          return;
-        }
-
-        try {
-          req = decJ(reqB64); // { v, state, returnUrl, digital: { requests: [...] } }
-          console.log('[Check-in] Request:', req);
-
-        } catch (e) {
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('error').style.display = 'block';
-          document.getElementById('error').textContent = 'Invalid request format: ' + e.message;
-          return;
-        }
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error').textContent = 'Missing request parameter. This page should be opened by the SMART Health Check-in library.';
+        return;
       }
 
       // Load apps from config
@@ -336,40 +311,8 @@
             card.onclick = () => {
               console.log('[Check-in] Launching app:', app.id);
 
-              // Pass through the digital credentials request structure
-              const te = new TextEncoder();
-              const b64u = (buf) => {
-                const bin = String.fromCharCode(...new Uint8Array(buf));
-                return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-              };
-
-              const handoffEnvelope = {
-                v: 1,
-                state: req.state,
-                returnUrl: req.returnUrl,
-                digital: req.digital
-              };
-
-              const handoff = 'req=' + encodeURIComponent(b64u(te.encode(JSON.stringify(handoffEnvelope))));
-
-              // Launch the health data source with handoff data
-              // For OID4VP, we pass the query parameters directly in the hash or query
-              // The mock apps expect `req` parameter with base64 encoded envelope in the hash.
-              // We should probably update the mock apps to accept OID4VP params directly,
-              // OR we can wrap the OID4VP params into the legacy `req` envelope structure if we want to minimize changes to apps,
-              // BUT the plan says "Update to parse OID4VP parameters" for apps.
-              // So let's pass the OID4VP params to the app.
-
-              // Construct OID4VP-style handoff
-              // We'll pass the original OID4VP params + the specific dcql_query if needed.
-              // Actually, the app needs: client_id, nonce, state, dcql_query.
-
               const appParams = new URLSearchParams();
-              if (req.protocol === 'openid4vp') {
-                // protocol param is NOT sent on the wire for OID4VP
-                // appParams.set('protocol', 'openid4vp'); 
-
-                // OID4VP: Use the provided client_id as-is (redirect_uri: prefix)
+              if (req.protocol === 'smart-health-checkin-v1') {
                 appParams.set('client_id', req.client_id);
 
                 appParams.set('response_type', 'vp_token');
@@ -389,43 +332,6 @@
                   try { window.close(); } catch (e) { }
                 }
                 return;
-              }
-
-              // Legacy Flow
-              const launchUrl = app.launchBase + '#' + handoff;
-              console.log('[Check-in] Launch URL:', launchUrl);
-
-              const w = window.open(launchUrl, '_blank');
-              if (!w) {
-                // Fallback: navigate this window
-                console.warn('[Check-in] Popup blocked, navigating check-in window');
-                location.href = launchUrl;
-              } else {
-                // Close this check-in tab immediately
-                try {
-                  window.close();
-                } catch (e) {
-                  // If we can't close, show feedback
-                  contentEl.textContent = '';
-                  const msgDiv = document.createElement('div');
-                  msgDiv.style.cssText = 'padding:40px;text-align:center;color:#94a3b8';
-
-                  const icon = document.createElement('div');
-                  icon.style.cssText = 'font-size:24px;margin-bottom:12px';
-                  icon.textContent = '✓';
-
-                  const text = document.createElement('div');
-                  text.textContent = 'Health data source opened';
-
-                  const subtext = document.createElement('div');
-                  subtext.style.cssText = 'font-size:14px;margin-top:12px';
-                  subtext.textContent = 'You can close this tab.';
-
-                  msgDiv.appendChild(icon);
-                  msgDiv.appendChild(text);
-                  msgDiv.appendChild(subtext);
-                  contentEl.appendChild(msgDiv);
-                }
               }
             };
           }

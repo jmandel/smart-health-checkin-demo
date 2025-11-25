@@ -1,6 +1,44 @@
 # SMART Health Check-in Protocol
 
-This repository defines and demonstrates a **Browser-Based Protocol** for sharing health data using **OID4VP (OpenID for Verifiable Presentations)** and **DCQL (Digital Credentials Query Language)**.
+**Public Demo**: https://joshuamandel.com/smart-health-checkin-demo
+
+This repository defines a layered, browser-ready way to request and receive health data:
+- **Browser API:** A polyfill (`shl.js`) that exposes a W3C Digital Credentials–style API so web apps can initiate requests and receive responses.
+- **Wire protocol:** SMART Health Check-in v1 over OpenID for Verifiable Presentations (OID4VP) using the fragment response mode and `redirect_uri:` client identifiers
+    - **Data model:** A simple DCQL profile that asks for FHIR resources (by canonical profile URL) or Questionnaires, with optional signing strategies (e.g., SHC) and support for SHL links.
+
+## SHL.request Entry Point
+
+**Request**
+```javascript
+const result = await SHL.request(dcqlQuery, options);
+```
+
+**Parameters:**
+- `dcqlQuery` (Object, required): A DCQL query object with a `credentials` array. See the DCQL profile below for structure.
+- `options` (Object, required):
+  - `checkinBase` (String, required): URL of the health app picker (e.g., `'https://picker.example.com'` or `'http://localhost:3001'`)
+  - `onRequestStart` (Function, optional): Callback invoked when the OID4VP request is constructed, receives the request parameters
+  - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response includes a `credentials` object with unwrapped data for easy consumption
+
+**Response (Promise resolution)**
+```javascript
+{
+  state: '...',           // Echoed from request
+  vp_token: {...},        // Map from credential IDs to artifact indices
+  smart_artifacts: [...], // Array of typed wrappers { type, data }
+  credentials: {...}      // Rehydrated: map from credential IDs to unwrapped data arrays (if rehydrate=true)
+}
+```
+
+When `rehydrate` is `true` (default), the `credentials` object maps credential IDs to arrays of unwrapped credential data, making it easy to consume:
+```javascript
+const { credentials } = result;
+const coverageData = credentials['coverage-1'][0]; // Direct access to FHIR Coverage resource
+```
+
+**Return handling**
+- On page load, call `SHL.maybeHandleReturn()` to detect a returned popup, broadcast the response to the opener via `BroadcastChannel`, and close the popup.
 
 ## 1. SMART Health Check-in Profile of OID4VP
 
@@ -17,8 +55,9 @@ The Authorization Request MUST follow the requirements of OpenID for Verifiable 
 *   `client_id`: MUST use the `redirect_uri` Client Identifier Prefix.
     *   Format: `redirect_uri:<Redirect_URI>`
     *   Example: `redirect_uri:https://clinic.example.com/return`
-*   `nonce`: REQUIRED.
-*   `state`: REQUIRED.
+    *   **Security Note**: With this prefix, the Wallet has no verified client identity—only the redirect URI. Wallets MUST display only the origin (e.g., `https://clinic.example.com`) to users, not any unverified client name or branding. This mirrors how browsers display origins for permission prompts.
+*   `nonce`: REQUIRED. A cryptographically random string used by the Wallet for internal request-response binding. Note: Since this profile uses `require_cryptographic_holder_binding: false`, the `nonce` is NOT returned in the Authorization Response. Instead, `state` provides the verifier-to-response binding.
+*   `state`: REQUIRED. MUST be a cryptographically strong pseudo-random value with at least 128 bits of entropy, chosen fresh for each request. The Verifier MUST validate that the response `state` matches the request `state`.
 *   `dcql_query`: REQUIRED. A JSON-encoded DCQL query object (defined in Section 2).
 
 **Example Request:**
@@ -50,6 +89,8 @@ The response is returned to the `redirect_uri` in the URL fragment.
 *   `smart_artifacts`: REQUIRED. The credential data array (defined in Section 2).
 *   `state`: REQUIRED. Must match the request state.
 
+**Note on `nonce`:** Following OID4VP requirements for Presentations without Holder Binding, the `nonce` parameter is included in the Authorization Request but is NOT returned in the Authorization Response. The `state` parameter alone provides request-response binding for the Verifier.
+
 ---
 
 ## 2. DCQL Profile for SMART Health Check-in
@@ -64,15 +105,15 @@ The credential query object uses a **standard DCQL structure**. Properties speci
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `id` | String | **Required.** Unique ID for this request item. |
-| `format` | String | **Required.** Must be `"smart_artifact"`. |
-| `optional` | Boolean | **Required.** Must be `true` for this profile. Indicates that users may decline to share this credential, and partial responses are valid. |
-| `meta` | Object | **Required.** Container for profile-specific constraints. |
+| `id` | String | **Required by DCQL.** Unique ID for this request item. |
+| `format` | String | **Required by DCQL.** Must be `"smart_artifact"` for this profile. |
+| `optional` | Boolean | **Profile extension.** Must be `true` for this profile. This is an extension field (not part of standard DCQL) that indicates users may decline to share this credential and partial responses are valid. Standard DCQL uses `credential_sets` with `required: false` for optional credentials; this profile uses `optional` for simplicity. Conformant OID4VP implementations will ignore this unknown property per spec. |
+| `meta` | Object | **Required by this profile.** Container for profile-specific constraints. Must contain at least one of the profile-specific fields below. (Note: In DCQL, `meta` is optional and can be an empty object `{}` if no constraints are needed.) |
 | `meta.profile` | String | **Optional.** Canonical URL of a FHIR StructureDefinition (e.g., for Patient, Coverage). |
 | `meta.questionnaire` | Object | **Optional.** Full FHIR Questionnaire JSON to be rendered/completed by the user. |
 | `meta.questionnaireUrl` | String | **Optional.** Alternative to `questionnaire`: URL reference to a Questionnaire resource. |
 | `meta.signing_strategy` | Array | **Optional.** Array of acceptable signing strategies: `["none"]` (default), `["shc_v1"]`, `["shc_v2"]`, or multiple like `["shc_v1", "shc_v2"]`. |
-| `require_cryptographic_holder_binding` | Boolean | **Required.** Must be `false` for this profile. |
+| `require_cryptographic_holder_binding` | Boolean | **Required by this profile.** Must be `false` for this profile. |
 
 #### Examples
 
@@ -143,7 +184,7 @@ The Authorization Response MUST include two parameters in the URL fragment:
 REQUIRED. A JSON Object where keys correspond to the `id`s defined in the `dcql_query` of the request.
 
 *   **Keys:** The DCQL Request ID string.
-*   **Values:** An Array of **Integers**. Each integer is a zero-based index referencing an item in the `smart_artifacts` array.
+*   **Values:** An Array of **Presentation Objects**. Each object has an `artifact` property containing a zero-based index referencing an item in the `smart_artifacts` array. This structure ensures each presentation is an object per OID4VP requirements.
 
 #### `smart_artifacts` (The Data)
 
@@ -163,8 +204,8 @@ Scenario: Insurance request (Index 0) returned as JSON, History request (Index 1
 ```json
 {
   "vp_token": {
-    "req_insurance": [0],
-    "req_history": [1]
+    "req_insurance": [{"artifact": 0}],
+    "req_history": [{"artifact": 1}]
   },
   "smart_artifacts": [
     {
@@ -186,38 +227,93 @@ Scenario: Insurance request (Index 0) returned as JSON, History request (Index 1
 
 #### Format-Specific Presentation Definition
 
-For the `smart_artifact` Credential Format, a **Presentation** is defined as a typed wrapper object (as defined above in the `smart_artifacts` array). 
+For the `smart_artifact` Credential Format, a **Presentation** is defined as an object with an `artifact` property that references a typed wrapper in the `smart_artifacts` array.
 
-The `vp_token` parameter contains arrays of integer indices that reference these presentations. This indirection pattern:
+This indirection pattern:
+- Ensures each presentation is an object per OID4VP §6.1 ("Each Presentation is represented as a string or object, depending on the format")
 - Allows many-to-many mapping between request IDs and response data without duplication
-- Remains compliant with OID4VP's requirement that presentations be represented "as a string or object, depending on the format" (OID4VP Section 7.1)
-- Enables efficient payload encoding when the same credential satisfies multiple requests
+- Enables efficient payload encoding when the same credential satisfies multiple requests, avoiding duplication through the shared reference mechanism
 
 **Note:** Client libraries (such as `shl.js`) can rehydrate the response before exposing it to applications by replacing indices with actual data from `smart_artifacts`, unwrapping the typed wrappers in the process.
+
+#### Implementation Considerations
+
+**Fragment Size Limits**: Browser URL fragments have size limits (varying by browser, typically ~2MB). For large payloads such as comprehensive clinical histories, Wallets SHOULD return a SMART Health Link (`type: "smart_health_link"`) instead of inline FHIR resources. This allows the Verifier to fetch the data separately while keeping the fragment response small.
+
+### 2.3 Error Response
+
+When the Wallet cannot or will not fulfill the request, it MUST redirect to the `redirect_uri` with error parameters in the fragment, following OID4VP error response format:
+
+**Parameters:**
+*   `error`: REQUIRED. Error code string.
+*   `error_description`: OPTIONAL. Human-readable error description.
+*   `state`: REQUIRED. The `state` value from the original request.
+
+**Error Codes** (subset of OID4VP):
+| Code | Description |
+|------|-------------|
+| `access_denied` | User declined to share credentials, or Wallet lacks matching credentials. |
+| `invalid_request` | Malformed request (missing parameters, invalid DCQL, etc.). |
+
+**Example Error Response:**
+```
+https://clinic.example.com/return#
+  error=access_denied&
+  error_description=User%20declined%20to%20share&
+  state=abc123
+```
 
 ---
 
 ## 3. Browser-Based Implementation (The "Shim")
 
-To enable this protocol in pure browser environments (without backend O ID4VP handlers), this repository provides a reference implementation using a **W3C Digital Credentials API Shim**.
+To enable this protocol in pure browser environments (without backend OID4VP handlers), this repository provides a reference implementation using a **W3C Digital Credentials API Shim**.
 
-### 3.1 The Shim (`shl.js`)
+### 3.1 Installation
 
-The `shl.js` library exposes a `SHL.request()` function that mimics the W3C Digital Credentials API but orchestrates the OID4VP flow over standard browser navigation.
+**Via npm/bun (from GitHub):**
+```bash
+# npm
+npm install github:jmandel/smart-health-checkin
 
-```javascript
-// Client Code
-const result = await SHL.request({
-  digital: {
-    requests: [{
-      protocol: 'openid4vp',
-      data: { dcql_query: ... }
-    }]
-  }
-});
+# bun
+bun add github:jmandel/smart-health-checkin
 ```
 
-### 3.2 Transport Mechanism
+**ES Module import:**
+```javascript
+import { request, maybeHandleReturn } from 'smart-health-checkin';
+```
+
+**Script tag (IIFE bundle):**
+```html
+<script src="https://cdn.jsdelivr.net/gh/jmandel/smart-health-checkin@main/dist/smart-health-checkin.iife.min.js"></script>
+<script>
+  // Use window.SHL.request(), window.SHL.maybeHandleReturn()
+</script>
+```
+
+### 3.2 The Shim API
+
+The library exposes a `request()` function that orchestrates the OID4VP flow over standard browser navigation.
+
+```javascript
+// ES Module
+import { request, maybeHandleReturn } from 'smart-health-checkin';
+
+// Or via script tag
+const { request, maybeHandleReturn } = window.SHL;
+
+// Make a request
+const result = await request(dcqlQuery, {
+  checkinBase: 'https://picker.example.com'
+});
+
+// On page load, handle potential return from popup
+await maybeHandleReturn();
+```
+
+### 3.3 Transport Mechanism
 
 1.  **Request**: The shim opens the Health App URL (via a Picker) in a popup window with the OID4VP query parameters.
 2.  **Response**: The Health App redirects the popup back to the original requesting page (`redirect_uri`) with the response in the URL fragment.

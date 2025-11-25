@@ -567,28 +567,21 @@
           // Render request immediately once parameters are known
           let pendingRequestLog = null;
           const result = await SHL.request(
-            {
-              digital: {
-                requests: [{
-                  protocol: 'openid4vp',
-                  data: {
-                    dcql_query: dcqlQuery
-                  }
-                }]
-              }
-            },
+            dcqlQuery,
             {
               checkinBase: ZTWRConfig.requester.checkin,
               onRequestStart: (params) => {
-                pendingRequestLog = params;
-                renderTransactionBrowser(params, { status: 'Waiting for response...' });
-                appendLog('[Request Sent]', params);
+                const sanitized = { ...params };
+                delete sanitized.protocol;
+                pendingRequestLog = sanitized;
+                renderTransactionBrowser(sanitized, { status: 'Waiting for response...' });
+                appendLog('[Request Sent]', sanitized);
               }
             }
           );
 
-          // Parse the payload (now the full OID4VP response)
-          const fullResponse = JSON.parse(result.data);
+          // Parse the payload (response is now direct, not wrapped)
+          const fullResponse = result;
 
           // Construct a richer request log with protocol parameters
           const redirectUri = new URL(location.href);
@@ -599,61 +592,42 @@
             response_type: 'vp_token',
             response_mode: 'fragment',
             state: fullResponse.state,
-            nonce: fullResponse.nonce,
             dcql_query: dcqlQuery
           };
 
           // Render Transaction Browser
           renderTransactionBrowser(requestLog, fullResponse);
 
-          // Rehydrate logic for App UI
-          // Map vp_token indices to smart_artifacts
-          const rehydratedItems = [];
-
+          // Use rehydrated credentials from shl.js
           console.log('[Requester] Full Response:', fullResponse);
 
-          if (fullResponse.vp_token && fullResponse.smart_artifacts) {
-            console.log('[Requester] Processing split payload');
-            for (const [requestId, indices] of Object.entries(fullResponse.vp_token)) {
-              console.log(`[Requester] Processing request ${requestId}, indices:`, indices);
-              indices.forEach(idx => {
-                const artifact = fullResponse.smart_artifacts[idx];
-                console.log(`[Requester] Artifact at index ${idx}:`, artifact);
-                // Unwrap typed wrapper: { format, data } -> data
-                const data = artifact && artifact.data ? artifact.data : artifact;
-                rehydratedItems.push(data);
-              });
-            }
-          } else {
-            // Fallback for legacy or direct responses
-            console.warn('[Requester] Unexpected response format, trying direct mapping');
-            // ... (legacy handling if needed, but assuming new format for now)
-          }
-
-          console.log('[Requester] Rehydrated Items:', rehydratedItems);
-
-          // Process rehydrated items for UI
+          // Process credentials for UI
           let coverage = null;
           let patient = null;
 
-          rehydratedItems.forEach(credential => {
-            console.log('[Requester] Checking credential:', credential.resourceType);
-            if (credential.resourceType === 'Coverage') {
-              coverage = credential;
-              console.log('[Requester] Found Coverage, marking insurance complete');
-              markTaskCompleted('insurance');
+          // Iterate over all credentials (already rehydrated by shl.js)
+          if (fullResponse.credentials) {
+            for (const [requestId, items] of Object.entries(fullResponse.credentials)) {
+              console.log(`[Requester] Processing request ${requestId}:`, items);
+              items.forEach(credential => {
+                console.log('[Requester] Checking credential:', credential.resourceType);
+                if (credential.resourceType === 'Coverage') {
+                  coverage = credential;
+                  console.log('[Requester] Found Coverage, marking insurance complete');
+                  markTaskCompleted('insurance');
+                }
+                if (credential.resourceType === 'Patient') {
+                  patient = credential;
+                  console.log('[Requester] Found Patient, marking clinical complete');
+                  markTaskCompleted('clinical');
+                }
+                if (credential.resourceType === 'QuestionnaireResponse') {
+                  console.log('[Requester] Found QuestionnaireResponse, marking intake complete');
+                  markTaskCompleted('intake');
+                }
+              });
             }
-            if (credential.resourceType === 'Patient') {
-              patient = credential;
-              console.log('[Requester] Found Patient, marking clinical complete');
-              markTaskCompleted('clinical');
-            }
-            if (credential.resourceType === 'QuestionnaireResponse') {
-              // Handle questionnaire response if needed
-              console.log('[Requester] Found QuestionnaireResponse, marking intake complete');
-              markTaskCompleted('intake');
-            }
-          });
+          }
 
           // Show success banner and render insurance card
           const successDiv = document.getElementById('success-content');
