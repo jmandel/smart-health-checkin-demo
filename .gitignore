@@ -1,5 +1,6 @@
 node_modules
 .DS_Store
+package-lock.json
 
 # Note: dist/ (library) is checked in so npm install from GitHub works without bun
 

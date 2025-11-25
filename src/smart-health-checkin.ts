@@ -24,8 +24,16 @@ export interface DCQLQuery {
   credentials: CredentialQuery[];
 }
 
+/**
+ * Artifact type identifiers for credential data
+ * - "fhir_resource": A FHIR resource object (e.g., Coverage, Patient)
+ * - "shc": A SMART Health Card (compact JWS format)
+ * - "shl": A SMART Health Link (shlink:/ URI)
+ */
+export type ArtifactType = 'fhir_resource' | 'shc' | 'shl';
+
 export interface Artifact {
-  type: string;
+  type: ArtifactType;
   data: unknown;
 }
 

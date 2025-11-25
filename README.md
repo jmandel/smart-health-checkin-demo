@@ -194,7 +194,7 @@ Each wrapper is a JSON Object with:
 
 | Property | Description |
 |----------|-------------|
-| `type`   | REQUIRED. String. The type of credential data (e.g., `"fhir_resource"`, `"shc"`, `"shl"`). |
+| `type`   | REQUIRED. String. The artifact type identifier. Defined values: `"fhir_resource"` (FHIR resource object), `"shc"` (SMART Health Card), `"shl"` (SMART Health Link). |
 | `data`   | REQUIRED. The actual credential payload. Format depends on `type`. (Object for resources, String for links/cards). |
 
 **Example Response:**
@@ -218,7 +218,7 @@ Scenario: Insurance request (Index 0) returned as JSON, History request (Index 1
       }
     },
     {
-      "type": "smart_health_link",
+      "type": "shl",
       "data": "shlink:/eyJhbGci..."
     }
   ]
@@ -238,7 +238,7 @@ This indirection pattern:
 
 #### Implementation Considerations
 
-**Fragment Size Limits**: Browser URL fragments have size limits (varying by browser, typically ~2MB). For large payloads such as comprehensive clinical histories, Wallets SHOULD return a SMART Health Link (`type: "smart_health_link"`) instead of inline FHIR resources. This allows the Verifier to fetch the data separately while keeping the fragment response small.
+**Fragment Size Limits**: Browser URL fragments have size limits (varying by browser, typically ~2MB). For large payloads such as comprehensive clinical histories, Wallets SHOULD return a SMART Health Link (`type: "shl"`) instead of inline FHIR resources. This allows the Verifier to fetch the data separately while keeping the fragment response small.
 
 ### 2.3 Error Response
 
