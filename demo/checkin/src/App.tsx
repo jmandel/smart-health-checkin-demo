@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { config } from '../../../src/config';
+import { config } from '../../config';
 import './styles.css';
 
 interface AppConfig {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { request, maybeHandleReturn, type DCQLQuery, type RehydratedResponse } from 'smart-health-checkin';
-import { config } from '../../../src/config';
+import { config } from '../../config';
 import './styles.css';
 
 interface TaskState {
