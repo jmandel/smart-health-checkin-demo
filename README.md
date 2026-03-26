@@ -1,47 +1,36 @@
-Here is the fully updated specification. It retains your original structure and core concepts but cleanly integrates the four major architectural upgrades we discussed: standardizing DCQL optionality, using inline references for deduplication inside the `vp_token`, **exclusively** using `direct_post.jwt` with ephemeral keys to a zero-trust relay for bulletproof, infinite-size E2E encryption, and authenticating web Verifiers with a custom `well_known:` client identifier prefix plus signed Request Objects.
-
-***
-
-# Architectural Upgrades & Implementation Changelist
-
-This document has been upgraded from its initial draft to align with core **OpenID4VP** requirements, maximize compatibility with off-the-shelf Wallet SDKs, and provide strong security for Protected Health Information (PHI).
-
-### 1. Universal E2E Encryption via Zero-Trust Relay (`direct_post.jwt`)
-*   **What changed:** Removed plaintext browser fragment responses entirely. The protocol now exclusively mandates the `direct_post.jwt` response mode. Before every request, the browser generates an ephemeral key pair, passes the public key in the request, and asks the wallet to encrypt the response and POST it to a dumb backend relay.
-*   **Why:** 
-    1. **Security:** PHI is encrypted at the application layer. It is never exposed to browser extensions, browser history, or intermediate servers.
-    2. **Payload Size:** Bypasses the ~2MB browser URL fragment limit, allowing massive clinical histories (like full FHIR bundles) to be transferred flawlessly.
-    3. **Cross-Device Native:** This architecture natively supports Cross-Device flows (e.g., scanning a QR code on a desktop screen with a mobile wallet), as the desktop browser simply polls the relay for the encrypted payload.
-*   **Implementation Impact:** The `shl.js` shim must now use the Web Crypto API to generate Ephemeral Elliptic Curve keys, construct a `client_metadata` parameter, and poll/listen to a Relay URL. A simple, stateless Relay Server is required to temporarily cache the opaque JWE strings.
-
-### 2. DCQL Optionality: Standardized
-*   **What changed:** Removed the custom `optional: true` flag from the credential query `meta` object. The profile now uses standard DCQL `credential_sets` with `required: false`.
-*   **Why:** Strict, generic OpenID4VP DCQL engines ignore unknown parameters. Without `credential_sets`, standard wallets evaluate all items as strictly required, throwing errors if a user attempts to share a partial response.
-*   **Implementation Impact:** Update the `shl.js` request builder to map optional credentials into individual, non-required `credential_sets`.
-
-### 3. Payload Structure: Inline References
-*   **What changed:** Removed the top-level `smart_artifacts` side-car array. Data is now placed directly inside the `vp_token`. To maintain payload deduplication (e.g., when one FHIR resource satisfies multiple queries), Presentations use an inline reference pattern (`artifact_id` and `artifact_ref`).
-*   **Why:** Generic Wallet/Verifier SDKs expect presentation data to live exclusively inside `vp_token` and will strip unrecognized top-level parameters. 
-*   **Implementation Impact:** Update the `rehydrate` function in `shl.js` to do a two-pass resolution over the `vp_token` (cataloging `artifact_id`s, then resolving `artifact_ref`s).
-
-### 4. Authenticated Verifier Discovery via `well_known:`
-*   **What changed:** Replaced unauthenticated `redirect_uri:`-style client identifiers with a profile-specific `well_known:` Client Identifier Prefix. The identifier carries only a bare Verifier origin; the Wallet resolves the Verifier's metadata from a fixed `.well-known` document under that origin, fetches a signed Request Object from `request_uri`, and verifies the request signature using keys advertised by the Verifier's domain.
-*   **Why:**
-    1. **Verifier Authentication:** The Wallet can distinguish "this request is controlled by the domain that owns this origin" from a self-asserted unsigned URL parameter.
-    2. **Compact QR Codes:** The bootstrap request contains only `client_id`, `request_uri`, and `request_uri_method`, leaving the large request body and ephemeral encryption key in the signed Request Object.
-    3. **Better UX:** A Wallet can safely display the Verifier origin for any valid `well_known:` request, and can optionally upgrade to metadata-supplied names and logos when the client identifier is present in a whitelist or trust framework.
-*   **Implementation Impact:** The Verifier backend must host `/.well-known/openid4vp-client`, publish signing keys at `jwks_uri`, generate signed Request Objects, and maintain a transaction model with separate write and read secrets. Wallets and source apps that want to trust metadata-supplied names, logos, or policy semantics must maintain an allowlist or trust-framework-backed list of trusted `well_known:` client identifiers or base origins; metadata alone is not enough.
-
-***
-
 # SMART Health Check-in Protocol
 
 **Public Demo**: https://joshuamandel.com/smart-health-checkin-demo
 
-This repository defines a layered, browser-ready way to request and receive health data:
-- **Browser API:** A polyfill (`shl.js`) that exposes a W3C Digital Credentials–style API so web apps can initiate requests and receive responses.
-- **Wire protocol:** SMART Health Check-in v1 over OpenID for Verifiable Presentations (OID4VP) utilizing End-to-End Encrypted (E2EE) `direct_post.jwt` responses to a Verifier-controlled response endpoint, authenticated with the custom `well_known:` client identifier prefix and signed Request Objects.
-- **Data model:** A strict DCQL profile that asks for FHIR resources (by canonical profile URL) or Questionnaires, with optional signing strategies (e.g., SHC) and support for inline payload deduplication.
+This repository contains:
+
+- a browser shim, published as `smart-health-checkin`, for starting SMART Health Check-in requests from web apps
+- a SMART Health Check-in profile of OpenID for Verifiable Presentations (OID4VP)
+- a reference demo with two scenarios:
+  - same-device patient portal
+  - cross-device front-desk kiosk
+- a demo verifier backend / response endpoint that serves metadata and signed Request Objects and stores opaque encrypted responses
+
+The current protocol and demo support:
+
+- `well_known:` verifier identity derived from a bare HTTPS origin
+- signed Request Objects fetched by `request_uri`
+- `direct_post.jwt` for encrypted response delivery
+- same-device return via `redirect_uri#response_code=...`
+- cross-device completion via the verifier's authenticated read path
+- a DCQL profile for FHIR resources, questionnaires, and inline payload deduplication inside `vp_token`
+
+The normal deployment model is a same-origin portal, but the same-device flow also allows an explicitly approved frontend return page on another origin. In all cases, the Wallet-facing verifier identity remains the `well_known:` verifier origin.
+
+## Repository Layout
+
+- `src/`: browser shim library
+- `demo/portal`: same-device demo
+- `demo/kiosk`: cross-device demo
+- `demo/checkin`: shared picker / routing page
+- `demo/source-flexpa`: mock source app / wallet-side provider
+- `demo/relay`: demo verifier backend / response endpoint
+- `demo/shared`: shared demo UI helpers
 
 ## SHL.request Entry Point
 
@@ -57,8 +46,6 @@ const result = await SHL.request(dcqlQuery, options);
   - `verifierBase` (String, required): Bare HTTPS origin for the Verifier named by `well_known:` (e.g., `'https://clinic.example.com'`). The shim derives `client_id`, metadata resolution, request, response, and result endpoints from this base URL by convention.
   - `onRequestStart` (Function, optional): Callback invoked when the OID4VP request is constructed.
   - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response resolves all internal references to output flat, easy-to-consume data arrays.
-
-The current demo implementation still uses a lower-level `relayUrl` option internally. That is an implementation gap to be closed; the intended public API for this protocol profile is `verifierBase`.
 
 **Response (Promise resolution)**
 ```javascript
@@ -81,22 +68,26 @@ const coverageData = credentials['req_insurance'][0]; // Direct access to the de
 
 This section defines the **Protocol Profile**, specifying how OID4VP is used to transport the request and response. To ensure Protected Health Information (PHI) is never exposed to browser extensions, history logs, or intermediary servers, **all responses MUST be encrypted at the application layer and transported via a Verifier-controlled response endpoint that stores only opaque ciphertext.**
 
-### 1.1 Ephemeral Keys, Transactions, and the Response Endpoint
+### 1.1 Ephemeral Keys, Transactions, Response URIs, and Same-Device Return URIs
 
 Before initiating a request, the requesting client (e.g., the browser shim) MUST:
 1. Generate a fresh Ephemeral Key Pair (e.g., ECDH-ES using P-256 or X25519) via the Web Crypto API. The private key remains securely in the browser's memory.
 2. Initiate a transaction with the Verifier backend / response endpoint and declare whether the transaction is `same-device` or `cross-device`.
 
-The Verifier backend MUST create at least the following values:
-*   `transaction_id`: A secret bound to the Verifier frontend session. It is never sent to the Wallet.
+The Verifier backend MUST create sufficient Verifier-side transaction state to correlate the Wallet's encrypted submission with later retrieval by the Verifier frontend or backend. In this profile, one protocol-visible value is:
 *   `request_id`: A public correlation handle used as the OID4VP `state` value.
-*   `read_secret`: A secret the Verifier frontend uses to fetch the stored Authorization Response from the backend.
-*   `flow`: Transaction mode selected by the Verifier frontend, either `same-device` or `cross-device`.
 
-The `response_uri` MUST be a request-specific, write-only Verifier-controlled endpoint such as `https://clinic.example.com/oid4vp/post/req_abc123xyz` or another opaque write handle under a Verifier-controlled prefix. This is necessary because, with `direct_post.jwt`, the Authorization Response parameters such as `state` are carried inside the encrypted JWT and are therefore not visible to the non-decrypting response endpoint. The response endpoint MAY be implemented as a dumb relay behind the Verifier origin. It accepts opaque JWE strings from Wallets, stores them temporarily, and delivers them only to the legitimate Verifier frontend/backend path. Because the endpoint does not possess the Ephemeral private key, it cannot read the PHI.
+The `response_uri` MUST be a request-specific, write-only Verifier-controlled endpoint such as `https://clinic.example.com/oid4vp/responses/req_abc123xyz` or another opaque write handle under a Verifier-controlled prefix. This is necessary because, with `direct_post.jwt`, the Authorization Response parameters such as `state` are carried inside the encrypted JWT and are therefore not visible to the non-decrypting response endpoint. The response endpoint accepts opaque JWE strings from Wallets, stores them temporarily, and delivers them only to the legitimate Verifier frontend/backend path. Because the endpoint does not possess the Ephemeral private key, it cannot read the PHI.
 
 The response endpoint MUST NOT expose an interface where knowledge of `request_id` alone is sufficient to retrieve a posted Authorization Response.
 The Verifier backend MUST persist the selected `flow` in the transaction state and use it to determine whether the response endpoint returns a same-device `redirect_uri` carrying `response_code`, or whether the response is completed only through the authenticated read path for cross-device use.
+
+If the transaction uses a same-device flow, the Verifier backend MAY also accept a frontend return URI at transaction initialization time. This same-device return URI is distinct from the Verifier-controlled `response_uri`:
+
+*   `response_uri` is part of the signed Request Object, MUST be Verifier-controlled, and MUST be validated against Verifier metadata.
+*   same-device return `redirect_uri` is a frontend continuation location used only after the encrypted Authorization Response has already been delivered to the Verifier's `response_uri`.
+
+When a same-device return URI is used, the Verifier backend MUST validate it under local policy at transaction initialization time, bind it to the transaction state, and later return only that exact stored value plus a fresh `response_code`. At minimum, the return URI MUST be an absolute `https` URI and MUST NOT include a fragment when supplied by the frontend. Verifier deployments MAY additionally require exact-origin matching with the initiating page, allowlist membership, or other local policy checks.
 
 ### 1.2 Authenticated Verifier Discovery (`well_known:`)
 
@@ -121,7 +112,7 @@ For the example above, the Wallet fetches:
 https://clinic.example.com/.well-known/openid4vp-client
 ```
 
-The metadata document MUST be JSON, MUST be served with the `application/json` Content-Type, and MUST contain the information needed to verify signed requests and validate response destinations. A typical example is:
+The metadata document MUST be JSON, MUST be served with the `application/json` Content-Type, and MUST contain the information needed to verify signed requests and validate Verifier-controlled response destinations. A typical example is:
 
 ```json
 {
@@ -132,8 +123,7 @@ The metadata document MUST be JSON, MUST be served with the `application/json` C
   "tos_uri": "https://clinic.example.com/terms",
   "jwks_uri": "https://clinic.example.com/.well-known/jwks.json",
   "request_object_signing_alg_values_supported": ["ES256"],
-  "response_uri_prefixes": ["https://clinic.example.com/oid4vp/post/"],
-  "redirect_uris": ["https://clinic.example.com/oid4vp/return"],
+  "response_uri_prefixes": ["https://clinic.example.com/oid4vp/responses/"],
   "vp_formats_supported": {
     "dc+sd-jwt": {
       "sd-jwt_alg_values": ["ES256"],
@@ -171,7 +161,7 @@ The bootstrap request shown in a browser popup or QR code SHOULD be minimal and 
 ```text
 https://wallet.example.com/authorize?
   client_id=well_known:https://clinic.example.com&
-  request_uri=https://clinic.example.com/oid4vp/request/123&
+  request_uri=https://clinic.example.com/oid4vp/requests/123&
   request_uri_method=post
 ```
 
@@ -199,7 +189,7 @@ The actual request parameters MUST be conveyed in a signed Request Object fetche
   "client_id": "well_known:https://clinic.example.com",
   "response_type": "vp_token",
   "response_mode": "direct_post.jwt",
-  "response_uri": "https://clinic.example.com/oid4vp/post/req_abc123xyz",
+  "response_uri": "https://clinic.example.com/oid4vp/responses/req_abc123xyz",
   "nonce": "def456uvw",
   "state": "req_abc123xyz",
   "dcql_query": {...},
@@ -227,7 +217,7 @@ Wallet processing rules for this profile:
 2. Fetch the Request Object from `request_uri`.
 3. Verify the Request Object signature using keys from the discovered `jwks_uri`.
 4. Use only the parameters from the signed Request Object for security-sensitive processing.
-5. Reject the request if `client_id`, `response_uri`, or other required values do not match the metadata policy.
+5. Reject the request if `client_id`, `response_uri`, or other required Verifier-controlled values do not match the metadata policy.
 
 ### 1.5 Authorization Response
 
@@ -238,7 +228,7 @@ Because `direct_post.jwt` is requested, the Wallet MUST encrypt this JSON payloa
 The Wallet makes an HTTP POST to the Verifier's `response_uri` with `Content-Type: application/x-www-form-urlencoded`, placing the opaque JWE string in the body:
 
 ```http
-POST /oid4vp/post/req_abc123xyz HTTP/1.1
+POST /oid4vp/responses/req_abc123xyz HTTP/1.1
 Host: clinic.example.com
 Content-Type: application/x-www-form-urlencoded
 
@@ -249,7 +239,7 @@ The response endpoint MUST identify the target transaction from the request-spec
 
 The endpoint MUST NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response MUST validate that the decrypted `state` matches the expected `request_id`.
 
-For same-device flows, the response endpoint SHOULD return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. The original browser tab MUST present both its local `transaction_id`/`read_secret` and the `response_code` in order to fetch the stored response.
+For same-device flows, the response endpoint SHOULD return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That `redirect_uri` is not verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. Instead, it is a frontend continuation URI that MUST already have been validated and bound by the Verifier backend at transaction initialization time. The original browser tab MUST present its verifier-side redemption credentials together with the `response_code` in order to fetch the stored response.
 
 For example, the response endpoint could reply:
 
@@ -259,14 +249,14 @@ Content-Type: application/json
 Cache-Control: no-store
 
 {
-  "redirect_uri": "https://clinic.example.com/oid4vp/return#response_code=091535f699ea575c7937fa5f0f454aee"
+  "redirect_uri": "https://app.example.com/oid4vp/return#response_code=091535f699ea575c7937fa5f0f454aee"
 }
 ```
 
-The `response_code` is a fresh, high-entropy, one-time value generated by the Verifier backend for that same-device completion step. It is not sufficient on its own to fetch the stored ciphertext; the Verifier frontend must still present the correct `transaction_id` and `read_secret` on the authenticated read path.
+The `response_code` is a fresh, high-entropy, one-time value generated by the Verifier backend for that same-device completion step. It is not sufficient on its own to fetch the stored ciphertext; the Verifier frontend must still present the correct verifier-side redemption credentials on the authenticated read path. A deployment where the Verifier frontend and backend share one origin remains the default and simplest case, but this profile also permits the same-device return URI to be on a different frontend origin when the Verifier backend explicitly approves and binds that URI at initialization time.
 
 For cross-device flows, the Verifier frontend on the initiating device cannot rely on a same-browser redirect. In that case:
-*   The initiating Verifier frontend MUST retrieve the stored response using its `transaction_id` and `read_secret`.
+*   The initiating Verifier frontend MUST retrieve the stored response through the Verifier's authenticated read path.
 
 After retrieval, the frontend decrypts the JWE, validates `state`, resolves internal references, and continues application processing.
 
@@ -279,6 +269,8 @@ This section defines the **Data Profile**, specifying the structure of the DCQL 
 ### 2.1 Credential Format: `smart_artifact`
 
 This profile defines a single Credential Format Identifier: **`smart_artifact`**. Because health data without Cryptographic Holder Binding does not utilize standard cryptographic proofs, `require_cryptographic_holder_binding` MUST be `false`.
+
+This profile authenticates the request and provides encrypted response transport, but it does not by itself prove the provenance or authenticity of returned artifacts. Unless a returned artifact carries its own verifiable proof and the Verifier validates it, the decrypted payload should be treated as a transaction-bound submission, not as a cryptographically authenticated credential.
 
 The credential query object uses a standard DCQL structure. Properties specific to this profile are specified within the `meta` object:
 
@@ -378,9 +370,9 @@ When decrypted, the JWE payload will be a JSON object containing standard OAuth 
 
 ## 3. Browser-Based Implementation (The "Shim")
 
-To enable this protocol in pure browser environments, the reference implementation uses a **W3C Digital Credentials API Shim** (`shl.js`) combined with the response endpoint / relay service. The current demo still models this endpoint as a separate `relayUrl`, but the protocol profile above assumes that production deployments place that endpoint under the Verifier's control and associate it with the `well_known:` origin.
+To enable this protocol in pure browser environments, the reference implementation uses a **W3C Digital Credentials API Shim** (`shl.js`) combined with a Verifier-controlled response endpoint service. The current demo still models this endpoint as a separate `relayUrl`, but the protocol profile above assumes that production deployments place that endpoint under the Verifier's control and associate it with the `well_known:` origin.
 
-### 3.1 Transport Mechanism (Universal Relay)
+### 3.1 Transport Mechanism
 
 1.  **Initialization**: `shl.js` generates an Ephemeral Key Pair via the Web Crypto API and starts a Verifier transaction, explicitly choosing `same-device` or `cross-device`, and receiving a `transaction_id`, `request_id`, and `read_secret`.
 2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for either a popup or QR code.
@@ -408,20 +400,21 @@ const result = await request(dcqlQuery, {
 const coverageData = result.credentials['req_insurance'][0];
 ```
 
-The current demo code still uses `relayUrl` internally until the shim is migrated to this higher-level API.
-
 ---
 
 ## 4. Reference Implementation (Demo)
 
-This repository contains a fully functional reference implementation of the protocol, demonstrating the E2EE flow and zero-trust relay.
+This repository contains a fully functional reference implementation of the protocol, demonstrating the E2EE flow and the Verifier-controlled response endpoint pattern.
 
 ### 4.1 Components
 
-*   **Requester (`demo/requester`)**: A demo "Doctor's Clinic" app that initiates the flow.
+*   **Demo Landing Page (`demo/index.html`)**: Entry page linking to both demo scenarios.
+*   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, opens the picker in a popup, and completes the flow through a return carrying `response_code`.
+*   **Front Desk Kiosk (`demo/kiosk`)**: Cross-device demo where staff starts the request, the page shows a QR code and copyable link, and the patient completes the flow on another device.
 *   **Picker (`demo/checkin`)**: A simple UI that helps users select their health app.
 *   **Health App (`demo/source-flexpa`)**: A mock health app implementation that acts as an OID4VP Provider.
-*   **Relay / Response Endpoint (`demo/relay`)**: A backend that temporarily caches encrypted JWE POSTs for delivery to the frontend. In production, this endpoint sits behind the Verifier origin and participates in transaction management.
+*   **Verifier Backend / Response Endpoint (`demo/relay`)**: A backend that serves metadata and signed Request Objects, stores opaque encrypted responses, enforces same-device `response_code` redemption, and simulates authenticated staff sessions for cross-device use.
+*   **Shared Demo Logic (`demo/shared`)**: Shared UI helpers used by the portal and kiosk experiences.
 
 ### 4.2 Running the Demo
 
@@ -432,7 +425,15 @@ To simulate the cross-origin security model locally:
 ```
 
 This starts all necessary servers on different ports (Requester, Check-in, Relay, and Flexpa).
-Visit **http://requester.localhost:3000** to try the flow.
+Visit **http://requester.localhost:3000** to reach the landing page, then choose:
+
+*   **Patient Portal** for the same-device flow
+*   **Front Desk Kiosk** for the cross-device flow
+
+For the cross-device demo, the local demo server includes a simple staff login simulation:
+
+*   username: any non-empty value
+*   password: `demo`
 
 ## 5. License
 
