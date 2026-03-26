@@ -256,10 +256,11 @@
 
   <div class="card" style="border-left:4px solid var(--purple)">
     <h3 style="margin-top:0">SMART Health Cards</h3>
-    <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a signing strategy.</p>
+    <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a <code>signing_strategy</code>.</p>
+    <p style="font-size:13px;color:var(--slate)">If <code>signing_strategy</code> is omitted, the wallet may return any format. If present, it lists acceptable strategies: <code>["shc_v1", "none"]</code> = prefer signed, accept unsigned. <code>["shc_v1"]</code> = must be signed.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
-  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"shc_v2"</span>]
+  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"none"</span>]  <span class="comment">// prefer signed, accept unsigned</span>
 }</div>
   </div>
 
