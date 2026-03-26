@@ -75,11 +75,11 @@ Before initiating a request, the requesting client (e.g., the browser shim) MUST
 2. Initiate a transaction with the Verifier backend / response endpoint and declare whether the transaction is `same-device` or `cross-device`.
 
 The Verifier backend MUST create sufficient Verifier-side transaction state to correlate the Wallet's encrypted submission with later retrieval by the Verifier frontend or backend. In this profile, one protocol-visible value is:
-*   `request_id`: A public correlation handle used as the OID4VP `state` value.
+*   `state`: A public correlation handle carried in the signed Request Object and echoed inside the encrypted Authorization Response.
 
 The `response_uri` MUST be a request-specific, write-only Verifier-controlled endpoint such as `https://clinic.example.com/oid4vp/responses/req_abc123xyz` or another opaque write handle under a Verifier-controlled prefix. This is necessary because, with `direct_post.jwt`, the Authorization Response parameters such as `state` are carried inside the encrypted JWT and are therefore not visible to the non-decrypting response endpoint. The response endpoint accepts opaque JWE strings from Wallets, stores them temporarily, and delivers them only to the legitimate Verifier frontend/backend path. Because the endpoint does not possess the Ephemeral private key, it cannot read the PHI.
 
-The response endpoint MUST NOT expose an interface where knowledge of `request_id` alone is sufficient to retrieve a posted Authorization Response.
+The response endpoint MUST NOT expose an interface where knowledge of `state` alone is sufficient to retrieve a posted Authorization Response.
 The Verifier backend MUST persist the selected `flow` in the transaction state and use it to determine whether the response endpoint returns a same-device `redirect_uri` carrying `response_code`, or whether the response is completed only through the authenticated read path for cross-device use.
 
 If the transaction uses a same-device flow, the Verifier backend MAY also accept a frontend return URI at transaction initialization time. This same-device return URI is distinct from the Verifier-controlled `response_uri`:
@@ -178,7 +178,7 @@ The actual request parameters MUST be conveyed in a signed Request Object fetche
     *   `encrypted_response_enc_values_supported`: Array of supported encryption algorithms (e.g., `["A256GCM"]`).
 *   `aud`: REQUIRED. MUST be `https://self-issued.me/v2` to comply with the OpenID4VP static-discovery Request Object requirements.
 *   `nonce`: REQUIRED. A cryptographically random string.
-*   `state`: REQUIRED. MUST be a cryptographically strong pseudo-random value with at least 128 bits of entropy. This profile RECOMMENDS using `request_id` as the `state` value.
+*   `state`: REQUIRED. MUST be an unguessable value with at least 128 bits of entropy.
 *   `dcql_query`: REQUIRED. A JSON-encoded DCQL query object (defined in Section 2).
 
 **Example Signed Request Object Payload:**
@@ -237,7 +237,7 @@ response=eyJhbGciOiJFQ0RILUVTIi... (Opaque JWE String)
 
 The response endpoint MUST identify the target transaction from the request-specific `response_uri` path or other opaque write handle that is visible before decryption. It MUST store the ciphertext and make it retrievable only through the Verifier's authenticated read path.
 
-The endpoint MUST NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response MUST validate that the decrypted `state` matches the expected `request_id`.
+The endpoint MUST NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response MUST validate that the decrypted `state` matches the expected request `state` value.
 
 For same-device flows, the response endpoint SHOULD return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That `redirect_uri` is not verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. Instead, it is a frontend continuation URI that MUST already have been validated and bound by the Verifier backend at transaction initialization time. The original browser tab MUST present its verifier-side redemption credentials together with the `response_code` in order to fetch the stored response.
 
@@ -270,7 +270,7 @@ This section defines the **Data Profile**, specifying the structure of the DCQL 
 
 This profile defines a single Credential Format Identifier: **`smart_artifact`**. Because health data without Cryptographic Holder Binding does not utilize standard cryptographic proofs, `require_cryptographic_holder_binding` MUST be `false`.
 
-This profile authenticates the request and provides encrypted response transport, but it does not by itself prove the provenance or authenticity of returned artifacts. Unless a returned artifact carries its own verifiable proof and the Verifier validates it, the decrypted payload should be treated as a transaction-bound submission, not as a cryptographically authenticated credential.
+This profile authenticates the request and provides encrypted response transport, but it does not by itself prove the provenance or authenticity of returned artifacts. Unless a returned artifact carries its own verifiable proof and the Verifier validates it, the decrypted payload should be treated as a submission correlated to the request via `state`, not as a cryptographically authenticated credential.
 
 The credential query object uses a standard DCQL structure. Properties specific to this profile are specified within the `meta` object:
 
@@ -374,7 +374,7 @@ To enable this protocol in pure browser environments, the reference implementati
 
 ### 3.1 Transport Mechanism
 
-1.  **Initialization**: `shl.js` generates an Ephemeral Key Pair via the Web Crypto API and starts a Verifier transaction, explicitly choosing `same-device` or `cross-device`, and receiving a `transaction_id`, `request_id`, and `read_secret`.
+1.  **Initialization**: `shl.js` generates an Ephemeral Key Pair via the Web Crypto API and starts a Verifier transaction, explicitly choosing `same-device` or `cross-device`, and receiving local transaction metadata including a `transaction_id`, the request `state`, and a `read_secret`.
 2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for either a popup or QR code.
 3.  **Request Verification**: The Wallet resolves `/.well-known/openid4vp-client`, fetches the signed Request Object, verifies it using the Verifier's `jwks_uri`, and extracts the authoritative OID4VP parameters.
 4.  **Response Delivery**: The Wallet encrypts the payload and POSTs the `{JWE}` to the Verifier-controlled `response_uri`.
