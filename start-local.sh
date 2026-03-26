@@ -28,7 +28,7 @@ echo ""
 BUILD_DIR="build/smart-health-checkin-demo"
 
 echo "Starting Requester + Verifier on port 3000..."
-(VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" PORT=3000 bun demo/relay/server.ts 2>&1 | sed "s/^/[Verifier] /") &
+(VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" PORT=3000 bun demo/relay/serve-demo.ts 2>&1 | sed "s/^/[Verifier] /") &
 
 echo "Starting Check-in on port 3001..."
 (cd "$BUILD_DIR/checkin" && bunx http-server -p 3001 -c-1 2>&1 | sed "s/^/[Check-in] /") &
