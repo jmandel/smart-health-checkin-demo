@@ -4,23 +4,13 @@
 
 This repository contains:
 
-- a browser shim, published as `smart-health-checkin`, for starting SMART Health Check-in requests from web apps
 - a SMART Health Check-in profile of OpenID for Verifiable Presentations (OID4VP)
+- a browser shim, published as `smart-health-checkin`, for starting SMART Health Check-in requests from web apps
 - a reference demo with two scenarios:
   - same-device patient portal
   - cross-device front-desk kiosk
 - a demo verifier backend / response endpoint that serves metadata and signed Request Objects and stores opaque encrypted responses
 
-The current protocol and demo support:
-
-- `well_known:` verifier identity derived from a bare HTTPS origin
-- signed Request Objects fetched by `request_uri`
-- `direct_post.jwt` for encrypted response delivery
-- same-device return via `redirect_uri#response_code=...`
-- cross-device completion via the verifier's authenticated read path
-- a DCQL profile for FHIR resources, questionnaires, and inline payload deduplication inside `vp_token`
-
-The normal deployment model is a same-origin portal, but the same-device flow also allows an explicitly approved frontend return page on another origin. In all cases, the Wallet-facing verifier identity remains the `well_known:` verifier origin.
 
 ## Repository Layout
 
@@ -32,11 +22,12 @@ The normal deployment model is a same-origin portal, but the same-device flow al
 - `demo/relay`: demo verifier backend / response endpoint
 - `demo/shared`: shared demo UI helpers
 
-## SHL.request Entry Point
+## request() Entry Point
 
-**Request**
 ```javascript
-const result = await SHL.request(dcqlQuery, options);
+import { request } from 'smart-health-checkin';
+
+const result = await request(dcqlQuery, options);
 ```
 
 **Parameters:**

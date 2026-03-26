@@ -387,7 +387,7 @@ export async function maybeHandleReturn(): Promise<boolean> {
 
 declare global {
   interface Window {
-    SHL?: {
+    SmartHealthCheckin?: {
       request: typeof request;
       maybeHandleReturn: typeof maybeHandleReturn;
       rehydrateResponse: typeof rehydrateResponse;
@@ -396,5 +396,5 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SHL = { request, maybeHandleReturn, rehydrateResponse };
+  window.SmartHealthCheckin = { request, maybeHandleReturn, rehydrateResponse };
 }

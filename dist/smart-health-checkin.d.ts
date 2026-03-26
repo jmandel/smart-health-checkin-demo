@@ -100,7 +100,7 @@ export declare function request(dcqlQuery: DCQLQuery, opts: RequestOptions): Pro
 export declare function maybeHandleReturn(): Promise<boolean>;
 declare global {
     interface Window {
-        SHL?: {
+        SmartHealthCheckin?: {
             request: typeof request;
             maybeHandleReturn: typeof maybeHandleReturn;
             rehydrateResponse: typeof rehydrateResponse;

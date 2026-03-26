@@ -1629,7 +1629,7 @@ async function maybeHandleReturn() {
   return false;
 }
 if (typeof window !== "undefined") {
-  window.SHL = { request, maybeHandleReturn, rehydrateResponse };
+  window.SmartHealthCheckin = { request, maybeHandleReturn, rehydrateResponse };
 }
 export {
   request,
