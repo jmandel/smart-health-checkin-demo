@@ -11,9 +11,16 @@
  *   POST /session          - Create a new session, returns { session_id }
  *   POST /post/:session_id - Wallet posts encrypted JWE response
  *   GET  /poll/:session_id - Browser long-polls for response
+ *
+ * If STATIC_DIR is set, also serves static files (e.g., the demo site)
+ * for any path that doesn't match a relay endpoint.
  */
 
+import { join } from 'path';
+import { existsSync } from 'fs';
+
 const PORT = parseInt(process.env.PORT || '3003', 10);
+const STATIC_DIR = process.env.STATIC_DIR || '';
 const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const LONG_POLL_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -135,8 +142,35 @@ Bun.serve({
       });
     }
 
+    // Serve static files if STATIC_DIR is configured
+    if (STATIC_DIR) {
+      let filePath = join(STATIC_DIR, url.pathname);
+
+      // Try index.html for directory paths
+      if (filePath.endsWith('/')) filePath = join(filePath, 'index.html');
+      if (existsSync(filePath) && !Bun.file(filePath).size && existsSync(join(filePath, 'index.html'))) {
+        filePath = join(filePath, 'index.html');
+      }
+
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        return new Response(file);
+      }
+
+      // SPA fallback: serve root index.html for unmatched paths
+      const indexPath = join(STATIC_DIR, 'index.html');
+      if (existsSync(indexPath)) {
+        return new Response(Bun.file(indexPath));
+      }
+    }
+
     return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders });
   }
 });
 
-console.log(`Relay server listening on http://localhost:${PORT}`);
+if (STATIC_DIR) {
+  console.log(`Relay + static server listening on http://localhost:${PORT}`);
+  console.log(`  Serving static files from: ${STATIC_DIR}`);
+} else {
+  console.log(`Relay server listening on http://localhost:${PORT}`);
+}
