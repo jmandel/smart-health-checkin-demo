@@ -16,7 +16,7 @@
  * for any path that doesn't match a relay endpoint.
  */
 
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { existsSync } from 'fs';
 
 const PORT = parseInt(process.env.PORT || '3003', 10);
@@ -144,7 +144,13 @@ Bun.serve({
 
     // Serve static files if STATIC_DIR is configured
     if (STATIC_DIR) {
-      let filePath = join(STATIC_DIR, url.pathname);
+      const root = resolve(STATIC_DIR);
+      let filePath = join(root, url.pathname);
+
+      // Prevent path traversal
+      if (!filePath.startsWith(root)) {
+        return new Response('Forbidden', { status: 403 });
+      }
 
       // Try index.html for directory paths
       if (filePath.endsWith('/')) filePath = join(filePath, 'index.html');
