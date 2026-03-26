@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Test static build in single-origin mode (like GitHub Pages)
-# Serves the demo site + relay on a single port using the relay server.
+# Test static build in single-origin mode
+# Serves the demo site + relay on a single port.
+# The requester is at the root so response_uri is under redirect_uri.
 
 cleanup() {
   echo ""
@@ -18,16 +19,9 @@ bun build.ts
 echo ""
 echo "🚀 Starting combined relay + static server..."
 echo ""
-echo "  • http://localhost:3003/smart-health-checkin-demo/"
-
-if [ -n "$RELAY_URL" ]; then
-  echo "  • Relay: $RELAY_URL (external, baked into build)"
-else
-  echo "  • Relay: http://localhost:3003 (local)"
-fi
-
+echo "  • http://localhost:3003/"
 echo ""
 
-STATIC_DIR=build PORT=3003 bun demo/relay/server.ts &
+STATIC_DIR=build/smart-health-checkin-demo PORT=3003 bun demo/relay/server.ts &
 
 wait

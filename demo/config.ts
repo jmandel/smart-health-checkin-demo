@@ -48,7 +48,7 @@ function createConfig(): Config {
         checkin: 'http://checkin.localhost:3001'
       },
       relay: {
-        url: RELAY_URL_OVERRIDE || 'http://relay.localhost:3003'
+        url: RELAY_URL_OVERRIDE || 'http://requester.localhost:3000'
       },
       checkin: {
         url: 'http://checkin.localhost:3001',
@@ -99,9 +99,7 @@ function createConfig(): Config {
       checkin: `${base}/checkin`
     },
     relay: {
-      url: RELAY_URL_OVERRIDE || (isGitHubPages
-        ? 'https://vprelay.exe.xyz'
-        : 'http://localhost:3003')
+      url: RELAY_URL_OVERRIDE || location.origin
     },
     checkin: {
       url: `${base}/checkin`,

@@ -141,11 +141,6 @@ Bun.serve({
       });
     }
 
-    // Health check
-    if (req.method === 'GET' && url.pathname === '/') {
-      return Response.json({ status: 'ok', relay: 'smart-health-checkin' }, { headers: corsHeaders });
-    }
-
     // Serve static files if STATIC_DIR is configured
     if (STATIC_DIR) {
       const root = resolve(STATIC_DIR);
@@ -170,6 +165,11 @@ Bun.serve({
         const file = Bun.file(candidate);
         if (await file.exists()) return new Response(file);
       }
+    }
+
+    // Health check (only when no static file matched)
+    if (req.method === 'GET' && url.pathname === '/') {
+      return Response.json({ status: 'ok', relay: 'smart-health-checkin' }, { headers: corsHeaders });
     }
 
     return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders });
