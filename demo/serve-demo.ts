@@ -1,18 +1,16 @@
 /**
- * Demo wrapper: OID4VP relay + static file serving for the SMART Health Check-in demo.
- *
- * This layers the demo's static site on top of the relay handler.
- * Used by start-local.sh and start-static.sh.
+ * Demo server: mounts the OID4VP relay handler alongside static file serving
+ * for the SMART Health Check-in demo apps.
  */
 
 import { join, resolve } from 'path';
-import { createRelayHandler } from './handler.ts';
+import { createRelayHandler } from './relay/handler.ts';
 
 const PORT = parseInt(process.env.PORT || '3003', 10);
 const VERIFIER_BASE = process.env.VERIFIER_BASE || `http://localhost:${PORT}`;
 const STATIC_DIR = process.env.STATIC_DIR || '';
 
-const { handler } = await createRelayHandler({
+const { handler: relay } = await createRelayHandler({
   verifierBase: VERIFIER_BASE,
   metadata: { client_name: "Dr. Mandel's Family Medicine" },
 });
@@ -22,7 +20,7 @@ Bun.serve({
   idleTimeout: 255,
   async fetch(req) {
     // Relay routes first
-    const resp = await handler(req);
+    const resp = await relay(req);
     if (resp) return resp;
 
     const url = new URL(req.url);
@@ -49,7 +47,6 @@ Bun.serve({
       }
     }
 
-    // Health check
     if (req.method === 'GET' && url.pathname === '/') {
       return Response.json({ status: 'ok', relay: 'smart-health-checkin' });
     }

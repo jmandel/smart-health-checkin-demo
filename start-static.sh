@@ -20,6 +20,6 @@ echo ""
 echo "  • http://localhost:3003/"
 echo ""
 
-VERIFIER_BASE="http://localhost:3003" STATIC_DIR=build/smart-health-checkin-demo PORT=3003 bun demo/relay/serve-demo.ts &
+VERIFIER_BASE="http://localhost:3003" STATIC_DIR=build/smart-health-checkin-demo PORT=3003 bun demo/serve-demo.ts &
 
 wait
