@@ -137,6 +137,15 @@ const redirectHtml = `<!doctype html>
 await Bun.write(join(BUILD_DIR, 'index.html'), redirectHtml);
 console.log('  ✓ index.html (redirect to exe.xyz)');
 
+// Protocol explainer page
+const explainerSrc = join(DEMO_DIR, 'protocol-explainer.html');
+if (existsSync(explainerSrc)) {
+  const protocolDir = join(BUILD_DIR, 'protocol');
+  mkdirSync(protocolDir, { recursive: true });
+  cpSync(explainerSrc, join(protocolDir, 'index.html'));
+  console.log('  ✓ protocol/ (explainer)');
+}
+
 // - Library dist files (for CDN-style access)
 cpSync(DIST, join(BUILD_DIR, 'dist'), { recursive: true });
 console.log('  ✓ dist/ (library files)');

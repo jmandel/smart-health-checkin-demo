@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SMART Health Check-in Protocol</title>
+<style>
+  :root {
+    --blue: #0284c7; --blue-dark: #0369a1; --green: #059669;
+    --purple: #7c3aed; --orange: #ea580c; --slate: #475569;
+    --slate-light: #94a3b8; --bg: #f8fafc; --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0; background: var(--bg); color: #1e293b;
+    line-height: 1.7; font-size: 16px;
+  }
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: white; padding: 80px 24px; text-align: center;
+  }
+  .hero h1 { font-size: 42px; margin: 0 0 12px; font-weight: 800; }
+  .hero .sub { font-size: 20px; opacity: 0.8; margin: 0 0 32px; font-weight: 300; }
+  .hero .links a { color: #38bdf8; margin: 0 12px; font-size: 15px; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+  section { padding: 48px 0; }
+  section + section { border-top: 1px solid #e2e8f0; }
+  h2 { font-size: 28px; margin: 0 0 24px; }
+  h3 { font-size: 20px; margin: 32px 0 12px; color: var(--blue-dark); }
+
+  .card {
+    background: var(--card); border-radius: 12px; padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin: 16px 0;
+  }
+
+  .flow-diagram {
+    display: flex; flex-direction: column; gap: 0;
+    font-size: 14px; margin: 24px 0;
+  }
+  .flow-step {
+    display: grid; grid-template-columns: 40px 1fr; gap: 0;
+    position: relative;
+  }
+  .flow-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: white; z-index: 1;
+    position: relative;
+  }
+  .flow-step::before {
+    content: ''; position: absolute; left: 15px; top: 32px;
+    bottom: 0; width: 2px; background: #e2e8f0;
+  }
+  .flow-step:last-child::before { display: none; }
+  .flow-body { padding: 4px 0 24px 16px; }
+  .flow-title { font-weight: 600; margin-bottom: 4px; }
+  .flow-detail { color: var(--slate); font-size: 13px; }
+  .flow-detail code {
+    background: #f1f5f9; padding: 1px 5px; border-radius: 3px;
+    font-size: 12px; color: #0f172a;
+  }
+
+  .actor { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .actor-shim { background: #dbeafe; color: #1e40af; }
+  .actor-verifier { background: #fef3c7; color: #92400e; }
+  .actor-wallet { background: #d1fae5; color: #065f46; }
+  .actor-picker { background: #f3e8ff; color: #6b21a8; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+  @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+  .mode-card {
+    background: var(--card); border-radius: 12px; padding: 24px;
+    border-top: 4px solid var(--blue);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .mode-card.cross { border-top-color: var(--green); }
+  .mode-card h4 { margin: 0 0 8px; font-size: 18px; }
+  .mode-card p { margin: 0; color: var(--slate); font-size: 14px; line-height: 1.6; }
+
+  .secret-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 16px 0; }
+  .secret-table th { text-align: left; padding: 8px 12px; background: #0f172a; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .secret-table th:first-child { border-radius: 8px 0 0 0; }
+  .secret-table th:last-child { border-radius: 0 8px 0 0; }
+  .secret-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+  .secret-table tr:last-child td { border-bottom: none; }
+  .secret-table code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+
+  .data-box {
+    background: #f1f5f9; border-radius: 8px; padding: 16px;
+    margin: 12px 0; font-size: 14px;
+  }
+  .data-box pre {
+    margin: 8px 0 0; font-size: 12px; background: #1e293b; color: #e2e8f0;
+    padding: 12px; border-radius: 6px; overflow-x: auto;
+  }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+
+  .note {
+    background: #fefce8; border-left: 4px solid #eab308;
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+    font-size: 14px; margin: 16px 0; color: #713f12;
+  }
+
+  .footer { text-align: center; padding: 48px 20px; color: var(--slate-light); font-size: 14px; }
+  .footer a { color: var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>SMART Health Check-in</h1>
+  <div class="sub">A browser-based protocol for secure health data sharing</div>
+  <div class="links">
+    <a href="https://smart-health-checkin.exe.xyz/">Live Demo</a>
+    <a href="https://github.com/jmandel/smart-health-checkin-demo">GitHub</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ======================================== -->
+<section>
+  <h2>What is this?</h2>
+  <p>
+    SMART Health Check-in is an open protocol that lets patients share health records
+    from their personal health apps directly with healthcare providers through a browser.
+    It uses <strong>OpenID for Verifiable Presentations (OID4VP)</strong> with end-to-end
+    encryption, signed request objects, and support for both same-device and cross-device flows.
+  </p>
+
+  <div class="split">
+    <div class="mode-card">
+      <h4>Same-Device (Patient Portal)</h4>
+      <p>Patient is on their own device. They click a button, a popup opens, they pick
+        their health app, review and share data. The popup returns to the portal page
+        with a <code>response_code</code> to close the loop.</p>
+    </div>
+    <div class="mode-card cross">
+      <h4>Cross-Device (Front Desk Kiosk)</h4>
+      <p>Staff starts a check-in at a workstation. A QR code appears. The patient scans it
+        on their phone, picks their health app, and shares data. The kiosk receives the
+        encrypted result via long-poll.</p>
+    </div>
+  </div>
+  <p>Both flows use the <strong>same protocol stack</strong>, the same shim library, the same picker, the same wallet/source app, and the same verifier backend.</p>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Protocol Layers</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">1. Verifier Identity: <code>well_known:</code></h3>
+    <p>The verifier identifies itself with a custom OID4VP client identifier prefix:</p>
+    <div class="data-box">
+      <code>client_id = well_known:https://clinic.example.com</code>
+    </div>
+    <p>The wallet resolves metadata by fetching <code>/.well-known/openid4vp-client</code>
+      from the verifier origin. This document provides:</p>
+    <ul>
+      <li><code>jwks_uri</code> — signing keys for verifying Request Objects</li>
+      <li><code>response_uri_prefixes</code> — allowed destinations for encrypted responses</li>
+      <li>Optional display fields (<code>client_name</code>, <code>logo_uri</code>) — but these
+        must NOT be trusted without an out-of-band allowlist</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">2. Bootstrap Request</h3>
+    <p>The URL shown to the wallet (via popup or QR code) is intentionally minimal:</p>
+    <div class="data-box">
+      <pre>client_id=well_known:https://clinic.example.com
+request_uri=https://clinic.example.com/oid4vp/requests/abc123
+request_uri_method=post</pre>
+    </div>
+    <p>This keeps QR codes small. All real parameters live in the signed Request Object.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">3. Signed Request Object</h3>
+    <p>The wallet POSTs to <code>request_uri</code> and receives a signed JWT containing:</p>
+    <ul>
+      <li><code>response_uri</code> — request-specific write endpoint (validated against metadata)</li>
+      <li><code>client_metadata.jwks</code> — ephemeral encryption key for this transaction</li>
+      <li><code>dcql_query</code> — what credentials are being requested</li>
+      <li><code>state</code>, <code>nonce</code> — correlation and freshness</li>
+    </ul>
+    <p>The wallet verifies the JWT signature against keys from <code>jwks_uri</code> before trusting any of these values.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">4. Encrypted Response (<code>direct_post.jwt</code>)</h3>
+    <p>The wallet encrypts <code>{ vp_token, state }</code> as a JWE using the ephemeral key, then
+      POSTs it to <code>response_uri</code>. The verifier backend stores the opaque ciphertext
+      without being able to read it.</p>
+
+    <div class="note">
+      The response endpoint uses <strong>first-write-wins</strong>: the first POST is authoritative,
+      retries with the same JWE are idempotent, and a different payload is rejected with 409.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">5. DCQL Data Profile: <code>smart_artifact</code></h3>
+    <p>Credentials are requested using DCQL with format <code>smart_artifact</code>.
+      Responses use inline references for deduplication:</p>
+    <div class="data-box">
+      <pre>{
+  "vp_token": {
+    "req_insurance": [{
+      "artifact_id": "cov_1",
+      "type": "fhir_resource",
+      "data": { "resourceType": "Coverage", ... }
+    }],
+    "req_history": [{
+      "artifact_ref": "cov_1"
+    }]
+  }
+}</pre>
+    </div>
+    <p style="font-size:14px;color:var(--slate)">
+      This profile authenticates the request and provides encrypted transport, but does not
+      prove artifact provenance. Unless an artifact carries its own verifiable proof,
+      it should be treated as a transaction-bound submission.
+    </p>
+  </div>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Same-Device Flow</h2>
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--blue)">1</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim</span>
+        <div class="flow-title">Generate keys &amp; init transaction</div>
+        <div class="flow-detail">Ephemeral ECDH key pair generated in browser. <code>POST /oid4vp/same-device/init</code> with the public key, <code>redirect_uri</code> (current page), and <code>dcql_query</code>. Returns <code>transaction_id</code>, <code>read_secret</code>, <code>request_uri</code>.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--blue)">2</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim</span>
+        <div class="flow-title">Open popup to picker</div>
+        <div class="flow-detail">Popup URL: <code>checkinBase/?client_id=well_known:...&amp;request_uri=...&amp;request_uri_method=post</code>. Shim starts listening on BroadcastChannel.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--purple)">3</div>
+      <div class="flow-body">
+        <span class="actor actor-picker">Picker</span>
+        <div class="flow-title">User selects health app</div>
+        <div class="flow-detail">Picker forwards the three bootstrap params to the source app, opens it in a new popup, closes itself.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--green)">4</div>
+      <div class="flow-body">
+        <span class="actor actor-wallet">Source App</span>
+        <div class="flow-title">Verify request &amp; collect consent</div>
+        <div class="flow-detail">Fetch <code>/.well-known/openid4vp-client</code> → <code>jwks_uri</code> → POST to <code>request_uri</code> for signed Request Object → verify JWT signature → extract <code>response_uri</code>, <code>dcql_query</code>, ephemeral key. Show consent UI.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--green)">5</div>
+      <div class="flow-body">
+        <span class="actor actor-wallet">Source App</span>
+        <div class="flow-title">Encrypt &amp; POST response</div>
+        <div class="flow-detail">Encrypt <code>{ vp_token, state }</code> as JWE → POST to <code>response_uri</code>. Server returns <code>{ redirect_uri: "portalPage#response_code=..." }</code>. Source app navigates there.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--blue)">6</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim</span>
+        <div class="flow-title">Receive response_code &amp; fetch result</div>
+        <div class="flow-detail">Popup lands on portal page → <code>maybeHandleReturn()</code> broadcasts <code>response_code</code> via BroadcastChannel → shim POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> → decrypts JWE → returns credentials to app.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Cross-Device Flow</h2>
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--green)">1</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <div class="flow-title">Generate keys &amp; init transaction</div>
+        <div class="flow-detail">Same key generation. <code>POST /oid4vp/cross-device/init</code> (requires staff session cookie). No <code>redirect_uri</code>. Returns same transaction credentials.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--green)">2</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <div class="flow-title">Display QR code</div>
+        <div class="flow-detail">No popup opened. <code>onRequestStart</code> gives the app <code>launch_url</code>. App renders QR code + copy/open link. Shim starts long-polling <code>/oid4vp/cross-device/results</code>.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--purple)">3</div>
+      <div class="flow-body">
+        <span class="actor actor-picker">Picker (Patient's Phone)</span>
+        <div class="flow-title">Patient scans QR &amp; selects app</div>
+        <div class="flow-detail">Same picker, same bootstrap params. Patient picks their health app.</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--orange)">4</div>
+      <div class="flow-body">
+        <span class="actor actor-wallet">Source App (Patient's Phone)</span>
+        <div class="flow-title">Verify, consent, encrypt, POST</div>
+        <div class="flow-detail">Same verification flow as same-device. After POST, server returns <code>{ status: "ok" }</code> (no redirect). Source app shows "Submission complete."</div>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num" style="background:var(--green)">5</div>
+      <div class="flow-body">
+        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <div class="flow-title">Long-poll resolves</div>
+        <div class="flow-detail">Long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. Shim decrypts with ephemeral private key, validates <code>state</code>, returns credentials to app.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    Cross-device init/results require an authenticated staff session (cookie). This prevents
+    an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI.
+    The standalone relay server disables cross-device by default.
+  </div>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Security Model</h2>
+
+  <h3>Secret Distribution</h3>
+  <table class="secret-table">
+    <thead>
+      <tr><th>Secret</th><th>Known By</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>transaction_id</code></td>
+        <td>Requester only</td>
+        <td>Identifies transaction for result retrieval</td>
+      </tr>
+      <tr>
+        <td><code>read_secret</code></td>
+        <td>Requester only</td>
+        <td>Authenticates result retrieval</td>
+      </tr>
+      <tr>
+        <td><code>write_token</code></td>
+        <td>Anyone who fetches Request Object</td>
+        <td>One-time write capability for submitting response</td>
+      </tr>
+      <tr>
+        <td><code>response_code</code></td>
+        <td>Requester (via redirect)</td>
+        <td>Same-device loop-closure proof</td>
+      </tr>
+      <tr>
+        <td><code>request_id</code> / <code>state</code></td>
+        <td>Public</td>
+        <td>Correlation handle; NOT sufficient to read data</td>
+      </tr>
+      <tr>
+        <td>Ephemeral private key</td>
+        <td>Requester browser memory only</td>
+        <td>Decrypts JWE; never leaves the browser</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Key Properties</h3>
+  <div class="card" style="font-size:14px">
+    <ul style="margin:0;padding-left:20px">
+      <li><strong>E2E Encryption:</strong> The relay/verifier backend stores opaque JWE ciphertext. It never possesses the decryption key.</li>
+      <li><strong>First-write-wins:</strong> A second submission with different data is rejected (409). Retries with the same JWE are idempotent.</li>
+      <li><strong>Verifier authentication:</strong> <code>well_known:</code> + signed Request Objects prove the request is controlled by the domain owner.</li>
+      <li><strong>No blind trust of metadata:</strong> Display names and logos from <code>/.well-known/openid4vp-client</code> must NOT be shown as trusted identity without an out-of-band allowlist.</li>
+      <li><strong>Same-device requires <code>response_code</code>:</strong> The redirect loop-closure prevents an eavesdropper from racing to fetch the result.</li>
+      <li><strong>Cross-device requires staff session:</strong> Prevents anonymous transaction creation and result theft.</li>
+      <li><strong>Artifact authenticity is not guaranteed:</strong> Unless an artifact carries its own verifiable proof, it is a transaction-bound submission, not a cryptographically authenticated credential.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Shim API</h2>
+  <div class="data-box">
+    <pre>import { request, maybeHandleReturn } from 'smart-health-checkin';
+
+const result = await request(dcqlQuery, {
+  checkinBase: 'https://picker.example.com',
+  verifierBase: 'https://clinic.example.com',
+  flow: 'same-device',   // or 'cross-device'
+  onRequestStart(info) {
+    // info.bootstrap  — { client_id, request_uri, request_uri_method }
+    // info.launch_url — full URL for popup or QR
+    // info.transaction — { transaction_id, request_id, read_secret }
+  }
+});
+
+// result.credentials['coverage-1'][0] → FHIR Coverage resource</pre>
+  </div>
+  <p>Both flows use the same <code>request()</code> call. The difference is in what the app does with
+    <code>onRequestStart</code>: same-device ignores it (the shim opens the popup), cross-device
+    renders <code>info.launch_url</code> as a QR code.</p>
+</section>
+
+<!-- ======================================== -->
+<section>
+  <h2>Demo Architecture</h2>
+  <div class="card" style="font-size:14px">
+    <table style="width:100%;border-collapse:collapse">
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600;width:180px">Portal</td><td style="padding:8px">Same-device demo. Calls shim with <code>flow: 'same-device'</code>.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Kiosk</td><td style="padding:8px">Cross-device demo. Staff login, QR code, long-poll. <code>flow: 'cross-device'</code>.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Picker</td><td style="padding:8px">Shared routing page. Receives bootstrap params, forwards to source app.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Source (Flexpa)</td><td style="padding:8px">Mock wallet. Fetches metadata, verifies signed Request Object, collects consent, encrypts and POSTs response.</td></tr>
+      <tr><td style="padding:8px;font-weight:600">Relay / Verifier</td><td style="padding:8px">Backend. Serves <code>.well-known</code>, signs Request Objects, stores encrypted responses, enforces session binding for cross-device.</td></tr>
+    </table>
+  </div>
+  <p>Everything runs on a single port via <code>bun demo/serve-demo.ts</code>. For local development,
+    <code>./start-local.sh</code> starts multi-origin servers to simulate real cross-origin security.</p>
+</section>
+
+</div>
+
+<div class="footer">
+  <a href="https://smart-health-checkin.exe.xyz/">Live Demo</a> &middot;
+  <a href="https://github.com/jmandel/smart-health-checkin-demo">GitHub</a>
+</div>
+
+</body>
+</html>
