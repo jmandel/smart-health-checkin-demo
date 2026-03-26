@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
@@ -72,6 +72,15 @@ export default function App() {
     flow: 'cross-device',
   });
 
+  // Auto-start on mount
+  const started = useRef(false);
+  useEffect(() => {
+    if (!started.current) {
+      started.current = true;
+      demo.start();
+    }
+  }, []);
+
   // Extract summary from result
   let receivedCount = 0;
   if (demo.result?.credentials) {
@@ -95,12 +104,6 @@ export default function App() {
           <div className="flow-badge">Cross-Device Flow</div>
           <h1>Front Desk Check-in</h1>
           <p className="subtitle">Start a check-in for a patient using their phone</p>
-
-          {!demo.loading && !demo.complete && !demo.requestInfo && (
-            <button className="start-button" onClick={demo.start}>
-              Start Patient Check-in
-            </button>
-          )}
 
           {demo.loading && demo.requestInfo && (
             <div className="waiting-panel">
