@@ -330,15 +330,29 @@ export async function createRelayHandler(config: RelayConfig) {
       }
       if (!jwe) return Response.json({ error: 'missing_response' }, { status: 400, headers: PUBLIC_CORS });
 
+      // First-write-wins with idempotent retry
+      if (txn.jwe) {
+        if (txn.jwe === jwe) {
+          // Idempotent retry — return same response as original
+          if (txn.flow === 'same-device' && txn.redirect_uri && txn.response_code) {
+            return Response.json({
+              redirect_uri: `${txn.redirect_uri}#response_code=${txn.response_code}`,
+            }, { headers: PUBLIC_CORS });
+          }
+          return Response.json({ status: 'ok' }, { headers: PUBLIC_CORS });
+        }
+        // Different payload — reject
+        return Response.json({ error: 'already_submitted' }, { status: 409, headers: PUBLIC_CORS });
+      }
+
       txn.jwe = jwe;
       for (const resolve of txn.waiters) resolve(jwe);
       txn.waiters = [];
 
       if (txn.flow === 'same-device' && txn.redirect_uri) {
-        const response_code = generateId();
-        txn.response_code = response_code;
+        txn.response_code = generateId();
         return Response.json({
-          redirect_uri: `${txn.redirect_uri}#response_code=${response_code}`,
+          redirect_uri: `${txn.redirect_uri}#response_code=${txn.response_code}`,
         }, { headers: PUBLIC_CORS });
       }
 

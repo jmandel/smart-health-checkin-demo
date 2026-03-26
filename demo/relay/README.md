@@ -199,6 +199,8 @@ response=eyJhbGci... (opaque JWE)
 
 The `write_token` is an opaque capability token separate from `request_id`. The relay identifies the transaction from the URL path — it does not read `state` from the encrypted payload.
 
+**First-write-wins:** The first POST stores the JWE and is authoritative. A retry with the same JWE returns the same response (idempotent). A POST with a different JWE is rejected with `409 already_submitted`.
+
 Same-device response:
 ```json
 { "redirect_uri": "https://clinic.example.com/checkin#response_code=..." }
@@ -209,13 +211,18 @@ Cross-device response:
 { "status": "ok" }
 ```
 
+Conflict (different payload after first submission):
+```json
+{ "error": "already_submitted" }
+```
+
 ## Security model
 
 | Secret | Known by | Purpose |
 |--------|----------|---------|
 | `transaction_id` | Requester only | Identifies the transaction for result retrieval |
 | `read_secret` | Requester only | Authenticates result retrieval |
-| `write_token` | Wallet only (via signed Request Object) | Write-only capability for submitting the response |
+| `write_token` | Any party that fetches the signed Request Object | One-time write capability for submitting the response |
 | `response_code` | Requester (via redirect) | Same-device loop-closure; proves the popup completed |
 | `request_id` | Public (in URLs, as OID4VP `state`) | Correlation handle; not sufficient to read data |
 
