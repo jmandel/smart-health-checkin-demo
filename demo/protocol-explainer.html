@@ -228,6 +228,61 @@
 
 <!-- ======================================== -->
 <section>
+  <h2>What Can Be Requested</h2>
+  <p>Requests use the <a href="https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#dcql_query" style="color:var(--blue)">DCQL query language</a> with a custom credential format called <code>smart_artifact</code>. Three kinds of health data can be requested through the <code>meta</code> field:</p>
+
+  <div class="card" style="border-left:4px solid var(--blue)">
+    <h3 style="margin-top:0">FHIR Resources</h3>
+    <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
+}</div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--green)">
+    <h3 style="margin-top:0">Questionnaires</h3>
+    <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill answers from existing records. Returned as a FHIR QuestionnaireResponse.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"questionnaire"</span>: {
+    <span class="key">"resourceType"</span>: <span class="val">"Questionnaire"</span>,
+    <span class="key">"title"</span>: <span class="val">"Patient Intake Form"</span>,
+    <span class="key">"item"</span>: [
+      { <span class="key">"linkId"</span>: <span class="val">"1"</span>, <span class="key">"text"</span>: <span class="val">"Full Name"</span>, <span class="key">"type"</span>: <span class="val">"string"</span> },
+      { <span class="key">"linkId"</span>: <span class="val">"2"</span>, <span class="key">"text"</span>: <span class="val">"Allergies"</span>, <span class="key">"type"</span>: <span class="val">"text"</span> }
+    ]
+  }
+}</div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--purple)">
+    <h3 style="margin-top:0">SMART Health Cards</h3>
+    <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a signing strategy.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
+  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"shc_v2"</span>]
+}</div>
+  </div>
+
+  <p>A full query combines these into a <code>credentials</code> array. Use <code>credential_sets</code> with <code>required: false</code> to mark items as optional:</p>
+  <div class="expand-code">{
+  <span class="key">"credentials"</span>: [
+    { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
+    { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } },
+    { <span class="key">"id"</span>: <span class="val">"req_immunization"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...Immunization"</span>, <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>] } }
+  ],
+  <span class="key">"credential_sets"</span>: [
+    { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_immunization"</span>]], <span class="key">"required"</span>: false }
+  ]
+}</div>
+</section>
+
+<!-- ======================================== -->
+<section>
   <h2>The Request: From URL to Credentials</h2>
   <p>A SMART Health Check-in request is a series of expansions. A compact bootstrap URL
     resolves into a signed JWT, which contains the full request parameters including the
@@ -330,61 +385,6 @@
       </div>
     </div>
   </div>
-</section>
-
-<!-- ======================================== -->
-<section>
-  <h2>What Can Be Requested</h2>
-  <p>The <code>dcql_query</code> in the signed Request Object specifies what health data is needed. Three kinds of data can be requested through the <code>meta</code> field:</p>
-
-  <div class="card" style="border-left:4px solid var(--blue)">
-    <h3 style="margin-top:0">FHIR Resources</h3>
-    <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
-    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
-  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
-}</div>
-  </div>
-
-  <div class="card" style="border-left:4px solid var(--green)">
-    <h3 style="margin-top:0">Questionnaires</h3>
-    <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill answers from existing records. Returned as a FHIR QuestionnaireResponse.</p>
-    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
-  <span class="key">"questionnaire"</span>: {
-    <span class="key">"resourceType"</span>: <span class="val">"Questionnaire"</span>,
-    <span class="key">"title"</span>: <span class="val">"Patient Intake Form"</span>,
-    <span class="key">"item"</span>: [
-      { <span class="key">"linkId"</span>: <span class="val">"1"</span>, <span class="key">"text"</span>: <span class="val">"Full Name"</span>, <span class="key">"type"</span>: <span class="val">"string"</span> },
-      { <span class="key">"linkId"</span>: <span class="val">"2"</span>, <span class="key">"text"</span>: <span class="val">"Allergies"</span>, <span class="key">"type"</span>: <span class="val">"text"</span> }
-    ]
-  }
-}</div>
-  </div>
-
-  <div class="card" style="border-left:4px solid var(--purple)">
-    <h3 style="margin-top:0">SMART Health Cards</h3>
-    <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a signing strategy.</p>
-    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
-  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
-  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"shc_v2"</span>]
-}</div>
-  </div>
-
-  <p>A full query combines these into a <code>credentials</code> array. Use <code>credential_sets</code> with <code>required: false</code> to mark items as optional:</p>
-  <div class="expand-code">{
-  <span class="key">"credentials"</span>: [
-    { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
-    { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } },
-    { <span class="key">"id"</span>: <span class="val">"req_immunization"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...Immunization"</span>, <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>] } }
-  ],
-  <span class="key">"credential_sets"</span>: [
-    { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
-    { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false },
-    { <span class="key">"options"</span>: [[<span class="val">"req_immunization"</span>]], <span class="key">"required"</span>: false }
-  ]
-}</div>
 </section>
 
 <!-- ======================================== -->
