@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { request, maybeHandleReturn, type DCQLQuery, type RehydratedResponse } from 'smart-health-checkin';
 
 // In production, set this to your relay's URL.
@@ -34,6 +34,27 @@ function Field({ label, value }: { label: string; value?: string }) {
   );
 }
 
+function CollapsibleJson({ title, data }: { title: string; data: object | null }) {
+  const [open, setOpen] = useState(false);
+  if (!data) return null;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{ padding: '10px 15px', background: '#0f172a', borderRadius: open ? '8px 8px 0 0' : 8, fontWeight: 600, color: '#94a3b8', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <span style={{ marginRight: 8, fontSize: 10 }}>{open ? '▾' : '▸'}</span>
+        {title}
+      </div>
+      {open && (
+        <pre style={{ margin: 0, padding: 15, background: '#1e293b', borderRadius: '0 0 8px 8px', overflow: 'auto', fontFamily: 'monospace', fontSize: 11, color: '#e2e8f0', maxHeight: 400, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 function ResultCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16, marginTop: 12 }}>
@@ -47,7 +68,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RehydratedResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [debugOpen, setDebugOpen] = useState(false);
   const [requestInfo, setRequestInfo] = useState<object | null>(null);
 
   useEffect(() => { maybeHandleReturn(); }, []);
@@ -147,19 +167,9 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ marginTop: 24 }}>
-            <div
-              onClick={() => setDebugOpen(!debugOpen)}
-              style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', userSelect: 'none' }}
-            >
-              {debugOpen ? '▾' : '▸'} Protocol details
-            </div>
-            {debugOpen && requestInfo && (
-              <pre style={{ background: '#1e293b', color: '#e2e8f0', padding: 12, borderRadius: 8, fontSize: 11, overflow: 'auto', marginTop: 8 }}>
-                {JSON.stringify(requestInfo, null, 2)}
-              </pre>
-            )}
-          </div>
+          <CollapsibleJson title="Bootstrap Request" data={requestInfo} />
+          <CollapsibleJson title="Wire Response (vp_token)" data={result ? { state: result.state, vp_token: result.vp_token } : null} />
+          <CollapsibleJson title="Full Response" data={result} />
         </div>
       </div>
 
