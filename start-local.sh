@@ -1,15 +1,16 @@
 #!/bin/bash
+set -m  # enable job control so we get a process group
 
 # SMART Health Check-in - Multi-Origin Local Development
 
 cleanup() {
   echo ""
   echo "🛑 Stopping all servers..."
-  pkill -P $$ 2>/dev/null
+  kill 0 2>/dev/null  # kill entire process group
   exit 0
 }
 
-trap cleanup SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
 echo "🔨 Building project..."
 bun build.ts
@@ -28,14 +29,9 @@ echo ""
 
 BUILD_DIR="build/smart-health-checkin-demo"
 
-echo "Starting Verifier + Demo on port 3000..."
-(VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" ALLOWED_SAME_DEVICE_ORIGINS="*" PORT=3000 bun demo/serve-demo.ts 2>&1 | sed "s/^/[Verifier] /") &
-
-echo "Starting Check-in on port 3001..."
-(cd "$BUILD_DIR/checkin" && bunx http-server -p 3001 -c-1 2>&1 | sed "s/^/[Check-in] /") &
-
-echo "Starting Flexpa on port 3002..."
-(cd "$BUILD_DIR/source-flexpa" && bunx http-server -p 3002 -c-1 2>&1 | sed "s/^/[Flexpa] /") &
+VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" ALLOWED_SAME_DEVICE_ORIGINS="*" PORT=3000 bun demo/serve-demo.ts &
+(cd "$BUILD_DIR/checkin" && bunx http-server -p 3001 -c-1) &
+(cd "$BUILD_DIR/source-flexpa" && bunx http-server -p 3002 -c-1) &
 
 sleep 2
 
