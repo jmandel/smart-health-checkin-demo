@@ -265,7 +265,7 @@ h1 {
 .browser-header {
   background: #0f172a;
   color: #94a3b8;
-  padding: 8px 16px;
+  padding: 10px 15px;
   border-radius: 8px 8px 0 0;
   font-size: 12px;
   font-weight: 600;
@@ -273,13 +273,76 @@ h1 {
   letter-spacing: 0.05em;
 }
 
-.browser-content {
-  background: #1e293b;
-  color: #e2e8f0;
+.credentials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
   padding: 16px;
+  background: #f8fafc;
   border-radius: 0 0 8px 8px;
-  overflow-x: auto;
-  font-size: 12px;
-  line-height: 1.5;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+}
+
+.resource-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  border-left: 4px solid #94a3b8;
+}
+
+.resource-coverage { border-left-color: #0284c7; }
+.resource-patient { border-left-color: #7c3aed; }
+.resource-questionnaire { border-left-color: #059669; }
+
+.resource-type {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.resource-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.resource-field-label { color: #64748b; }
+.resource-field-value { font-weight: 500; color: #1e293b; }
+
+.collapsible-json { margin-top: 8px; }
+
+.collapsible-header {
+  padding: 10px 15px;
+  background: #0f172a;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-header:hover { background: #1e293b; }
+
+.collapsible-arrow { margin-right: 8px; font-size: 10px; }
+
+.collapsible-content {
   margin: 0;
+  padding: 15px;
+  background: #1e293b;
+  border-radius: 0 0 8px 8px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 12px;
+  color: #e2e8f0;
+  max-height: 400px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
