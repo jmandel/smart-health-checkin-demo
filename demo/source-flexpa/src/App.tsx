@@ -103,10 +103,10 @@ function parseRequest(): ParsedRequest | { error: string } {
     return { error: 'Missing response_uri for direct_post.jwt' };
   }
 
-  // Verify response_uri is under the redirect_uri from client_id
+  // Verify response_uri matches the redirect_uri from client_id exactly
   const redirectUri = clientId.substring('redirect_uri:'.length);
-  if (!responseUri.startsWith(redirectUri)) {
-    return { error: `response_uri must be under the client_id redirect_uri (${redirectUri})` };
+  if (responseUri !== redirectUri) {
+    return { error: `response_uri must match the client_id redirect_uri exactly` };
   }
 
   let clientMetadata: ClientMetadata;

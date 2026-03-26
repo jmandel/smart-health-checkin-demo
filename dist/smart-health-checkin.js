@@ -1509,11 +1509,8 @@ async function request(dcqlQuery, opts) {
   const timeout = opts.timeout ?? 2 * 60 * 1000;
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
   const sessionId = await createRelaySession(relayUrl);
-  const redirectUrl = new URL(location.href);
-  redirectUrl.hash = "";
-  const redirectUri = redirectUrl.toString();
-  const clientId = `redirect_uri:${redirectUri}`;
   const responseUri = `${relayUrl}/post/${sessionId}`;
+  const clientId = `redirect_uri:${responseUri}`;
   const clientMetadata = {
     jwks: { keys: [publicJwk] },
     encrypted_response_enc_values_supported: ["A256GCM"]

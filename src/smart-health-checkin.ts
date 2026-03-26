@@ -211,12 +211,9 @@ export async function request(
   const sessionId = await createRelaySession(relayUrl);
 
   // Build OID4VP request
-  const redirectUrl = new URL(location.href);
-  redirectUrl.hash = '';
-  const redirectUri = redirectUrl.toString();
-  const clientId = `redirect_uri:${redirectUri}`;
-
+  // redirect_uri and response_uri must match exactly
   const responseUri = `${relayUrl}/post/${sessionId}`;
+  const clientId = `redirect_uri:${responseUri}`;
   const clientMetadata: ClientMetadata = {
     jwks: { keys: [publicJwk] },
     encrypted_response_enc_values_supported: ['A256GCM']
