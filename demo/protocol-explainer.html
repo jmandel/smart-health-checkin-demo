@@ -265,7 +265,18 @@
   <span class="key">"response_uri"</span>: <span class="highlight">"https://clinic.example.com/oid4vp/responses/wt_7f3a..."</span>,
   <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,
   <span class="key">"nonce"</span>: <span class="val">"n-0S6_WzA2Mj"</span>,
-  <span class="key">"dcql_query"</span>: { ... },          <span class="comment">// what credentials to request</span>
+  <span class="key">"dcql_query"</span>: {               <span class="comment">// what credentials to request (see below)</span>
+    <span class="key">"credentials"</span>: [
+      { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+        <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...C4DIC-Coverage"</span> } },
+      { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+        <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } }
+    ],
+    <span class="key">"credential_sets"</span>: [
+      { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+      { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false }
+    ]
+  },
   <span class="key">"client_metadata"</span>: {
     <span class="key">"jwks"</span>: { <span class="key">"keys"</span>: [{       <span class="comment">// ephemeral encryption key for THIS request</span>
       <span class="key">"kty"</span>: <span class="val">"EC"</span>, <span class="key">"crv"</span>: <span class="val">"P-256"</span>, <span class="key">"use"</span>: <span class="val">"enc"</span>, <span class="key">"alg"</span>: <span class="val">"ECDH-ES"</span>,
