@@ -30,6 +30,8 @@
   section + section { border-top: 1px solid #e2e8f0; }
   h2 { font-size: 28px; margin: 0 0 24px; }
   h3 { font-size: 20px; margin: 32px 0 12px; color: var(--blue-dark); }
+  .anchor { color: var(--slate-light); text-decoration: none; font-weight: 400; margin-left: 6px; font-size: 0.7em; }
+  .anchor:hover { color: var(--blue); }
 
   .card {
     background: var(--card); border-radius: 12px; padding: 24px;
@@ -604,5 +606,15 @@ const result = await request(dcqlQuery, {
   <a href="https://github.com/jmandel/smart-health-checkin-demo">GitHub</a>
 </div>
 
+<script>
+document.querySelectorAll('h2[id], h3[id]').forEach(function(el) {
+  var a = document.createElement('a');
+  a.href = '#' + el.id;
+  a.className = 'anchor';
+  a.textContent = '\u00B6';
+  a.title = 'Link to this section';
+  el.appendChild(a);
+});
+</script>
 </body>
 </html>
