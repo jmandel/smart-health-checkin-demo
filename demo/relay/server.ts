@@ -156,6 +156,15 @@ Bun.serve({
         return new Response('Forbidden', { status: 403 });
       }
 
+      // If path is a directory without trailing slash, redirect to add it
+      // so relative paths in index.html resolve correctly
+      if (!url.pathname.endsWith('/')) {
+        const indexFile = Bun.file(join(filePath, 'index.html'));
+        if (await indexFile.exists()) {
+          return Response.redirect(url.pathname + '/' + url.search, 301);
+        }
+      }
+
       // Try exact path, then index.html for directories
       for (const candidate of [filePath, join(filePath, 'index.html')]) {
         const file = Bun.file(candidate);
