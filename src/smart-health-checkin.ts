@@ -1,7 +1,10 @@
 /**
  * SMART Health Check-in Client Library
  * OID4VP profile for browser-based health data sharing
+ * Uses direct_post.jwt with ephemeral keys to a zero-trust relay for E2E encryption
  */
+
+import { generateKeyPair, exportJWK, compactDecrypt, type KeyLike } from 'jose';
 
 // ============================================================================
 // Types
@@ -10,7 +13,6 @@
 export interface CredentialQuery {
   id: string;
   format: 'smart_artifact';
-  optional?: boolean;
   require_cryptographic_holder_binding?: boolean;
   meta: {
     profile?: string;
@@ -20,8 +22,14 @@ export interface CredentialQuery {
   };
 }
 
+export interface CredentialSet {
+  options: string[][];
+  required: boolean;
+}
+
 export interface DCQLQuery {
   credentials: CredentialQuery[];
+  credential_sets?: CredentialSet[];
 }
 
 /**
@@ -32,14 +40,17 @@ export interface DCQLQuery {
  */
 export type ArtifactType = 'fhir_resource' | 'shc' | 'shl';
 
-export interface Artifact {
+export interface FullArtifactPresentation {
   type: ArtifactType;
   data: unknown;
+  artifact_id?: string;
 }
 
-export interface Presentation {
-  artifact: number;
+export interface RefArtifactPresentation {
+  artifact_ref: string;
 }
+
+export type Presentation = FullArtifactPresentation | RefArtifactPresentation;
 
 export interface VPToken {
   [credentialId: string]: Presentation[];
@@ -48,7 +59,6 @@ export interface VPToken {
 export interface RawResponse {
   state: string;
   vp_token: VPToken;
-  smart_artifacts: Artifact[];
 }
 
 export interface RehydratedResponse extends RawResponse {
@@ -57,9 +67,16 @@ export interface RehydratedResponse extends RawResponse {
   };
 }
 
+export interface ClientMetadata {
+  jwks: { keys: object[] };
+  encrypted_response_enc_values_supported: string[];
+}
+
 export interface RequestOptions {
   /** URL of the health app picker/check-in page */
   checkinBase: string;
+  /** Base URL of the zero-trust relay server */
+  relayUrl: string;
   /** Callback invoked when OID4VP request is constructed */
   onRequestStart?: (params: OID4VPRequestParams) => void;
   /** If true (default), response includes rehydrated credentials object */
@@ -71,7 +88,9 @@ export interface RequestOptions {
 export interface OID4VPRequestParams {
   client_id: string;
   response_type: 'vp_token';
-  response_mode: 'fragment';
+  response_mode: 'direct_post.jwt';
+  response_uri: string;
+  client_metadata: ClientMetadata;
   state: string;
   nonce: string;
   dcql_query: DCQLQuery;
@@ -80,27 +99,6 @@ export interface OID4VPRequestParams {
 export interface SHLError extends Error {
   code: string;
   state: string;
-}
-
-export interface ParsedReturnSuccess {
-  type: 'success';
-  state: string;
-  vp_token: VPToken;
-  smart_artifacts: Artifact[];
-}
-
-export interface ParsedReturnError {
-  type: 'error';
-  state: string;
-  error: string;
-  error_description?: string;
-}
-
-export type ParsedReturn = ParsedReturnSuccess | ParsedReturnError | null;
-
-export interface HandleReturnOptions {
-  /** If false, skip rendering UI (just broadcast and return) */
-  renderUI?: boolean;
 }
 
 // ============================================================================
@@ -116,87 +114,91 @@ function generateRandomState(): string {
     .join('');
 }
 
+/** Generate ephemeral ECDH-ES P-256 key pair for JWE encryption */
+async function generateEphemeralKeyPair() {
+  const { publicKey, privateKey } = await generateKeyPair('ECDH-ES', { crv: 'P-256' });
+  const publicJwk = await exportJWK(publicKey);
+  publicJwk.use = 'enc';
+  publicJwk.alg = 'ECDH-ES';
+  return { publicKey, privateKey, publicJwk };
+}
+
+/** Decrypt a compact JWE string using the ephemeral private key */
+async function decryptJwe(jwe: string, privateKey: KeyLike): Promise<unknown> {
+  const { plaintext } = await compactDecrypt(jwe, privateKey);
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+/** Create a relay session and return the session_id */
+async function createRelaySession(relayUrl: string): Promise<string> {
+  const resp = await fetch(`${relayUrl}/session`, { method: 'POST' });
+  if (!resp.ok) throw new Error(`Failed to create relay session: ${resp.status}`);
+  const data = await resp.json() as { session_id: string };
+  return data.session_id;
+}
+
+/** Poll the relay until a response arrives or timeout */
+async function pollRelay(relayUrl: string, sessionId: string, timeout: number): Promise<string> {
+  const deadline = Date.now() + timeout;
+  const interval = 1000;
+  while (Date.now() < deadline) {
+    const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
+    if (!resp.ok) throw new Error(`Relay poll error: ${resp.status}`);
+    const data = await resp.json() as { status: string; response?: string };
+    if (data.status === 'complete' && data.response) {
+      return data.response;
+    }
+    await new Promise(r => setTimeout(r, interval));
+  }
+  throw new Error('Request timeout: no response received from relay');
+}
+
 // ============================================================================
 // Core Functions
 // ============================================================================
 
 /**
- * Parse URL hash for OID4VP return parameters
- * Pure function - no side effects
- */
-export function parseReturnHash(hash: string): ParsedReturn {
-  if (!hash || hash === '#') return null;
-
-  const h = hash.startsWith('#') ? hash.slice(1) : hash;
-  const p = new URLSearchParams(h);
-  const state = p.get('state');
-
-  if (!state) return null;
-
-  const error = p.get('error');
-  if (error) {
-    return {
-      type: 'error',
-      state,
-      error,
-      error_description: p.get('error_description') || undefined
-    };
-  }
-
-  const vpToken = p.get('vp_token');
-  const smartArtifacts = p.get('smart_artifacts');
-
-  if (vpToken && smartArtifacts) {
-    return {
-      type: 'success',
-      state,
-      vp_token: JSON.parse(vpToken),
-      smart_artifacts: JSON.parse(smartArtifacts)
-    };
-  }
-
-  return null;
-}
-
-/**
- * Broadcast response to waiting request via BroadcastChannel
- */
-export function broadcastResponse(state: string, data: object): void {
-  const bc = new BroadcastChannel('shl-' + state);
-  bc.postMessage({ state, ...data });
-  bc.close();
-}
-
-/**
- * Rehydrate vp_token by resolving artifact indices to actual data
+ * Rehydrate vp_token by resolving inline references to actual data.
+ * Two-pass resolution: catalog artifact_ids, then resolve artifact_refs.
  */
 export function rehydrateResponse(response: RawResponse): RehydratedResponse {
   const credentials: { [id: string]: unknown[] } = {};
+  const catalog = new Map<string, unknown>();
 
+  // Pass 1: catalog artifact_ids
+  for (const presentations of Object.values(response.vp_token)) {
+    for (const p of presentations) {
+      if ('type' in p && 'data' in p && 'artifact_id' in p && p.artifact_id) {
+        catalog.set(p.artifact_id, (p as FullArtifactPresentation).data);
+      }
+    }
+  }
+
+  // Pass 2: resolve references
   for (const [id, presentations] of Object.entries(response.vp_token)) {
-    credentials[id] = presentations.map(presentation => {
-      const artifact = response.smart_artifacts[presentation.artifact];
-      return artifact?.data !== undefined ? artifact.data : artifact;
+    credentials[id] = presentations.map(p => {
+      if ('artifact_ref' in p) {
+        return catalog.get((p as RefArtifactPresentation).artifact_ref);
+      }
+      return (p as FullArtifactPresentation).data;
     });
   }
 
-  return {
-    ...response,
-    credentials
-  };
+  return { ...response, credentials };
 }
 
 /**
  * Initiate a SMART Health Check-in credential request
+ * Uses direct_post.jwt with ephemeral keys and a zero-trust relay
  */
 export async function request(
   dcqlQuery: DCQLQuery,
   opts: RequestOptions
 ): Promise<RawResponse | RehydratedResponse> {
   const checkinBase = opts.checkinBase.replace(/\/+$/, '');
-  if (!checkinBase) {
-    throw new Error('checkinBase required');
-  }
+  const relayUrl = opts.relayUrl.replace(/\/+$/, '');
+  if (!checkinBase) throw new Error('checkinBase required');
+  if (!relayUrl) throw new Error('relayUrl required');
 
   if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
     throw new Error('dcqlQuery must be an object with a credentials array');
@@ -207,53 +209,11 @@ export async function request(
   const shouldRehydrate = opts.rehydrate !== false;
   const timeout = opts.timeout ?? 2 * 60 * 1000;
 
-  const chan = new BroadcastChannel('shl-' + state);
-  let popup: Window | null = null;
+  // Generate ephemeral key pair for E2E encryption
+  const { privateKey, publicJwk } = await generateEphemeralKeyPair();
 
-  const done = new Promise<RawResponse | RehydratedResponse>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error('Request timeout'));
-    }, timeout);
-
-    chan.onmessage = (ev: MessageEvent) => {
-      const msg = ev.data;
-      if (!msg || msg.state !== state) return;
-
-      // Handle error responses
-      if (msg.error) {
-        cleanup();
-        const err = new Error(msg.error_description || msg.error) as SHLError;
-        err.code = msg.error;
-        err.state = msg.state;
-        reject(err);
-        return;
-      }
-
-      // Handle success responses
-      if (msg.vp_token && msg.smart_artifacts) {
-        cleanup();
-        const response: RawResponse = {
-          state: msg.state,
-          vp_token: msg.vp_token,
-          smart_artifacts: msg.smart_artifacts
-        };
-        resolve(shouldRehydrate ? rehydrateResponse(response) : response);
-      }
-    };
-
-    function cleanup() {
-      clearTimeout(timeoutId);
-      chan.close();
-      try {
-        if (popup && !popup.closed) {
-          popup.close();
-        }
-      } catch {
-        // Ignore errors closing popup
-      }
-    }
-  });
+  // Create relay session
+  const sessionId = await createRelaySession(relayUrl);
 
   // Build OID4VP request
   const redirectUrl = new URL(location.href);
@@ -261,10 +221,18 @@ export async function request(
   const redirectUri = redirectUrl.toString();
   const clientId = `redirect_uri:${redirectUri}`;
 
+  const responseUri = `${relayUrl}/post/${sessionId}`;
+  const clientMetadata: ClientMetadata = {
+    jwks: { keys: [publicJwk] },
+    encrypted_response_enc_values_supported: ['A256GCM']
+  };
+
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'vp_token',
-    response_mode: 'fragment',
+    response_mode: 'direct_post.jwt',
+    response_uri: responseUri,
+    client_metadata: JSON.stringify(clientMetadata),
     nonce,
     state,
     dcql_query: JSON.stringify(dcqlQuery)
@@ -274,7 +242,9 @@ export async function request(
     opts.onRequestStart({
       client_id: clientId,
       response_type: 'vp_token',
-      response_mode: 'fragment',
+      response_mode: 'direct_post.jwt',
+      response_uri: responseUri,
+      client_metadata: clientMetadata,
       state,
       nonce,
       dcql_query: dcqlQuery
@@ -282,73 +252,64 @@ export async function request(
   }
 
   const url = `${checkinBase}/?${params.toString()}`;
-  popup = window.open(url, '_blank');
+  const popup = window.open(url, '_blank');
 
   if (!popup) {
-    chan.close();
     throw new Error('Popup blocked - please allow popups for this site');
   }
 
-  return done;
+  try {
+    // Poll relay for encrypted response
+    const jweString = await pollRelay(relayUrl, sessionId, timeout);
+
+    // Decrypt JWE using ephemeral private key
+    const decrypted = await decryptJwe(jweString, privateKey) as {
+      state: string;
+      vp_token?: VPToken;
+      error?: string;
+      error_description?: string;
+    };
+
+    // Validate state
+    if (decrypted.state !== state) {
+      throw new Error('State mismatch in decrypted response');
+    }
+
+    // Handle error responses
+    if (decrypted.error) {
+      const err = new Error(decrypted.error_description || decrypted.error) as unknown as SHLError;
+      err.code = decrypted.error;
+      err.state = decrypted.state;
+      throw err;
+    }
+
+    if (!decrypted.vp_token) {
+      throw new Error('No vp_token in decrypted response');
+    }
+
+    const response: RawResponse = {
+      state: decrypted.state,
+      vp_token: decrypted.vp_token
+    };
+
+    return shouldRehydrate ? rehydrateResponse(response) : response;
+  } finally {
+    try {
+      if (popup && !popup.closed) popup.close();
+    } catch { /* ignore */ }
+  }
 }
 
 /**
- * Render return UI in popup window
+ * Handle return context in popup window.
+ * With direct_post.jwt, data flows through the relay, not the fragment.
+ * This function is retained for popup cleanup only.
  */
-export function renderReturnUI(success: boolean, message: string): void {
-  document.body.textContent = '';
-  const div = document.createElement('div');
-  div.style.cssText = 'font-family:system-ui;padding:40px;text-align:center;background:#0f141c;color:#e9eef5;min-height:100vh';
-
-  const h1 = document.createElement('h1');
-  h1.style.cssText = success ? 'color:#4ade80' : 'color:#f87171';
-  h1.textContent = success ? '✓ Shared' : '✗ Not Shared';
-
-  const p = document.createElement('p');
-  p.textContent = message;
-
-  div.appendChild(h1);
-  div.appendChild(p);
-  document.body.appendChild(div);
-}
-
-/**
- * Handle return context in popup window
- * Call on page load to detect and process OID4VP responses
- * @returns true if this was a return context
- */
-export async function maybeHandleReturn(opts: HandleReturnOptions = {}): Promise<boolean> {
-  const renderUI = opts.renderUI !== false;
-  const parsed = parseReturnHash(location.hash);
-
-  if (!parsed) return false;
-
-  if (parsed.type === 'error') {
-    broadcastResponse(parsed.state, {
-      error: parsed.error,
-      error_description: parsed.error_description
-    });
-
-    if (renderUI) {
-      renderReturnUI(false, parsed.error_description || parsed.error);
-      window.close();
-    }
+export async function maybeHandleReturn(): Promise<boolean> {
+  if (window.opener) {
+    window.close();
     return true;
   }
-
-  if (parsed.type === 'success') {
-    broadcastResponse(parsed.state, {
-      vp_token: parsed.vp_token,
-      smart_artifacts: parsed.smart_artifacts
-    });
-
-    if (renderUI) {
-      renderReturnUI(true, 'You can close this window.');
-      window.close();
-    }
-    return true;
-  }
-
   return false;
 }
 
@@ -361,7 +322,6 @@ declare global {
     SHL?: {
       request: typeof request;
       maybeHandleReturn: typeof maybeHandleReturn;
-      parseReturnHash: typeof parseReturnHash;
       rehydrateResponse: typeof rehydrateResponse;
     };
   }
@@ -371,7 +331,6 @@ if (typeof window !== 'undefined') {
   window.SHL = {
     request,
     maybeHandleReturn,
-    parseReturnHash,
     rehydrateResponse
   };
 }

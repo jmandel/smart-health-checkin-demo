@@ -27,7 +27,6 @@ const dcqlQuery: DCQLQuery = {
     {
       id: 'coverage-1',
       format: 'smart_artifact',
-      optional: true,
       require_cryptographic_holder_binding: false,
       meta: {
         profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage'
@@ -36,7 +35,6 @@ const dcqlQuery: DCQLQuery = {
     {
       id: 'patient-1',
       format: 'smart_artifact',
-      optional: true,
       require_cryptographic_holder_binding: false,
       meta: {
         profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient'
@@ -45,7 +43,6 @@ const dcqlQuery: DCQLQuery = {
     {
       id: 'intake-questionnaire-1',
       format: 'smart_artifact',
-      optional: true,
       require_cryptographic_holder_binding: false,
       meta: {
         questionnaire: {
@@ -63,6 +60,11 @@ const dcqlQuery: DCQLQuery = {
         }
       }
     }
+  ],
+  credential_sets: [
+    { options: [['coverage-1']], required: false },
+    { options: [['patient-1']], required: false },
+    { options: [['intake-questionnaire-1']], required: false }
   ]
 };
 
@@ -148,6 +150,7 @@ export default function App() {
     try {
       const result = await request(dcqlQuery, {
         checkinBase: config.requester.checkin,
+        relayUrl: config.relay.url,
         onRequestStart: (params) => {
           const sanitized = { ...params };
           setRequestLog(sanitized);

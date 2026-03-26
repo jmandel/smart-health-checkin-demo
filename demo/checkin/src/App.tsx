@@ -17,6 +17,8 @@ interface Request {
   client_id: string;
   response_type: string;
   response_mode: string;
+  response_uri: string | null;
+  client_metadata: string | null;
   nonce: string;
   state: string;
   dcql_query: object;
@@ -31,6 +33,8 @@ function parseRequest(): Request | { error: string } {
       const clientIdRaw = urlParams.get('client_id');
       const responseType = urlParams.get('response_type');
       const responseMode = urlParams.get('response_mode');
+      const responseUri = urlParams.get('response_uri');
+      const clientMetadata = urlParams.get('client_metadata');
       const nonce = urlParams.get('nonce');
       const state = urlParams.get('state');
 
@@ -42,7 +46,9 @@ function parseRequest(): Request | { error: string } {
         protocol: 'smart-health-checkin-v1',
         client_id: clientIdRaw,
         response_type: responseType || 'vp_token',
-        response_mode: responseMode || 'fragment',
+        response_mode: responseMode || 'direct_post.jwt',
+        response_uri: responseUri,
+        client_metadata: clientMetadata,
         nonce,
         state,
         dcql_query: JSON.parse(urlParams.get('dcql_query') || '{}')
@@ -66,10 +72,14 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: Request; disable
     const appParams = new URLSearchParams();
     appParams.set('client_id', req.client_id);
     appParams.set('response_type', 'vp_token');
-    appParams.set('response_mode', 'fragment');
+    appParams.set('response_mode', req.response_mode);
     appParams.set('state', req.state);
     appParams.set('nonce', req.nonce);
     appParams.set('dcql_query', JSON.stringify(req.dcql_query));
+
+    // Forward direct_post.jwt params
+    if (req.response_uri) appParams.set('response_uri', req.response_uri);
+    if (req.client_metadata) appParams.set('client_metadata', req.client_metadata);
 
     const launchUrl = app.launchBase + '?' + appParams.toString();
     console.log('[Check-in] Launch URL (OID4VP):', launchUrl);

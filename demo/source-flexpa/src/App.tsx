@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { importJWK, CompactEncrypt } from 'jose';
 import './styles.css';
 
 interface QuestionnaireItem {
@@ -25,12 +26,22 @@ interface CredentialMeta {
 interface Credential {
   id: string;
   format: string;
-  optional?: boolean;
   meta?: CredentialMeta;
+}
+
+interface CredentialSet {
+  options: string[][];
+  required: boolean;
 }
 
 interface DCQLQuery {
   credentials: Credential[];
+  credential_sets?: CredentialSet[];
+}
+
+interface ClientMetadata {
+  jwks: { keys: Array<Record<string, unknown>> };
+  encrypted_response_enc_values_supported?: string[];
 }
 
 interface RequestItem {
@@ -41,7 +52,29 @@ interface RequestItem {
   questionnaireUrl?: string;
 }
 
-function parseRequest(): { state: string; returnUrl: string; nonce: string; requestItems: RequestItem[]; dcqlQuery: DCQLQuery } | { error: string } {
+interface ParsedRequest {
+  state: string;
+  returnUrl: string;
+  nonce: string;
+  requestItems: RequestItem[];
+  dcqlQuery: DCQLQuery;
+  responseUri: string;
+  clientMetadata: ClientMetadata;
+}
+
+interface FullArtifactPresentation {
+  type: string;
+  data: unknown;
+  artifact_id?: string;
+}
+
+interface RefArtifactPresentation {
+  artifact_ref: string;
+}
+
+type Presentation = FullArtifactPresentation | RefArtifactPresentation;
+
+function parseRequest(): ParsedRequest | { error: string } {
   const params = new URLSearchParams(location.search);
 
   if (params.get('response_type') !== 'vp_token') {
@@ -51,6 +84,8 @@ function parseRequest(): { state: string; returnUrl: string; nonce: string; requ
   const state = params.get('state');
   const clientId = params.get('client_id');
   const nonce = params.get('nonce');
+  const responseUri = params.get('response_uri');
+  const clientMetadataRaw = params.get('client_metadata');
 
   if (!clientId?.startsWith('redirect_uri:')) {
     return { error: 'Invalid client_id: must start with redirect_uri:' };
@@ -62,6 +97,21 @@ function parseRequest(): { state: string; returnUrl: string; nonce: string; requ
 
   if (!state) {
     return { error: 'Missing state parameter' };
+  }
+
+  if (!responseUri) {
+    return { error: 'Missing response_uri for direct_post.jwt' };
+  }
+
+  let clientMetadata: ClientMetadata;
+  try {
+    clientMetadata = JSON.parse(clientMetadataRaw || '');
+  } catch {
+    return { error: 'Missing or invalid client_metadata' };
+  }
+
+  if (!clientMetadata.jwks?.keys?.length) {
+    return { error: 'client_metadata must contain jwks with at least one key' };
   }
 
   const returnUrl = clientId.substring('redirect_uri:'.length);
@@ -83,7 +133,25 @@ function parseRequest(): { state: string; returnUrl: string; nonce: string; requ
     };
   });
 
-  return { state, returnUrl, nonce, requestItems, dcqlQuery };
+  return { state, returnUrl, nonce, requestItems, dcqlQuery, responseUri, clientMetadata };
+}
+
+async function encryptAndPost(payload: object, clientMetadata: ClientMetadata, responseUri: string) {
+  const jwk = clientMetadata.jwks.keys[0];
+  const encKey = await importJWK(jwk, 'ECDH-ES');
+  const enc = clientMetadata.encrypted_response_enc_values_supported?.[0] || 'A256GCM';
+
+  const jwe = await new CompactEncrypt(
+    new TextEncoder().encode(JSON.stringify(payload))
+  )
+    .setProtectedHeader({ alg: 'ECDH-ES', enc })
+    .encrypt(encKey);
+
+  await fetch(responseUri, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `response=${encodeURIComponent(jwe)}`
+  });
 }
 
 function RequesterOrigin({ returnUrl }: { returnUrl: string }) {
@@ -118,6 +186,10 @@ function TechnicalDetails({ state, nonce, requestItems }: { state: string; nonce
       <div className="request-detail">
         <div className="label">response_mode:</div>
         <div className="value">{params.get('response_mode')}</div>
+      </div>
+      <div className="request-detail">
+        <div className="label">response_uri:</div>
+        <div className="value">{params.get('response_uri')}</div>
       </div>
       <div className="request-detail">
         <div className="label">state:</div>
@@ -247,6 +319,7 @@ export default function App() {
   const [shareClinical, setShareClinical] = useState(true);
   const [shareQuestionnaires, setShareQuestionnaires] = useState<Record<string, boolean>>({});
   const [questionnaireValues, setQuestionnaireValues] = useState<Record<string, Record<string, string>>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   // Initialize questionnaire states
   useMemo(() => {
@@ -290,99 +363,115 @@ export default function App() {
     );
   }
 
-  const { state, returnUrl, nonce, requestItems, dcqlQuery } = parsed;
+  const { state, returnUrl, nonce, requestItems, dcqlQuery, responseUri, clientMetadata } = parsed;
 
   const profiles = requestItems.filter(i => i.type === 'fhir-profile');
   const questionnaires = requestItems.filter(i => i.type === 'fhir-questionnaire');
   const hasPatient = profiles.some(p => p.profile?.toLowerCase().includes('patient'));
 
-  const handleCancel = () => {
-    const errorUrl = `${returnUrl}#error=${encodeURIComponent('access_denied')}&error_description=${encodeURIComponent('User declined to share')}&state=${encodeURIComponent(state)}`;
-    location.href = errorUrl;
+  const handleCancel = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        error: 'access_denied',
+        error_description: 'User declined to share',
+        state
+      };
+      await encryptAndPost(payload, clientMetadata, responseUri);
+      location.href = returnUrl;
+    } catch (err) {
+      console.error('Failed to post cancel response:', err);
+      location.href = returnUrl;
+    }
   };
 
-  const handleShare = () => {
-    const vp_token: Record<string, Array<{ artifact: number }>> = {};
-    const smart_artifacts: Array<{ type: string; data: unknown }> = [];
-    const artifactCache = new Map<string, number>();
+  const handleShare = async () => {
+    setSubmitting(true);
+    try {
+      const vp_token: Record<string, Presentation[]> = {};
+      const artifactIdCache = new Map<string, string>();
+      let artifactCounter = 0;
 
-    const addArtifact = (data: { type: string; data: unknown }) => {
-      const hash = JSON.stringify(data);
-      if (artifactCache.has(hash)) return artifactCache.get(hash)!;
-      const index = smart_artifacts.length;
-      smart_artifacts.push(data);
-      artifactCache.set(hash, index);
-      return index;
-    };
-
-    dcqlQuery.credentials.forEach(cred => {
-      const meta = cred.meta || {};
-      const profile = meta.profile;
-      const questionnaire = meta.questionnaire;
-
-      let resourceType: string | null = null;
-      if (profile) {
-        const match = profile.match(/StructureDefinition\/([A-Za-z0-9-]+)/);
-        if (match) {
-          const def = match[1];
-          if (def.includes('Coverage')) resourceType = 'Coverage';
-          else if (def.toLowerCase().includes('patient')) resourceType = 'Patient';
-          else resourceType = def;
+      const addPresentation = (type: string, data: unknown): Presentation => {
+        const hash = JSON.stringify({ type, data });
+        const existingId = artifactIdCache.get(hash);
+        if (existingId) {
+          return { artifact_ref: existingId };
         }
-      }
-      if (questionnaire) resourceType = 'QuestionnaireResponse';
+        const artifact_id = `art_${artifactCounter++}`;
+        artifactIdCache.set(hash, artifact_id);
+        return { artifact_id, type, data };
+      };
 
-      let isShared = false;
-      if (resourceType === 'Coverage') isShared = shareInsurance;
-      else if (resourceType === 'Patient') isShared = shareClinical;
-      else if (resourceType === 'QuestionnaireResponse') isShared = shareQuestionnaires[cred.id] ?? false;
+      dcqlQuery.credentials.forEach(cred => {
+        const meta = cred.meta || {};
+        const profile = meta.profile;
+        const questionnaire = meta.questionnaire;
 
-      if (!isShared) return;
+        let resourceType: string | null = null;
+        if (profile) {
+          const match = profile.match(/StructureDefinition\/([A-Za-z0-9-]+)/);
+          if (match) {
+            const def = match[1];
+            if (def.includes('Coverage')) resourceType = 'Coverage';
+            else if (def.toLowerCase().includes('patient')) resourceType = 'Patient';
+            else resourceType = def;
+          }
+        }
+        if (questionnaire) resourceType = 'QuestionnaireResponse';
 
-      const resources: unknown[] = [];
+        let isShared = false;
+        if (resourceType === 'Coverage') isShared = shareInsurance;
+        else if (resourceType === 'Patient') isShared = shareClinical;
+        else if (resourceType === 'QuestionnaireResponse') isShared = shareQuestionnaires[cred.id] ?? false;
 
-      if (resourceType === 'Coverage') {
-        resources.push({
-          resourceType: 'Coverage',
-          id: 'coverage-1',
-          status: 'active',
-          subscriberId: 'W123456789',
-          beneficiary: { reference: 'Patient/patient-1', display: 'Jane Doe' },
-          payor: [{ display: 'Aetna' }],
-          class: [{ type: { coding: [{ code: 'group' }] }, value: 'TECH-2024' }]
-        });
-      } else if (resourceType === 'Patient') {
-        resources.push({
-          resourceType: 'Patient',
-          id: 'patient-1',
-          name: [{ text: 'Jane Doe', family: 'Doe', given: ['Jane'] }],
-          birthDate: '1985-06-15'
-        });
-      } else if (resourceType === 'QuestionnaireResponse') {
-        const values = questionnaireValues[cred.id] || {};
-        const items = Object.entries(values)
-          .filter(([, v]) => v)
-          .map(([linkId, value]) => ({
-            linkId,
-            answer: [{ valueString: value }]
+        if (!isShared) return;
+
+        const presentations: Presentation[] = [];
+
+        if (resourceType === 'Coverage') {
+          presentations.push(addPresentation('fhir_resource', {
+            resourceType: 'Coverage',
+            id: 'coverage-1',
+            status: 'active',
+            subscriberId: 'W123456789',
+            beneficiary: { reference: 'Patient/patient-1', display: 'Jane Doe' },
+            payor: [{ display: 'Aetna' }],
+            class: [{ type: { coding: [{ code: 'group' }] }, value: 'TECH-2024' }]
           }));
+        } else if (resourceType === 'Patient') {
+          presentations.push(addPresentation('fhir_resource', {
+            resourceType: 'Patient',
+            id: 'patient-1',
+            name: [{ text: 'Jane Doe', family: 'Doe', given: ['Jane'] }],
+            birthDate: '1985-06-15'
+          }));
+        } else if (resourceType === 'QuestionnaireResponse') {
+          const values = questionnaireValues[cred.id] || {};
+          const items = Object.entries(values)
+            .filter(([, v]) => v)
+            .map(([linkId, value]) => ({
+              linkId,
+              answer: [{ valueString: value }]
+            }));
 
-        resources.push({
-          resourceType: 'QuestionnaireResponse',
-          status: 'completed',
-          item: items
-        });
-      }
+          presentations.push(addPresentation('fhir_resource', {
+            resourceType: 'QuestionnaireResponse',
+            status: 'completed',
+            item: items
+          }));
+        }
 
-      const presentations = resources.map(res => ({
-        artifact: addArtifact({ type: 'fhir_resource', data: res })
-      }));
+        vp_token[cred.id] = presentations;
+      });
 
-      vp_token[cred.id] = presentations;
-    });
-
-    const redirectUrl = `${returnUrl}#vp_token=${encodeURIComponent(JSON.stringify(vp_token))}&smart_artifacts=${encodeURIComponent(JSON.stringify(smart_artifacts))}&state=${encodeURIComponent(state)}`;
-    location.href = redirectUrl;
+      const payload = { vp_token, state };
+      await encryptAndPost(payload, clientMetadata, responseUri);
+      location.href = returnUrl;
+    } catch (err) {
+      console.error('Failed to post share response:', err);
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -427,8 +516,10 @@ export default function App() {
       ))}
 
       <div className="actions">
-        <button className="btn-secondary" onClick={handleCancel}>Cancel</button>
-        <button className="btn-primary" onClick={handleShare}>Share Selected Data</button>
+        <button className="btn-secondary" onClick={handleCancel} disabled={submitting}>Cancel</button>
+        <button className="btn-primary" onClick={handleShare} disabled={submitting}>
+          {submitting ? 'Sharing...' : 'Share Selected Data'}
+        </button>
       </div>
     </div>
   );

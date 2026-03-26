@@ -21,6 +21,9 @@ export interface Config {
     url: string;
     checkin: string;
   };
+  relay: {
+    url: string;
+  };
   checkin: {
     url: string;
     apps: AppConfig[];
@@ -38,6 +41,9 @@ function createConfig(): Config {
       requester: {
         url: 'http://requester.localhost:3000',
         checkin: 'http://checkin.localhost:3001'
+      },
+      relay: {
+        url: 'http://relay.localhost:3003'
       },
       checkin: {
         url: 'http://checkin.localhost:3001',
@@ -86,6 +92,9 @@ function createConfig(): Config {
     requester: {
       url: `${base}/requester`,
       checkin: `${base}/checkin`
+    },
+    relay: {
+      url: `${base}/relay`
     },
     checkin: {
       url: `${base}/checkin`,

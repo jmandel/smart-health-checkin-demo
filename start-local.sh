@@ -21,10 +21,11 @@ bun build.ts
 echo ""
 echo "🚀 Starting SMART Health Check-in demo in multi-origin mode..."
 echo ""
-echo "This will start 3 servers:"
+echo "This will start 4 servers:"
 echo "  • Requester:  http://requester.localhost:3000"
 echo "  • Check-in:   http://checkin.localhost:3001"
 echo "  • Flexpa:     http://flexpa.localhost:3002"
+echo "  • Relay:      http://relay.localhost:3003"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 echo ""
@@ -44,6 +45,10 @@ start_server() {
 start_server "requester" 3000 "Requester"
 start_server "checkin" 3001 "Check-in"
 start_server "source-flexpa" 3002 "Flexpa"
+
+# Start relay server (runs directly, not from build dir)
+echo "Starting Relay on port 3003..."
+(bun demo/relay/server.ts 2>&1 | sed "s/^/[Relay] /") &
 
 # Wait a moment for servers to start
 sleep 2
