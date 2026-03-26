@@ -92,13 +92,6 @@ const DEMO_APPS = [
   { dir: 'checkin', out: 'checkin' },
 ];
 
-// Build-time env var override for relay URL
-const relayUrl = process.env.RELAY_URL || '';
-const define = { '__RELAY_URL__': JSON.stringify(relayUrl) };
-if (relayUrl) {
-  console.log(`\nRelay URL override: ${relayUrl}`);
-}
-
 console.log('\nBuilding demo apps for static deployment...');
 
 // Clean and create build directory
@@ -122,7 +115,6 @@ for (const app of DEMO_APPS) {
     outdir,
     target: 'browser',
     minify: true,
-    define,
   });
 
   if (result.success) {

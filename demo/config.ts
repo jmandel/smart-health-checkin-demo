@@ -30,11 +30,6 @@ export interface Config {
   };
 }
 
-// Injected at build time by Bun's define (see build.ts).
-// Falls back to empty string if not set.
-declare const __RELAY_URL__: string;
-const RELAY_URL_OVERRIDE = typeof __RELAY_URL__ !== 'undefined' ? __RELAY_URL__ : '';
-
 function createConfig(): Config {
   const isLocalMultiOrigin = location.hostname.includes('.localhost');
   const isGitHubPages = location.hostname.includes('joshuamandel.com');
@@ -48,7 +43,7 @@ function createConfig(): Config {
         checkin: 'http://checkin.localhost:3001'
       },
       relay: {
-        url: RELAY_URL_OVERRIDE || 'http://requester.localhost:3000'
+        url: 'http://requester.localhost:3000'
       },
       checkin: {
         url: 'http://checkin.localhost:3001',
@@ -99,7 +94,7 @@ function createConfig(): Config {
       checkin: `${base}/checkin`
     },
     relay: {
-      url: RELAY_URL_OVERRIDE || location.origin
+      url: location.origin
     },
     checkin: {
       url: `${base}/checkin`,
