@@ -117,12 +117,24 @@
   .expand-code {
     background: #1e293b; color: #e2e8f0; padding: 12px 16px;
     border-radius: 6px; font-family: monospace; font-size: 12px;
-    overflow-x: auto; margin: 8px 0 12px; line-height: 1.6;
+    overflow-x: auto; margin: 8px 0 12px; line-height: 1.8;
+    white-space: pre; word-wrap: break-word;
   }
   .expand-code .key { color: #7dd3fc; }
   .expand-code .val { color: #fde68a; }
   .expand-code .comment { color: #64748b; font-style: italic; }
   .expand-code .highlight { color: #4ade80; font-weight: 600; }
+
+  .shim-step {
+    border-left: 3px dashed #94a3b8 !important;
+  }
+  .shim-step .flow-num { opacity: 0.7; }
+  .shim-badge {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; background: #f1f5f9; color: #64748b;
+    margin-left: 8px; vertical-align: middle;
+  }
 
   .badge {
     display: inline-block; padding: 3px 10px; border-radius: 10px;
@@ -318,20 +330,25 @@
 <!-- ======================================== -->
 <section>
   <h2>Same-Device Flow</h2>
+  <p class="note" style="font-size:13px">
+    Steps with dashed borders are <strong>shim orchestration</strong> — browser-side ceremony managed by the
+    <code>smart-health-checkin</code> library. In future, the W3C Digital Credentials API will handle
+    these natively, and only the protocol-level steps (wallet verification, encryption, POST) will remain.
+  </p>
   <div class="flow-diagram">
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--blue)">1</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span>
+        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Generate keys &amp; init transaction</div>
         <div class="flow-detail">Ephemeral ECDH key pair generated in browser. <code>POST /oid4vp/same-device/init</code> with the public key, <code>redirect_uri</code> (current page), and <code>dcql_query</code>. Returns <code>transaction_id</code>, <code>read_secret</code>, <code>request_uri</code>.</div>
       </div>
     </div>
 
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--blue)">2</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span>
+        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Open popup to picker</div>
         <div class="flow-detail">Popup URL: <code>checkinBase/?client_id=well_known:...&amp;request_uri=...&amp;request_uri_method=post</code>. Shim starts listening on BroadcastChannel.</div>
       </div>
@@ -364,10 +381,10 @@
       </div>
     </div>
 
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--blue)">6</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span>
+        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Receive response_code &amp; fetch result</div>
         <div class="flow-detail">Popup lands on portal page → <code>maybeHandleReturn()</code> broadcasts <code>response_code</code> via BroadcastChannel → shim POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> → decrypts JWE → returns credentials to app.</div>
       </div>
@@ -379,19 +396,19 @@
 <section>
   <h2>Cross-Device Flow</h2>
   <div class="flow-diagram">
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--green)">1</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Generate keys &amp; init transaction</div>
         <div class="flow-detail">Same key generation. <code>POST /oid4vp/cross-device/init</code> (requires staff session cookie). No <code>redirect_uri</code>. Returns same transaction credentials.</div>
       </div>
     </div>
 
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--green)">2</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Display QR code</div>
         <div class="flow-detail">No popup opened. <code>onRequestStart</code> gives the app <code>launch_url</code>. App renders QR code + copy/open link. Shim starts long-polling <code>/oid4vp/cross-device/results</code>.</div>
       </div>
@@ -415,10 +432,10 @@
       </div>
     </div>
 
-    <div class="flow-step">
+    <div class="flow-step shim-step">
       <div class="flow-num" style="background:var(--green)">5</div>
       <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
         <div class="flow-title">Long-poll resolves</div>
         <div class="flow-detail">Long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. Shim decrypts with ephemeral private key, validates <code>state</code>, returns credentials to app.</div>
       </div>
