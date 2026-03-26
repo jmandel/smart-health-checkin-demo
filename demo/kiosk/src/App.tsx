@@ -60,6 +60,7 @@ function QRPanel({ url }: { url: string }) {
       <div className="qr-link-row">
         <input type="text" readOnly value={url} className="qr-link-input" />
         <button onClick={handleCopy} className="qr-copy-btn">Copy</button>
+        <button onClick={() => window.open(url, '_blank')} className="qr-copy-btn">Open</button>
       </div>
     </div>
   );
