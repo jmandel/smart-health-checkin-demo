@@ -28,7 +28,7 @@ The normal deployment model is a same-origin portal, but the same-device flow al
 - `demo/portal`: same-device demo
 - `demo/kiosk`: cross-device demo
 - `demo/checkin`: shared picker / routing page
-- `demo/source-flexpa`: mock source app / wallet-side provider
+- `demo/source-app`: mock source app / wallet-side provider
 - `demo/relay`: demo verifier backend / response endpoint
 - `demo/shared`: shared demo UI helpers
 
@@ -411,7 +411,7 @@ This repository contains a fully functional reference implementation of the prot
 *   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, opens the picker in a popup, and completes the flow through a return carrying `response_code`.
 *   **Front Desk Kiosk (`demo/kiosk`)**: Cross-device demo where staff starts the request, the page shows a QR code and copyable link, and the patient completes the flow on another device.
 *   **Picker (`demo/checkin`)**: A simple UI that helps users select their health app.
-*   **Health App (`demo/source-flexpa`)**: A mock health app implementation that acts as an OID4VP Provider.
+*   **Health App (`demo/source-app`)**: A mock health app implementation that acts as an OID4VP Provider.
 *   **Verifier Backend / Response Endpoint (`demo/relay`)**: A backend that serves metadata and signed Request Objects, stores opaque encrypted responses, enforces same-device `response_code` redemption, and simulates authenticated staff sessions for cross-device use.
 *   **Shared Demo Logic (`demo/shared`)**: Shared UI helpers used by the portal and kiosk experiences.
 
@@ -423,7 +423,7 @@ To simulate the cross-origin security model locally:
 ./start-local.sh
 ```
 
-This starts all necessary servers on different ports (Requester, Check-in, Relay, and Flexpa).
+This starts all necessary servers on different ports (Requester, Check-in, Relay, and Sample Health App).
 Visit **http://requester.localhost:3000** to reach the landing page, then choose:
 
 *   **Patient Portal** for the same-device flow

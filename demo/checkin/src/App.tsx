@@ -75,7 +75,7 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
       {app.logo && <div className="card-logo">{app.logo}</div>}
       <div className="card-name">{app.name || app.id}</div>
       <div className="card-desc">
-        {disabled ? '(Example - Click Flexpa above)' : (app.description || 'Health data source')}
+        {disabled ? '(Example - Click Sample Health App above)' : (app.description || 'Health data source')}
       </div>
     </div>
   );
@@ -152,7 +152,7 @@ export default function App() {
                     key={app.id}
                     app={app}
                     req={parsed}
-                    disabled={app.id !== 'flexpa'}
+                    disabled={app.id !== 'sample-health'}
                   />
                 ))}
               </div>

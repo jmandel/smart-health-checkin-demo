@@ -164,7 +164,7 @@ Primary files:
 
 Primary files:
 - [demo/checkin/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/checkin/src/App.tsx)
-- [demo/source-flexpa/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/source-flexpa/src/App.tsx)
+- [demo/source-app/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/source-app/src/App.tsx)
 
 - Stop assuming all security-critical request parameters arrive inline in the URL.
 - Make the source app resolve and verify the signed Request Object:
@@ -184,7 +184,7 @@ Primary files:
 Primary files:
 - [demo/config.ts](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/config.ts)
 - [demo/checkin/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/checkin/src/App.tsx)
-- [demo/source-flexpa/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/source-flexpa/src/App.tsx)
+- [demo/source-app/src/App.tsx](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/source-app/src/App.tsx)
 
 - Add a demo allowlist / trust-framework configuration keyed by exact `well_known:` client identifier or bare origin.
 - For trusted verifier origins:

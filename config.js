@@ -34,15 +34,15 @@ const ZTWRConfig = (() => {
             launchBase: 'http://premera.localhost:3004'
           },
           {
-            id: 'flexpa',
-            name: 'Flexpa',
+            id: 'sample-health',
+            name: 'Sample Health App',
             description: 'Connected health data platform',
             category: 'phr',
             color: '#0d9488',
             accentColor: '#84cc16',
             logo: 'F',
             logoStyle: 'bold',
-            launchBase: 'http://flexpa.localhost:3002'
+            launchBase: 'http://sample-health.localhost:3002'
           },
           {
             id: 'bwell',
@@ -69,14 +69,14 @@ const ZTWRConfig = (() => {
         url: `${base}/checkin`,
         apps: [
           {
-            id: 'flexpa',
-            name: 'Flexpa',
+            id: 'sample-health',
+            name: 'Sample Health App',
             description: 'Connected health data platform',
             color: '#0d9488',
             accentColor: '#84cc16',
             logo: 'F',
             logoStyle: 'bold',
-            launchBase: `${base}/source-flexpa`
+            launchBase: `${base}/source-app`
           },
           {
             id: 'bwell',
@@ -110,14 +110,14 @@ const ZTWRConfig = (() => {
         url: `${base}/checkin`,
         apps: [
           {
-            id: 'flexpa',
-            name: 'Flexpa',
+            id: 'sample-health',
+            name: 'Sample Health App',
             description: 'Connected health data platform',
             color: '#0d9488',
             accentColor: '#84cc16',
             logo: 'F',
             logoStyle: 'bold',
-            launchBase: `${base}/source-flexpa`
+            launchBase: `${base}/source-app`
           },
           {
             id: 'bwell',

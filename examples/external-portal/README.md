@@ -38,7 +38,7 @@ The relay server at `smart-health-checkin.exe.xyz` must:
 2. Have this page's origin in `ALLOWED_SAME_DEVICE_ORIGINS`
 3. Serve the shim library at `/dist/smart-health-checkin.iife.js`
 4. Serve the picker UI at `/checkin/`
-5. Serve at least one source app (e.g., `/source-flexpa/`)
+5. Serve at least one source app (e.g., `/source-app/`)
 
 ## Customization
 

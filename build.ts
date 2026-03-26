@@ -89,7 +89,7 @@ const DEMO_DIR = join(ROOT, 'demo');
 const DEMO_APPS = [
   { dir: 'portal', out: 'portal' },
   { dir: 'kiosk', out: 'kiosk' },
-  { dir: 'source-flexpa', out: 'source-flexpa' },
+  { dir: 'source-app', out: 'source-app' },
   { dir: 'checkin', out: 'checkin' },
 ];
 

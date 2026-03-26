@@ -225,7 +225,7 @@
       </tr>
       <tr>
         <td style="padding:10px 12px;font-weight:600"><span class="actor actor-wallet">Wallet / Source App</span></td>
-        <td style="padding:10px 12px">The patient's health app that holds their data. Verifies the signed Request Object, collects consent, encrypts the response, and POSTs it to the Verifier's response endpoint. In the demo: Flexpa.</td>
+        <td style="padding:10px 12px">The patient's health app that holds their data. Verifies the signed Request Object, collects consent, encrypts the response, and POSTs it to the Verifier's response endpoint. In the demo: Sample Health App.</td>
       </tr>
     </table>
   </div>
@@ -589,7 +589,7 @@ const result = await request(dcqlQuery, {
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600;width:180px">Portal</td><td style="padding:8px">Same-device demo. Calls shim with <code>flow: 'same-device'</code>.</td></tr>
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Kiosk</td><td style="padding:8px">Cross-device demo. Staff login, QR code, long-poll. <code>flow: 'cross-device'</code>.</td></tr>
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Picker</td><td style="padding:8px">Shared routing page. Receives bootstrap params, forwards to source app.</td></tr>
-      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Source (Flexpa)</td><td style="padding:8px">Mock wallet. Fetches metadata, verifies signed Request Object, collects consent, encrypts and POSTs response.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Source (Sample Health App)</td><td style="padding:8px">Mock wallet. Fetches metadata, verifies signed Request Object, collects consent, encrypts and POSTs response.</td></tr>
       <tr><td style="padding:8px;font-weight:600">Relay / Verifier</td><td style="padding:8px">Backend. Serves <code>.well-known</code>, signs Request Objects, stores encrypted responses, enforces session binding for cross-device.</td></tr>
     </table>
   </div>

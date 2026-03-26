@@ -52,24 +52,24 @@ test.describe('SMART Health Check-in Flow', () => {
     await expect(popup.locator('.section-title').first()).toBeVisible();
     await expect(popup.getByText('Health Plans')).toBeVisible();
 
-    // Click on Flexpa (should be in "Connected Apps" category)
-    const flexpaCard = popup.locator('.card:not(.disabled)').filter({ hasText: 'Flexpa' });
-    await expect(flexpaCard).toBeVisible();
+    // Click on Sample Health App (should be in "Connected Apps" category)
+    const sample-healthCard = popup.locator('.card:not(.disabled)').filter({ hasText: 'Sample Health App' });
+    await expect(sample-healthCard).toBeVisible();
 
     // Listen for the source app page
     const sourcePromise = context.waitForEvent('page');
-    await flexpaCard.click();
+    await sample-healthCard.click();
 
     // Wait for the source page to open
     const sourcePage = await sourcePromise;
 
-    // Debug: Print console logs from source page (Flexpa)
-    sourcePage.on('console', msg => console.log(`[Flexpa Console] ${msg.text()}`));
+    // Debug: Print console logs from source page (Sample Health App)
+    sourcePage.on('console', msg => console.log(`[Sample Health App Console] ${msg.text()}`));
 
     await sourcePage.waitForLoadState('networkidle');
 
-    // Verify we're on the Flexpa page
-    await expect(sourcePage.locator('h1')).toContainText('Flexpa');
+    // Verify we're on the Sample Health App page
+    await expect(sourcePage.locator('h1')).toContainText('Sample Health App');
 
     // Verify the auto-fill banner is shown
     await expect(sourcePage.locator('.auto-filled-banner')).toContainText('We found matching records');

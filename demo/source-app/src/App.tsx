@@ -439,7 +439,7 @@ export default function App() {
         <div className="logo">
           {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
         </div>
-        <h1>Flexpa</h1>
+        <h1>Sample Health App</h1>
         <p style={{ color: '#9ca3af' }}>Verifying request...</p>
       </div>
     );
@@ -451,7 +451,7 @@ export default function App() {
         <div className="logo">
           {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
         </div>
-        <h1>Flexpa</h1>
+        <h1>Sample Health App</h1>
         <div className="error-message">{parsed?.error || 'Unknown error'}</div>
       </div>
     );
@@ -465,7 +465,7 @@ export default function App() {
         <div className="logo">
           {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
         </div>
-        <h1>Flexpa</h1>
+        <h1>Sample Health App</h1>
         <h2 style={{ color: '#4ade80', marginTop: '24px' }}>Submission complete</h2>
         <p style={{ color: '#9ca3af', marginTop: '8px' }}>You can close this tab.</p>
       </div>
@@ -585,8 +585,8 @@ export default function App() {
       <div className="logo">
         {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
       </div>
-      <h1>Flexpa</h1>
-      <div className="subtitle">Building blocks of health data</div>
+      <h1>Sample Health App</h1>
+      <div className="subtitle">Your health data, your choice</div>
 
       <RequesterOrigin verifierOrigin={verifierOrigin} />
       <TechnicalDetails state={state} nonce={nonce} requestItems={requestItems}
