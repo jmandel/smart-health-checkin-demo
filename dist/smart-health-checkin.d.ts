@@ -69,11 +69,20 @@ export interface RequestOptions {
 }
 export interface RequestStartInfo {
     flow: 'same-device' | 'cross-device';
-    client_id: string;
-    request_uri: string;
+    /** The protocol-level bootstrap request (what the wallet/picker sees) */
+    bootstrap: {
+        client_id: string;
+        request_uri: string;
+        request_uri_method: string;
+    };
+    /** Full launch URL including bootstrap params */
     launch_url: string;
-    transaction_id: string;
-    request_id: string;
+    /** Shim-internal transaction state (not sent to wallet) */
+    transaction: {
+        transaction_id: string;
+        request_id: string;
+        read_secret: string;
+    };
 }
 export interface SHLError extends Error {
     code: string;

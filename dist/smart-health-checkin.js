@@ -1559,11 +1559,17 @@ async function request(dcqlQuery, opts) {
   if (opts.onRequestStart) {
     opts.onRequestStart({
       flow,
-      client_id,
-      request_uri: txn.request_uri,
+      bootstrap: {
+        client_id,
+        request_uri: txn.request_uri,
+        request_uri_method: "post"
+      },
       launch_url,
-      transaction_id: txn.transaction_id,
-      request_id: txn.request_id
+      transaction: {
+        transaction_id: txn.transaction_id,
+        request_id: txn.request_id,
+        read_secret: txn.read_secret
+      }
     });
   }
   if (flow === "same-device") {

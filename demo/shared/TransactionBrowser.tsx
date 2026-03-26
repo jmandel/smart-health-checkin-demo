@@ -132,9 +132,18 @@ function CollapsibleJson({ title, data }: { title: string; data: object | null }
   );
 }
 
+interface RequestInfo {
+  flow?: string;
+  bootstrap?: object;
+  launch_url?: string;
+  transaction?: object;
+  [key: string]: unknown;
+}
+
 export function TransactionBrowser({ request: req, response }: { request: object | null; response: object | null }) {
   if (!req && !response) return null;
 
+  const reqInfo = req as RequestInfo | null;
   const resp = response as { credentials?: Record<string, unknown[]>; vp_token?: object; state?: string } | null;
   const credentials = resp?.credentials;
   const wireResponse = resp?.vp_token ? { state: resp.state, vp_token: resp.vp_token } : null;
@@ -154,7 +163,8 @@ export function TransactionBrowser({ request: req, response }: { request: object
         </div>
       )}
 
-      <CollapsibleJson title="OID4VP Bootstrap Request" data={req} />
+      <CollapsibleJson title="Bootstrap Request (sent to wallet/picker)" data={reqInfo?.bootstrap || null} />
+      <CollapsibleJson title="Shim Transaction (internal, not sent to wallet)" data={reqInfo?.transaction || null} />
       <CollapsibleJson title="Wire Response (vp_token)" data={wireResponse} />
     </div>
   );

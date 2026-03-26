@@ -175,7 +175,8 @@ export default function App() {
             </div>
           )}
 
-          <CollapsibleJson title="Bootstrap Request" data={requestInfo} />
+          <CollapsibleJson title="Bootstrap Request (sent to wallet/picker)" data={(requestInfo as any)?.bootstrap || null} />
+          <CollapsibleJson title="Shim Transaction (internal)" data={(requestInfo as any)?.transaction || null} />
           <CollapsibleJson title="Wire Response (vp_token)" data={result ? { state: result.state, vp_token: result.vp_token } : null} />
           <CollapsibleJson title="Full Response" data={result} />
         </div>
