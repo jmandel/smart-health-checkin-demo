@@ -125,11 +125,17 @@ for (const app of DEMO_APPS) {
   }
 }
 
-// Copy landing page
-if (existsSync(join(DEMO_DIR, 'index.html'))) {
-  cpSync(join(DEMO_DIR, 'index.html'), join(BUILD_DIR, 'index.html'));
-  console.log('  ✓ index.html (landing page)');
-}
+// Write redirect landing page for static hosting (GH Pages)
+const redirectHtml = `<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=https://smart-health-checkin.exe.xyz/">
+<title>Redirecting...</title>
+</head><body>
+<p>Redirecting to <a href="https://smart-health-checkin.exe.xyz/">smart-health-checkin.exe.xyz</a>...</p>
+</body></html>`;
+await Bun.write(join(BUILD_DIR, 'index.html'), redirectHtml);
+console.log('  ✓ index.html (redirect to exe.xyz)');
 
 // - Library dist files (for CDN-style access)
 cpSync(DIST, join(BUILD_DIR, 'dist'), { recursive: true });
