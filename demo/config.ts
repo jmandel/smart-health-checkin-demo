@@ -94,7 +94,9 @@ function createConfig(): Config {
       checkin: `${base}/checkin`
     },
     relay: {
-      url: `${base}/relay`
+      url: isGitHubPages
+        ? 'https://vprelay.exe.xyz'
+        : 'http://localhost:3003'
     },
     checkin: {
       url: `${base}/checkin`,

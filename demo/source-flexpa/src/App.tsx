@@ -320,6 +320,7 @@ export default function App() {
   const [shareQuestionnaires, setShareQuestionnaires] = useState<Record<string, boolean>>({});
   const [questionnaireValues, setQuestionnaireValues] = useState<Record<string, Record<string, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // Initialize questionnaire states
   useMemo(() => {
@@ -365,9 +366,27 @@ export default function App() {
 
   const { state, returnUrl, nonce, requestItems, dcqlQuery, responseUri, clientMetadata } = parsed;
 
+  if (submitted) {
+    return (
+      <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
+        <div className="logo">
+          {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
+        </div>
+        <h1>Flexpa</h1>
+        <h2 style={{ color: '#4ade80', marginTop: '24px' }}>Submission complete</h2>
+        <p style={{ color: '#9ca3af', marginTop: '8px' }}>You can close this tab.</p>
+      </div>
+    );
+  }
+
   const profiles = requestItems.filter(i => i.type === 'fhir-profile');
   const questionnaires = requestItems.filter(i => i.type === 'fhir-questionnaire');
   const hasPatient = profiles.some(p => p.profile?.toLowerCase().includes('patient'));
+
+  const tryCloseOrShowDone = () => {
+    setSubmitted(true);
+    try { window.close(); } catch { /* ignore */ }
+  };
 
   const handleCancel = async () => {
     setSubmitting(true);
@@ -378,11 +397,10 @@ export default function App() {
         state
       };
       await encryptAndPost(payload, clientMetadata, responseUri);
-      location.href = returnUrl;
     } catch (err) {
       console.error('Failed to post cancel response:', err);
-      location.href = returnUrl;
     }
+    tryCloseOrShowDone();
   };
 
   const handleShare = async () => {
@@ -467,7 +485,7 @@ export default function App() {
 
       const payload = { vp_token, state };
       await encryptAndPost(payload, clientMetadata, responseUri);
-      location.href = returnUrl;
+      tryCloseOrShowDone();
     } catch (err) {
       console.error('Failed to post share response:', err);
       setSubmitting(false);
