@@ -163,18 +163,14 @@
     <table style="width:100%;border-collapse:collapse">
       <tr style="border-bottom:1px solid #e2e8f0">
         <td style="padding:10px 12px;font-weight:600;width:160px"><span class="actor actor-verifier">Verifier</span></td>
-        <td style="padding:10px 12px">The healthcare provider requesting data. Controls the <code>well_known:</code> origin, hosts metadata and signing keys, stores encrypted responses. In the demo: the relay/backend server.</td>
-      </tr>
-      <tr style="border-bottom:1px solid #e2e8f0">
-        <td style="padding:10px 12px;font-weight:600"><span class="actor actor-shim">Requester / Shim</span></td>
-        <td style="padding:10px 12px">The browser-side client library that initiates the flow on behalf of the Verifier. Generates ephemeral encryption keys, manages the transaction, decrypts the response. In the demo: the <code>smart-health-checkin</code> shim running in the portal or kiosk page.</td>
+        <td style="padding:10px 12px">The healthcare provider requesting data. Controls the <code>well_known:</code> origin, hosts metadata and signing keys, signs Request Objects, stores encrypted responses. The browser-side shim library (<code>smart-health-checkin</code>) is part of the Verifier's frontend. In the demo: the relay/backend server + the portal or kiosk page.</td>
       </tr>
       <tr style="border-bottom:1px solid #e2e8f0">
         <td style="padding:10px 12px;font-weight:600"><span class="actor actor-picker">Picker</span></td>
-        <td style="padding:10px 12px">A routing UI where the patient chooses which health app to use. Receives only the minimal bootstrap parameters and forwards them. In the demo: the check-in page.</td>
+        <td style="padding:10px 12px">An optional routing UI where the patient chooses which health app to use. Receives only the minimal bootstrap parameters and forwards them. In the demo: the check-in page.</td>
       </tr>
       <tr>
-        <td style="padding:10px 12px;font-weight:600"><span class="actor actor-wallet">Source App / Wallet</span></td>
+        <td style="padding:10px 12px;font-weight:600"><span class="actor actor-wallet">Wallet / Source App</span></td>
         <td style="padding:10px 12px">The patient's health app that holds their data. Verifies the signed Request Object, collects consent, encrypts the response, and POSTs it to the Verifier's response endpoint. In the demo: Flexpa.</td>
       </tr>
     </table>
@@ -195,7 +191,6 @@
       from the verifier origin. This document provides:</p>
     <ul>
       <li><code>jwks_uri</code> — signing keys for verifying Request Objects</li>
-      <li><code>response_uri_prefixes</code> — allowed destinations for encrypted responses</li>
       <li>Optional display fields (<code>client_name</code>, <code>logo_uri</code>) — but these
         must NOT be trusted without an out-of-band allowlist</li>
     </ul>
@@ -221,7 +216,7 @@ request_uri_method=post</pre>
       <li><code>dcql_query</code> — what credentials are being requested</li>
       <li><code>state</code>, <code>nonce</code> — correlation and freshness</li>
     </ul>
-    <p>The wallet verifies the JWT signature against keys from <code>jwks_uri</code> before trusting any of these values.</p>
+    <p>The wallet verifies the JWT signature against keys from <code>jwks_uri</code> before trusting any of these values. Because the Request Object is signed by the Verifier's key, the <code>response_uri</code> is authenticated by the signature itself — no separate metadata validation is needed.</p>
   </div>
 
   <div class="card">
@@ -269,7 +264,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--blue)">1</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim</span>
+        <span class="actor actor-verifier">Verifier (browser)</span>
         <div class="flow-title">Generate keys &amp; init transaction</div>
         <div class="flow-detail">Ephemeral ECDH key pair generated in browser. <code>POST /oid4vp/same-device/init</code> with the public key, <code>redirect_uri</code> (current page), and <code>dcql_query</code>. Returns <code>transaction_id</code>, <code>read_secret</code>, <code>request_uri</code>.</div>
       </div>
@@ -278,7 +273,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--blue)">2</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim</span>
+        <span class="actor actor-verifier">Verifier (browser)</span>
         <div class="flow-title">Open popup to picker</div>
         <div class="flow-detail">Popup URL: <code>checkinBase/?client_id=well_known:...&amp;request_uri=...&amp;request_uri_method=post</code>. Shim starts listening on BroadcastChannel.</div>
       </div>
@@ -314,7 +309,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--blue)">6</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim</span>
+        <span class="actor actor-verifier">Verifier (browser)</span>
         <div class="flow-title">Receive response_code &amp; fetch result</div>
         <div class="flow-detail">Popup lands on portal page → <code>maybeHandleReturn()</code> broadcasts <code>response_code</code> via BroadcastChannel → shim POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> → decrypts JWE → returns credentials to app.</div>
       </div>
@@ -329,7 +324,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--green)">1</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span>
         <div class="flow-title">Generate keys &amp; init transaction</div>
         <div class="flow-detail">Same key generation. <code>POST /oid4vp/cross-device/init</code> (requires staff session cookie). No <code>redirect_uri</code>. Returns same transaction credentials.</div>
       </div>
@@ -338,7 +333,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--green)">2</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span>
         <div class="flow-title">Display QR code</div>
         <div class="flow-detail">No popup opened. <code>onRequestStart</code> gives the app <code>launch_url</code>. App renders QR code + copy/open link. Shim starts long-polling <code>/oid4vp/cross-device/results</code>.</div>
       </div>
@@ -365,7 +360,7 @@ request_uri_method=post</pre>
     <div class="flow-step">
       <div class="flow-num" style="background:var(--green)">5</div>
       <div class="flow-body">
-        <span class="actor actor-shim">Shim (Kiosk)</span>
+        <span class="actor actor-verifier">Verifier (kiosk)</span>
         <div class="flow-title">Long-poll resolves</div>
         <div class="flow-detail">Long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. Shim decrypts with ephemeral private key, validates <code>state</code>, returns credentials to app.</div>
       </div>

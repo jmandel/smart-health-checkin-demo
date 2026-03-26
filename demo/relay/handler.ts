@@ -187,7 +187,6 @@ export async function createRelayHandler(config: RelayConfig) {
     client_id: clientId,
     jwks_uri: `${verifierBase}/.well-known/jwks.json`,
     request_object_signing_alg_values_supported: ['ES256'],
-    response_uri_prefixes: [`${verifierBase}/oid4vp/responses/`],
     vp_formats_supported: {},
     ...extraMetadata,
   };

@@ -123,7 +123,6 @@ The metadata document MUST be JSON, MUST be served with the `application/json` C
   "tos_uri": "https://clinic.example.com/terms",
   "jwks_uri": "https://clinic.example.com/.well-known/jwks.json",
   "request_object_signing_alg_values_supported": ["ES256"],
-  "response_uri_prefixes": ["https://clinic.example.com/oid4vp/responses/"],
   "vp_formats_supported": {
     "dc+sd-jwt": {
       "sd-jwt_alg_values": ["ES256"],
@@ -172,7 +171,7 @@ The actual request parameters MUST be conveyed in a signed Request Object fetche
 *   `client_id`: REQUIRED. MUST exactly match the bootstrap `client_id`.
 *   `response_type`: MUST be `vp_token`.
 *   `response_mode`: MUST be `direct_post.jwt`.
-*   `response_uri`: REQUIRED. MUST be a request-specific write endpoint and MUST begin with one of the `response_uri_prefixes` published in the metadata document.
+*   `response_uri`: REQUIRED. MUST be a request-specific write endpoint. Because the Request Object is signed by the Verifier's key (verified via `jwks_uri`), the `response_uri` is authenticated by the signature itself and does not require separate metadata validation.
 *   `client_metadata`: REQUIRED. Must contain the Ephemeral public key used by the Wallet to encrypt the response for this specific transaction.
     *   `jwks`: A JSON Web Key Set containing the Ephemeral public encryption key.
     *   `encrypted_response_enc_values_supported`: Array of supported encryption algorithms (e.g., `["A256GCM"]`).
@@ -217,7 +216,7 @@ Wallet processing rules for this profile:
 2. Fetch the Request Object from `request_uri`.
 3. Verify the Request Object signature using keys from the discovered `jwks_uri`.
 4. Use only the parameters from the signed Request Object for security-sensitive processing.
-5. Reject the request if `client_id`, `response_uri`, or other required Verifier-controlled values do not match the metadata policy.
+5. Reject the request if `client_id` does not match the metadata, or other required values are missing.
 
 ### 1.5 Authorization Response
 

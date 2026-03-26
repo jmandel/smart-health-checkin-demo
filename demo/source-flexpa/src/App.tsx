@@ -47,8 +47,6 @@ interface VerifierMetadata {
   client_id: string;
   client_name?: string;
   jwks_uri: string;
-  response_uri_prefixes: string[];
-  redirect_uris?: string[];
 }
 
 interface RequestItem {
@@ -171,12 +169,8 @@ async function resolveRequest(): Promise<VerifiedRequest | { error: string }> {
     return { error: 'Request Object missing response_uri' };
   }
 
-  const prefixMatch = metadata.response_uri_prefixes.some(
-    (prefix: string) => responseUri.startsWith(prefix)
-  );
-  if (!prefixMatch) {
-    return { error: 'response_uri does not match any allowed response_uri_prefixes' };
-  }
+  // response_uri is trusted because the Request Object is signed by the
+  // verifier's key (verified above). No separate metadata validation needed.
 
   const clientMetadata = payload.client_metadata as ClientMetadata;
   if (!clientMetadata?.jwks?.keys?.length) {
