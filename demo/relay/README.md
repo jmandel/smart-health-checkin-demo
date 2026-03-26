@@ -1,43 +1,39 @@
 # OID4VP Relay for SMART Health Check-in
 
-A drop-in OID4VP response endpoint implementing the `well_known:` client identifier prefix, signed Request Objects, and E2E encrypted `direct_post.jwt` response handling.
+A drop-in OID4VP response endpoint implementing `well_known:` client identifiers, signed Request Objects, and E2E encrypted `direct_post.jwt` response handling.
 
 The relay stores only opaque JWE ciphertext. It never possesses the decryption key and cannot read protected health information.
 
 ## Quick start
 
 ```bash
-# Standalone on port 3003
 VERIFIER_BASE=https://clinic.example.com bun demo/relay/server.ts
-
-# Or with a custom signing key and client name
-VERIFIER_BASE=https://clinic.example.com \
-SIGNING_KEY='{"kty":"EC","crv":"P-256","d":"...","x":"...","y":"..."}' \
-CLIENT_NAME="General Hospital" \
-PORT=8080 \
-bun demo/relay/server.ts
 ```
 
-If `SIGNING_KEY` is omitted, an ephemeral ES256 key pair is generated at startup (suitable for development).
+If `SIGNING_KEY` is omitted, an ephemeral ES256 key pair is generated at startup.
 
 ## Deployment options
 
 ### 1. Standalone server
 
-Run `server.ts` directly. Set `VERIFIER_BASE` to the external URL clients will use (e.g., your public domain).
+```bash
+VERIFIER_BASE=https://clinic.example.com \
+SIGNING_KEY='{"kty":"EC","crv":"P-256","d":"...","x":"...","y":"..."}' \
+CLIENT_NAME="General Hospital" \
+bun demo/relay/server.ts
+```
 
 ### 2. Behind a reverse proxy
 
-Run the relay on an internal port and reverse-proxy it behind your public origin. Set `VERIFIER_BASE` to the public URL:
+Run on an internal port and proxy the relay paths:
 
-```
-# nginx example
+```nginx
 location /.well-known/openid4vp-client { proxy_pass http://127.0.0.1:3003; }
 location /.well-known/jwks.json        { proxy_pass http://127.0.0.1:3003; }
 location /oid4vp/                      { proxy_pass http://127.0.0.1:3003; }
 ```
 
-### 3. Mounted in your own Bun server
+### 3. Mounted in your own server
 
 ```typescript
 import { createRelayHandler } from './demo/relay/handler.ts';
@@ -56,83 +52,170 @@ Bun.serve({
 });
 ```
 
-The handler returns `null` for unrecognized routes, so you can layer it with your own logic.
+The handler returns `null` for unrecognized routes so you can layer it with your own logic.
 
 ## API
 
-All endpoints support CORS (`Access-Control-Allow-Origin: *`).
+### Public wallet-facing endpoints
 
-### Discovery
+These are called by wallets and source apps. They support CORS (`Access-Control-Allow-Origin: *`).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/.well-known/openid4vp-client` | Verifier metadata (client_id, jwks_uri, response_uri_prefixes) |
-| `GET` | `/.well-known/jwks.json` | Public signing keys (JWKS) |
+| `GET` | `/.well-known/openid4vp-client` | Verifier metadata |
+| `GET` | `/.well-known/jwks.json` | Verifier signing keys (JWKS) |
+| `POST` | `/oid4vp/requests/:request_id` | Returns signed Request Object JWT |
+| `POST` | `/oid4vp/responses/:write_token` | Wallet submits encrypted JWE response |
 
-### Transaction lifecycle
+### Verifier-facing endpoints
 
-| Method | Path | Called by | Description |
-|--------|------|-----------|-------------|
-| `POST` | `/oid4vp/init` | Requester app | Create a transaction. Returns `transaction_id`, `request_id`, `read_secret`, `request_uri`. |
-| `POST` | `/oid4vp/request/:request_id` | Wallet | Returns a signed Request Object JWT containing `dcql_query`, ephemeral encryption key, `response_uri`, etc. |
-| `POST` | `/oid4vp/post/:request_id` | Wallet | Accepts the encrypted JWE response. For same-device flow, returns `{ redirect_uri }` with `#response_code`. |
-| `POST` | `/oid4vp/result` | Requester app | Authenticated result fetch. Requires `transaction_id` + `read_secret` (+ `response_code` for same-device). Long-polls if data hasn't arrived yet. |
+These are called by the requester/clinic application.
 
-### Init request body
+#### Same-device flow
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/oid4vp/same-device/init` | Start a same-device transaction |
+| `POST` | `/oid4vp/same-device/results` | Fetch result (requires `response_code`) |
+
+#### Cross-device flow
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/oid4vp/cross-device/init` | Start a cross-device transaction |
+| `POST` | `/oid4vp/cross-device/results` | Fetch result (long-polls if pending) |
+
+### Same-device init
+
+```
+POST /oid4vp/same-device/init
+```
 
 ```json
 {
-  "flow": "same-device",
   "redirect_uri": "https://clinic.example.com/checkin",
   "ephemeral_pub_jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." },
   "dcql_query": { "credentials": [...] }
 }
 ```
 
-- `flow` — `"same-device"` or `"cross-device"`. Determines whether the response endpoint returns a `redirect_uri` with `response_code`.
-- `redirect_uri` — Where to redirect the popup after the wallet posts (same-device only). The relay appends `#response_code=...&transaction_id=...` to this URL.
-- `ephemeral_pub_jwk` — The requester's ephemeral encryption public key. Embedded in the signed Request Object so the wallet can encrypt the response.
-- `dcql_query` — The DCQL query to embed in the signed Request Object.
+`redirect_uri` is required. The relay appends `#response_code=...` to it after the wallet posts.
 
-### Result request body
+Response:
 
 ```json
 {
-  "transaction_id": "abc...",
-  "read_secret": "def...",
-  "response_code": "ghi..."
+  "transaction_id": "...",
+  "request_id": "...",
+  "read_secret": "...",
+  "request_uri": "https://clinic.example.com/oid4vp/requests/..."
 }
 ```
 
-- `response_code` is required for `same-device` transactions, ignored for `cross-device`.
-- Returns `{ "status": "complete", "response": "<JWE>" }` or `{ "status": "pending" }`.
-- Long-polls for up to 2 minutes if no response has arrived yet.
+### Same-device results
+
+```
+POST /oid4vp/same-device/results
+```
+
+```json
+{
+  "transaction_id": "...",
+  "read_secret": "...",
+  "response_code": "..."
+}
+```
+
+All three fields are required. Returns `{ "status": "complete", "response": "<JWE>" }` or `{ "status": "pending" }`.
+
+### Cross-device init
+
+```
+POST /oid4vp/cross-device/init
+```
+
+```json
+{
+  "ephemeral_pub_jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." },
+  "dcql_query": { "credentials": [...] }
+}
+```
+
+No `redirect_uri` — the wallet doesn't redirect back in cross-device mode.
+
+If `requireVerifierSessionForCrossDevice` is enabled, the request must carry a valid verifier session (resolved via the `getVerifierSessionId` callback).
+
+### Cross-device results
+
+```
+POST /oid4vp/cross-device/results
+```
+
+```json
+{
+  "transaction_id": "...",
+  "read_secret": "..."
+}
+```
+
+No `response_code`. Long-polls for up to 2 minutes if the wallet hasn't posted yet.
+
+If `requireVerifierSessionForCrossDevice` is enabled, the verifier session must match the session that created the transaction.
+
+### Wallet response endpoint
+
+```
+POST /oid4vp/responses/:write_token
+Content-Type: application/x-www-form-urlencoded
+
+response=eyJhbGci... (opaque JWE)
+```
+
+The `write_token` is an opaque capability token separate from `request_id`. The relay identifies the transaction from the URL path — it does not read `state` from the encrypted payload.
+
+Same-device response:
+```json
+{ "redirect_uri": "https://clinic.example.com/checkin#response_code=..." }
+```
+
+Cross-device response:
+```json
+{ "status": "ok" }
+```
 
 ## Security model
 
-- **`transaction_id`** and **`read_secret`** are secrets known only to the requester. They are never sent to the wallet.
-- **`request_id`** is public — it appears in URLs and as the OID4VP `state` value.
-- **`response_code`** is generated by the relay when the wallet posts (same-device only) and delivered to the requester via the redirect fragment. It prevents a network observer who sees the `request_id` from racing to fetch the result.
-- The relay cannot decrypt the JWE — only the requester's ephemeral private key (held in browser memory) can.
+| Secret | Known by | Purpose |
+|--------|----------|---------|
+| `transaction_id` | Requester only | Identifies the transaction for result retrieval |
+| `read_secret` | Requester only | Authenticates result retrieval |
+| `write_token` | Wallet only (via signed Request Object) | Write-only capability for submitting the response |
+| `response_code` | Requester (via redirect) | Same-device loop-closure; proves the popup completed |
+| `request_id` | Public (in URLs, as OID4VP `state`) | Correlation handle; not sufficient to read data |
+
 - `request_id` alone is never sufficient to retrieve stored data.
+- `transaction_id` is never sent to the wallet or included in wallet-facing redirects.
+- The relay cannot decrypt JWE payloads — only the requester's ephemeral private key can.
 
 ## Configuration
 
 | Env var | Required | Description |
 |---------|----------|-------------|
-| `VERIFIER_BASE` | Yes | External URL for this verifier (e.g., `https://clinic.example.com`) |
+| `VERIFIER_BASE` | Yes | External URL (e.g., `https://clinic.example.com`) |
 | `PORT` | No | Listen port (default `3003`) |
-| `SIGNING_KEY` | No | ES256 JWK JSON string for signing Request Objects. Auto-generates if omitted. |
-| `CLIENT_NAME` | No | `client_name` in metadata (standalone server only) |
+| `SIGNING_KEY` | No | ES256 JWK JSON for signing. Auto-generates if omitted. |
+| `CLIENT_NAME` | No | `client_name` in metadata (standalone mode only) |
 
 ### `createRelayHandler` config
 
 ```typescript
 interface RelayConfig {
   verifierBase: string;
-  metadata?: Record<string, unknown>;  // merged into .well-known metadata
-  signingKeyJwk?: string;              // JWK JSON string
-  sessionTtlMs?: number;               // default 300000 (5 min)
-  longPollTimeoutMs?: number;           // default 120000 (2 min)
+  metadata?: Record<string, unknown>;
+  signingKeyJwk?: string;
+  sessionTtlMs?: number;                 // default 300000 (5 min)
+  longPollTimeoutMs?: number;             // default 120000 (2 min)
+  getVerifierSessionId?: (req: Request) => Promise<string | null> | string | null;
+  requireVerifierSessionForCrossDevice?: boolean;  // default false
 }
 ```

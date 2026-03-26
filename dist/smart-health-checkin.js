@@ -1451,8 +1451,8 @@ async function decryptJwe(jwe, privateKey) {
   const { plaintext } = await compactDecrypt(jwe, privateKey);
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
-async function initTransaction(verifierBase, params) {
-  const resp = await fetch(`${verifierBase}/oid4vp/init`, {
+async function initTransaction(verifierBase, flow, params) {
+  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/init`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params)
@@ -1461,8 +1461,8 @@ async function initTransaction(verifierBase, params) {
     throw new Error(`Failed to init transaction: ${resp.status}`);
   return resp.json();
 }
-async function fetchResult(verifierBase, params) {
-  const resp = await fetch(`${verifierBase}/oid4vp/result`, {
+async function fetchResult(verifierBase, flow, params) {
+  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/results`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params)
@@ -1476,9 +1476,9 @@ async function fetchResult(verifierBase, params) {
     throw new Error("pending");
   throw new Error("Unexpected result status: " + data.status);
 }
-function waitForResponseCode(transactionId, timeout) {
+function waitForResponseCode(channelName, timeout) {
   return new Promise((resolve, reject) => {
-    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+    const bc = new BroadcastChannel(channelName);
     const timer = setTimeout(() => {
       bc.close();
       reject(new Error("Timeout waiting for response_code"));
@@ -1541,9 +1541,9 @@ async function request(dcqlQuery, opts) {
   const shouldRehydrate = opts.rehydrate !== false;
   const timeout = opts.timeout ?? 2 * 60 * 1000;
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
-  const txn = await initTransaction(verifierBase, {
-    flow,
-    redirect_uri: flow === "same-device" ? new URL(location.pathname, location.origin).toString() : undefined,
+  const redirect_uri = flow === "same-device" ? new URL(location.pathname, location.origin).toString() : undefined;
+  const txn = await initTransaction(verifierBase, flow, {
+    redirect_uri,
     ephemeral_pub_jwk: publicJwk,
     dcql_query: dcqlQuery
   });
@@ -1569,8 +1569,9 @@ async function request(dcqlQuery, opts) {
     if (!popup)
       throw new Error("Popup blocked - please allow popups for this site");
     try {
-      const response_code = await waitForResponseCode(txn.transaction_id, timeout);
-      const jweString = await fetchResult(verifierBase, {
+      const channelName = `shc-return-${redirect_uri}`;
+      const response_code = await waitForResponseCode(channelName, timeout);
+      const jweString = await fetchResult(verifierBase, flow, {
         transaction_id: txn.transaction_id,
         read_secret: txn.read_secret,
         response_code
@@ -1586,7 +1587,7 @@ async function request(dcqlQuery, opts) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       try {
-        const jweString = await fetchResult(verifierBase, {
+        const jweString = await fetchResult(verifierBase, flow, {
           transaction_id: txn.transaction_id,
           read_secret: txn.read_secret
         });
@@ -1604,11 +1605,12 @@ async function maybeHandleReturn() {
   const hash = window.location.hash.substring(1);
   const params = new URLSearchParams(hash);
   const responseCode = params.get("response_code");
-  const transactionId = params.get("transaction_id");
-  if (responseCode && transactionId) {
-    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+  if (responseCode) {
+    const pageUrl = new URL(location.pathname, location.origin).toString();
+    const bc = new BroadcastChannel(`shc-return-${pageUrl}`);
     bc.postMessage({ response_code: responseCode });
     bc.close();
+    location.hash = "";
     window.close();
     return true;
   }
