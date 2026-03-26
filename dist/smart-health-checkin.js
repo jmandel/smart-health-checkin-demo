@@ -1456,7 +1456,7 @@ async function initTransaction(verifierBase, flow, params) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
-    credentials: "include"
+    credentials: "same-origin"
   });
   if (!resp.ok)
     throw new Error(`Failed to init transaction: ${resp.status}`);
@@ -1467,7 +1467,7 @@ async function fetchResult(verifierBase, flow, params) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
-    credentials: "include"
+    credentials: "same-origin"
   });
   if (!resp.ok)
     throw new Error(`Result fetch error: ${resp.status}`);

@@ -1493,7 +1493,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-      credentials: "include"
+      credentials: "same-origin"
     });
     if (!resp.ok)
       throw new Error(`Failed to init transaction: ${resp.status}`);
@@ -1504,7 +1504,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-      credentials: "include"
+      credentials: "same-origin"
     });
     if (!resp.ok)
       throw new Error(`Result fetch error: ${resp.status}`);

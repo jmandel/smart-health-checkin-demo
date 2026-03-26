@@ -145,7 +145,7 @@ async function initTransaction(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-    credentials: 'include',
+    credentials: 'same-origin',
   });
   if (!resp.ok) throw new Error(`Failed to init transaction: ${resp.status}`);
   return resp.json() as Promise<TransactionInit>;
@@ -160,7 +160,7 @@ async function fetchResult(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-    credentials: 'include',
+    credentials: 'same-origin',
   });
   if (!resp.ok) throw new Error(`Result fetch error: ${resp.status}`);
   const data = await resp.json() as { status: string; response?: string };
