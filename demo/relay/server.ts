@@ -17,7 +17,6 @@
  */
 
 import { join, resolve } from 'path';
-import { existsSync } from 'fs';
 
 const PORT = parseInt(process.env.PORT || '3003', 10);
 const STATIC_DIR = process.env.STATIC_DIR || '';
@@ -145,28 +144,17 @@ Bun.serve({
     // Serve static files if STATIC_DIR is configured
     if (STATIC_DIR) {
       const root = resolve(STATIC_DIR);
-      let filePath = join(root, url.pathname);
+      const filePath = resolve(root, '.' + url.pathname);
 
-      // Prevent path traversal
+      // Prevent path traversal (defense-in-depth; URL parser already resolves "..")
       if (!filePath.startsWith(root)) {
         return new Response('Forbidden', { status: 403 });
       }
 
-      // Try index.html for directory paths
-      if (filePath.endsWith('/')) filePath = join(filePath, 'index.html');
-      if (existsSync(filePath) && !Bun.file(filePath).size && existsSync(join(filePath, 'index.html'))) {
-        filePath = join(filePath, 'index.html');
-      }
-
-      const file = Bun.file(filePath);
-      if (await file.exists()) {
-        return new Response(file);
-      }
-
-      // SPA fallback: serve root index.html for unmatched paths
-      const indexPath = join(STATIC_DIR, 'index.html');
-      if (existsSync(indexPath)) {
-        return new Response(Bun.file(indexPath));
+      // Try exact path, then index.html for directories
+      for (const candidate of [filePath, join(filePath, 'index.html')]) {
+        const file = Bun.file(candidate);
+        if (await file.exists()) return new Response(file);
       }
     }
 
