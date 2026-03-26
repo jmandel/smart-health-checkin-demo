@@ -1,7 +1,10 @@
 /**
  * SMART Health Check-in Client Library
  * OID4VP profile for browser-based health data sharing
- * Uses direct_post.jwt with ephemeral keys to a zero-trust relay for E2E encryption
+ *
+ * Uses well_known: client identifier prefix, signed Request Objects,
+ * direct_post.jwt with ephemeral keys, and a verifier-controlled response endpoint.
+ * Supports same-device (popup) and cross-device (QR) flows.
  */
 export interface CredentialQuery {
     id: string;
@@ -22,12 +25,6 @@ export interface DCQLQuery {
     credentials: CredentialQuery[];
     credential_sets?: CredentialSet[];
 }
-/**
- * Artifact type identifiers for credential data
- * - "fhir_resource": A FHIR resource object (e.g., Coverage, Patient)
- * - "shc": A SMART Health Card (compact JWS format)
- * - "shl": A SMART Health Link (shlink:/ URI)
- */
 export type ArtifactType = 'fhir_resource' | 'shc' | 'shl';
 export interface FullArtifactPresentation {
     type: ArtifactType;
@@ -59,43 +56,37 @@ export interface ClientMetadata {
 export interface RequestOptions {
     /** URL of the health app picker/check-in page */
     checkinBase: string;
-    /** Base URL of the zero-trust relay server */
-    relayUrl: string;
+    /** Bare HTTPS origin of the Verifier */
+    verifierBase: string;
+    /** Flow mode: same-device (popup) or cross-device (QR) */
+    flow?: 'same-device' | 'cross-device';
     /** Callback invoked when OID4VP request is constructed */
-    onRequestStart?: (params: OID4VPRequestParams) => void;
+    onRequestStart?: (info: RequestStartInfo) => void;
     /** If true (default), response includes rehydrated credentials object */
     rehydrate?: boolean;
     /** Request timeout in milliseconds (default: 120000) */
     timeout?: number;
 }
-export interface OID4VPRequestParams {
+export interface RequestStartInfo {
+    flow: 'same-device' | 'cross-device';
     client_id: string;
-    response_type: 'vp_token';
-    response_mode: 'direct_post.jwt';
-    response_uri: string;
-    client_metadata: ClientMetadata;
-    state: string;
-    nonce: string;
-    dcql_query: DCQLQuery;
+    request_uri: string;
+    launch_url: string;
+    transaction_id: string;
+    request_id: string;
 }
 export interface SHLError extends Error {
     code: string;
     state: string;
 }
-/**
- * Rehydrate vp_token by resolving inline references to actual data.
- * Two-pass resolution: catalog artifact_ids, then resolve artifact_refs.
- */
 export declare function rehydrateResponse(response: RawResponse): RehydratedResponse;
 /**
- * Initiate a SMART Health Check-in credential request
- * Uses direct_post.jwt with ephemeral keys and a zero-trust relay
+ * Initiate a SMART Health Check-in credential request.
  */
 export declare function request(dcqlQuery: DCQLQuery, opts: RequestOptions): Promise<RawResponse | RehydratedResponse>;
 /**
  * Handle return context in popup window.
- * With direct_post.jwt, data flows through the relay, not the fragment.
- * This function is retained for popup cleanup only.
+ * Detects #response_code in the hash, signals the opener via postMessage.
  */
 export declare function maybeHandleReturn(): Promise<boolean>;
 declare global {

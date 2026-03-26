@@ -1440,11 +1440,6 @@ async function generateKeyPair2(alg, options) {
   return generateKeyPair(alg, options);
 }
 // src/smart-health-checkin.ts
-function generateRandomState() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 async function generateEphemeralKeyPair() {
   const { publicKey, privateKey } = await generateKeyPair2("ECDH-ES", { crv: "P-256" });
   const publicJwk = await exportJWK(publicKey);
@@ -1456,22 +1451,46 @@ async function decryptJwe(jwe, privateKey) {
   const { plaintext } = await compactDecrypt(jwe, privateKey);
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
-async function createRelaySession(relayUrl) {
-  const resp = await fetch(`${relayUrl}/session`, { method: "POST" });
+async function initTransaction(verifierBase, params) {
+  const resp = await fetch(`${verifierBase}/oid4vp/init`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params)
+  });
   if (!resp.ok)
-    throw new Error(`Failed to create relay session: ${resp.status}`);
-  const data = await resp.json();
-  return data.session_id;
+    throw new Error(`Failed to init transaction: ${resp.status}`);
+  return resp.json();
 }
-async function pollRelay(relayUrl, sessionId, _timeout) {
-  const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
+async function fetchResult(verifierBase, params) {
+  const resp = await fetch(`${verifierBase}/oid4vp/result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params)
+  });
   if (!resp.ok)
-    throw new Error(`Relay poll error: ${resp.status}`);
+    throw new Error(`Result fetch error: ${resp.status}`);
   const data = await resp.json();
-  if (data.status === "complete" && data.response) {
+  if (data.status === "complete" && data.response)
     return data.response;
-  }
-  throw new Error("Request timeout: no response received from relay");
+  if (data.status === "pending")
+    throw new Error("pending");
+  throw new Error("Unexpected result status: " + data.status);
+}
+function waitForResponseCode(transactionId, timeout) {
+  return new Promise((resolve, reject) => {
+    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+    const timer = setTimeout(() => {
+      bc.close();
+      reject(new Error("Timeout waiting for response_code"));
+    }, timeout);
+    bc.onmessage = (event) => {
+      if (event.data?.response_code) {
+        clearTimeout(timer);
+        bc.close();
+        resolve(event.data.response_code);
+      }
+    };
+  });
 }
 function rehydrateResponse(response) {
   const credentials = {};
@@ -1485,91 +1504,114 @@ function rehydrateResponse(response) {
   }
   for (const [id, presentations] of Object.entries(response.vp_token)) {
     credentials[id] = presentations.map((p) => {
-      if ("artifact_ref" in p) {
+      if ("artifact_ref" in p)
         return catalog.get(p.artifact_ref);
-      }
       return p.data;
     });
   }
   return { ...response, credentials };
 }
+async function decryptAndProcess(jweString, privateKey, expectedState, shouldRehydrate) {
+  const decrypted = await decryptJwe(jweString, privateKey);
+  if (decrypted.state !== expectedState) {
+    throw new Error("State mismatch in decrypted response");
+  }
+  if (decrypted.error) {
+    const err = new Error(decrypted.error_description || decrypted.error);
+    err.code = decrypted.error;
+    err.state = decrypted.state;
+    throw err;
+  }
+  if (!decrypted.vp_token)
+    throw new Error("No vp_token in decrypted response");
+  const response = { state: decrypted.state, vp_token: decrypted.vp_token };
+  return shouldRehydrate ? rehydrateResponse(response) : response;
+}
 async function request(dcqlQuery, opts) {
   const checkinBase = opts.checkinBase.replace(/\/+$/, "");
-  const relayUrl = opts.relayUrl.replace(/\/+$/, "");
+  const verifierBase = opts.verifierBase.replace(/\/+$/, "");
   if (!checkinBase)
     throw new Error("checkinBase required");
-  if (!relayUrl)
-    throw new Error("relayUrl required");
+  if (!verifierBase)
+    throw new Error("verifierBase required");
   if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
     throw new Error("dcqlQuery must be an object with a credentials array");
   }
-  const state = generateRandomState();
-  const nonce = generateRandomState();
+  const flow = opts.flow || "same-device";
   const shouldRehydrate = opts.rehydrate !== false;
   const timeout = opts.timeout ?? 2 * 60 * 1000;
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
-  const sessionId = await createRelaySession(relayUrl);
-  const responseUri = `${relayUrl}/post/${sessionId}`;
-  const clientId = `redirect_uri:${responseUri}`;
-  const clientMetadata = {
-    jwks: { keys: [publicJwk] },
-    encrypted_response_enc_values_supported: ["A256GCM"]
-  };
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: "vp_token",
-    response_mode: "direct_post.jwt",
-    response_uri: responseUri,
-    client_metadata: JSON.stringify(clientMetadata),
-    nonce,
-    state,
-    dcql_query: JSON.stringify(dcqlQuery)
+  const txn = await initTransaction(verifierBase, {
+    flow,
+    redirect_uri: flow === "same-device" ? `${verifierBase}/oid4vp/return` : undefined,
+    ephemeral_pub_jwk: publicJwk,
+    dcql_query: dcqlQuery
   });
+  const client_id = `well_known:${verifierBase}`;
+  const bootstrapParams = new URLSearchParams({
+    client_id,
+    request_uri: txn.request_uri,
+    request_uri_method: "post"
+  });
+  const launch_url = `${checkinBase}/?${bootstrapParams.toString()}`;
   if (opts.onRequestStart) {
     opts.onRequestStart({
-      client_id: clientId,
-      response_type: "vp_token",
-      response_mode: "direct_post.jwt",
-      response_uri: responseUri,
-      client_metadata: clientMetadata,
-      state,
-      nonce,
-      dcql_query: dcqlQuery
+      flow,
+      client_id,
+      request_uri: txn.request_uri,
+      launch_url,
+      transaction_id: txn.transaction_id,
+      request_id: txn.request_id
     });
   }
-  const url = `${checkinBase}/?${params.toString()}`;
-  const popup = window.open(url, "_blank");
-  if (!popup) {
-    throw new Error("Popup blocked - please allow popups for this site");
-  }
-  try {
-    const jweString = await pollRelay(relayUrl, sessionId, timeout);
-    const decrypted = await decryptJwe(jweString, privateKey);
-    if (decrypted.state !== state) {
-      throw new Error("State mismatch in decrypted response");
-    }
-    if (decrypted.error) {
-      const err = new Error(decrypted.error_description || decrypted.error);
-      err.code = decrypted.error;
-      err.state = decrypted.state;
-      throw err;
-    }
-    if (!decrypted.vp_token) {
-      throw new Error("No vp_token in decrypted response");
-    }
-    const response = {
-      state: decrypted.state,
-      vp_token: decrypted.vp_token
-    };
-    return shouldRehydrate ? rehydrateResponse(response) : response;
-  } finally {
+  if (flow === "same-device") {
+    const popup = window.open(launch_url, "_blank");
+    if (!popup)
+      throw new Error("Popup blocked - please allow popups for this site");
     try {
-      if (popup && !popup.closed)
-        popup.close();
-    } catch {}
+      const response_code = await waitForResponseCode(txn.transaction_id, timeout);
+      const jweString = await fetchResult(verifierBase, {
+        transaction_id: txn.transaction_id,
+        read_secret: txn.read_secret,
+        response_code
+      });
+      return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+    } finally {
+      try {
+        if (popup && !popup.closed)
+          popup.close();
+      } catch {}
+    }
+  } else {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try {
+        const jweString = await fetchResult(verifierBase, {
+          transaction_id: txn.transaction_id,
+          read_secret: txn.read_secret
+        });
+        return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+      } catch (err) {
+        if (err instanceof Error && err.message === "pending")
+          continue;
+        throw err;
+      }
+    }
+    throw new Error("Cross-device request timeout");
   }
 }
 async function maybeHandleReturn() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const responseCode = params.get("response_code");
+  const transactionId = params.get("transaction_id");
+  if (responseCode && transactionId) {
+    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+    bc.postMessage({ response_code: responseCode });
+    bc.close();
+    window.close();
+    return true;
+  }
   if (window.opener) {
     window.close();
     return true;
@@ -1577,11 +1619,7 @@ async function maybeHandleReturn() {
   return false;
 }
 if (typeof window !== "undefined") {
-  window.SHL = {
-    request,
-    maybeHandleReturn,
-    rehydrateResponse
-  };
+  window.SHL = { request, maybeHandleReturn, rehydrateResponse };
 }
 export {
   request,

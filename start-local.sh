@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # SMART Health Check-in - Multi-Origin Local Development
-# Builds and serves demo apps on different localhost subdomains/ports
-# The requester runs on the combined relay+static server so that
-# response_uri is under the requester's redirect_uri (same origin).
+# The requester runs on the combined verifier+static server.
 
 cleanup() {
   echo ""
@@ -20,20 +18,18 @@ bun build.ts
 echo ""
 echo "🚀 Starting SMART Health Check-in demo in multi-origin mode..."
 echo ""
-echo "  • Requester + Relay:  http://requester.localhost:3000"
-echo "  • Check-in:           http://checkin.localhost:3001"
-echo "  • Flexpa:             http://flexpa.localhost:3002"
+echo "  • Requester + Verifier:  http://requester.localhost:3000"
+echo "  • Check-in:              http://checkin.localhost:3001"
+echo "  • Flexpa:                http://flexpa.localhost:3002"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 echo ""
 
 BUILD_DIR="build/smart-health-checkin-demo"
 
-# Requester uses combined relay+static server (relay on same origin)
-echo "Starting Requester + Relay on port 3000..."
-(STATIC_DIR="$BUILD_DIR" PORT=3000 bun demo/relay/server.ts 2>&1 | sed "s/^/[Requester+Relay] /") &
+echo "Starting Requester + Verifier on port 3000..."
+(VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" PORT=3000 bun demo/relay/server.ts 2>&1 | sed "s/^/[Verifier] /") &
 
-# Other apps use plain static servers
 echo "Starting Check-in on port 3001..."
 (cd "$BUILD_DIR/checkin" && bunx http-server -p 3001 -c-1 2>&1 | sed "s/^/[Check-in] /") &
 

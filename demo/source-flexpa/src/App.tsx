@@ -1,6 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { importJWK, CompactEncrypt } from 'jose';
+import React, { useState, useEffect } from 'react';
+import { importJWK, CompactEncrypt, jwtVerify, createLocalJWKSet } from 'jose';
 import './styles.css';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface QuestionnaireItem {
   linkId: string;
@@ -29,19 +33,22 @@ interface Credential {
   meta?: CredentialMeta;
 }
 
-interface CredentialSet {
-  options: string[][];
-  required: boolean;
-}
-
 interface DCQLQuery {
   credentials: Credential[];
-  credential_sets?: CredentialSet[];
+  credential_sets?: Array<{ options: string[][]; required: boolean }>;
 }
 
 interface ClientMetadata {
   jwks: { keys: Array<Record<string, unknown>> };
   encrypted_response_enc_values_supported?: string[];
+}
+
+interface VerifierMetadata {
+  client_id: string;
+  client_name?: string;
+  jwks_uri: string;
+  response_uri_prefixes: string[];
+  redirect_uris?: string[];
 }
 
 interface RequestItem {
@@ -52,14 +59,15 @@ interface RequestItem {
   questionnaireUrl?: string;
 }
 
-interface ParsedRequest {
+interface VerifiedRequest {
+  verifierOrigin: string;
+  verifierMetadata: VerifierMetadata;
   state: string;
-  returnUrl: string;
   nonce: string;
-  requestItems: RequestItem[];
-  dcqlQuery: DCQLQuery;
   responseUri: string;
   clientMetadata: ClientMetadata;
+  dcqlQuery: DCQLQuery;
+  requestItems: RequestItem[];
 }
 
 interface FullArtifactPresentation {
@@ -74,75 +82,144 @@ interface RefArtifactPresentation {
 
 type Presentation = FullArtifactPresentation | RefArtifactPresentation;
 
-function parseRequest(): ParsedRequest | { error: string } {
+// ============================================================================
+// Request resolution (async — fetches metadata, JWKS, signed Request Object)
+// ============================================================================
+
+async function resolveRequest(): Promise<VerifiedRequest | { error: string }> {
   const params = new URLSearchParams(location.search);
-
-  if (params.get('response_type') !== 'vp_token') {
-    return { error: 'Invalid request parameters' };
-  }
-
-  const state = params.get('state');
   const clientId = params.get('client_id');
-  const nonce = params.get('nonce');
-  const responseUri = params.get('response_uri');
-  const clientMetadataRaw = params.get('client_metadata');
+  const requestUri = params.get('request_uri');
+  const requestUriMethod = params.get('request_uri_method') || 'post';
 
-  if (!clientId?.startsWith('redirect_uri:')) {
-    return { error: 'Invalid client_id: must start with redirect_uri:' };
+  if (!clientId?.startsWith('well_known:')) {
+    return { error: 'Invalid client_id: must use well_known: prefix' };
+  }
+  if (!requestUri) {
+    return { error: 'Missing request_uri' };
   }
 
-  if (!nonce) {
-    return { error: 'Missing nonce in authorization request' };
-  }
+  const verifierOrigin = clientId.substring('well_known:'.length);
 
-  if (!state) {
-    return { error: 'Missing state parameter' };
-  }
-
-  if (!responseUri) {
-    return { error: 'Missing response_uri for direct_post.jwt' };
-  }
-
-  // Verify response_uri matches the redirect_uri from client_id exactly
-  const redirectUri = clientId.substring('redirect_uri:'.length);
-  if (responseUri !== redirectUri) {
-    return { error: `response_uri must match the client_id redirect_uri exactly` };
-  }
-
-  let clientMetadata: ClientMetadata;
+  // Validate bare origin
   try {
-    clientMetadata = JSON.parse(clientMetadataRaw || '');
+    const u = new URL(verifierOrigin);
+    if ((u.pathname !== '/' && u.pathname !== '') || u.search || u.hash) {
+      return { error: 'well_known: client_id must be a bare origin' };
+    }
   } catch {
-    return { error: 'Missing or invalid client_metadata' };
+    return { error: 'Invalid origin in well_known: client_id' };
   }
 
-  if (!clientMetadata.jwks?.keys?.length) {
-    return { error: 'client_metadata must contain jwks with at least one key' };
+  // 1. Fetch verifier metadata
+  let metadata: VerifierMetadata;
+  try {
+    const resp = await fetch(`${verifierOrigin}/.well-known/openid4vp-client`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    metadata = await resp.json();
+  } catch (err) {
+    return { error: `Failed to fetch verifier metadata: ${err}` };
   }
 
-  const returnUrl = clientId.substring('redirect_uri:'.length);
-  const dcqlQuery: DCQLQuery = JSON.parse(params.get('dcql_query') || '{"credentials":[]}');
+  if (metadata.client_id !== clientId) {
+    return { error: 'Metadata client_id does not match bootstrap client_id' };
+  }
+
+  // 2. Fetch JWKS
+  let jwks: { keys: object[] };
+  try {
+    const resp = await fetch(metadata.jwks_uri);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    jwks = await resp.json();
+  } catch (err) {
+    return { error: `Failed to fetch JWKS: ${err}` };
+  }
+
+  // 3. Fetch signed Request Object
+  let requestObjectJwt: string;
+  try {
+    const resp = await fetch(requestUri, {
+      method: requestUriMethod === 'post' ? 'POST' : 'GET',
+      headers: requestUriMethod === 'post' ? { 'Content-Type': 'application/json' } : {},
+      body: requestUriMethod === 'post' ? '{}' : undefined,
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    requestObjectJwt = await resp.text();
+  } catch (err) {
+    return { error: `Failed to fetch Request Object: ${err}` };
+  }
+
+  // 4. Verify JWT signature
+  let payload: Record<string, unknown>;
+  try {
+    const keySet = createLocalJWKSet(jwks as Parameters<typeof createLocalJWKSet>[0]);
+    const result = await jwtVerify(requestObjectJwt, keySet, {
+      audience: 'https://self-issued.me/v2',
+    });
+    payload = result.payload as Record<string, unknown>;
+  } catch (err) {
+    return { error: `Request Object signature verification failed: ${err}` };
+  }
+
+  // 5. Validate payload
+  if (payload.client_id !== clientId) {
+    return { error: 'Request Object client_id does not match bootstrap client_id' };
+  }
+
+  const responseUri = payload.response_uri as string;
+  if (!responseUri) {
+    return { error: 'Request Object missing response_uri' };
+  }
+
+  const prefixMatch = metadata.response_uri_prefixes.some(
+    (prefix: string) => responseUri.startsWith(prefix)
+  );
+  if (!prefixMatch) {
+    return { error: 'response_uri does not match any allowed response_uri_prefixes' };
+  }
+
+  const clientMetadata = payload.client_metadata as ClientMetadata;
+  if (!clientMetadata?.jwks?.keys?.length) {
+    return { error: 'Request Object missing client_metadata with encryption keys' };
+  }
+
+  const dcqlQuery = payload.dcql_query as DCQLQuery;
+  if (!dcqlQuery) {
+    return { error: 'Request Object missing dcql_query' };
+  }
 
   const requestItems: RequestItem[] = (dcqlQuery.credentials || []).map(c => {
     const meta = c.meta || {};
-    const profile = meta.profile;
-    const questionnaire = meta.questionnaire;
-    const questionnaireUrl = meta.questionnaireUrl;
-    const isQuestionnaire = !!questionnaire || !!questionnaireUrl;
-
     return {
-      type: isQuestionnaire ? 'fhir-questionnaire' : 'fhir-profile',
+      type: (meta.questionnaire || meta.questionnaireUrl) ? 'fhir-questionnaire' as const : 'fhir-profile' as const,
       id: c.id,
-      profile,
-      questionnaire,
-      questionnaireUrl
+      profile: meta.profile,
+      questionnaire: meta.questionnaire,
+      questionnaireUrl: meta.questionnaireUrl,
     };
   });
 
-  return { state, returnUrl, nonce, requestItems, dcqlQuery, responseUri, clientMetadata };
+  return {
+    verifierOrigin,
+    verifierMetadata: metadata,
+    state: payload.state as string,
+    nonce: payload.nonce as string,
+    responseUri,
+    clientMetadata,
+    dcqlQuery,
+    requestItems,
+  };
 }
 
-async function encryptAndPost(payload: object, clientMetadata: ClientMetadata, responseUri: string) {
+// ============================================================================
+// Encrypt and POST helper
+// ============================================================================
+
+async function encryptAndPost(
+  payload: object,
+  clientMetadata: ClientMetadata,
+  responseUri: string
+): Promise<{ redirect_uri?: string; status?: string }> {
   const jwk = clientMetadata.jwks.keys[0];
   const encKey = await importJWK(jwk, 'ECDH-ES');
   const enc = clientMetadata.encrypted_response_enc_values_supported?.[0] || 'A256GCM';
@@ -153,27 +230,32 @@ async function encryptAndPost(payload: object, clientMetadata: ClientMetadata, r
     .setProtectedHeader({ alg: 'ECDH-ES', enc })
     .encrypt(encKey);
 
-  await fetch(responseUri, {
+  const resp = await fetch(responseUri, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `response=${encodeURIComponent(jwe)}`
+    body: `response=${encodeURIComponent(jwe)}`,
   });
+
+  if (!resp.ok) throw new Error(`POST to response_uri failed: ${resp.status}`);
+  return resp.json();
 }
 
-function RequesterOrigin({ returnUrl }: { returnUrl: string }) {
-  const origin = useMemo(() => new URL(returnUrl).origin, [returnUrl]);
+// ============================================================================
+// UI Components
+// ============================================================================
 
+function RequesterOrigin({ verifierOrigin }: { verifierOrigin: string }) {
   return (
     <div className="requester-origin">
-      <div className="requester-origin-label">This site is requesting your health data</div>
-      <div className="requester-origin-value">{origin}</div>
+      <div className="requester-origin-label">Requesting verification from</div>
+      <div className="requester-origin-value">{verifierOrigin}</div>
     </div>
   );
 }
 
-function TechnicalDetails({ state, nonce, requestItems }: { state: string; nonce: string; requestItems: RequestItem[] }) {
-  const params = new URLSearchParams(location.search);
-
+function TechnicalDetails({ state, nonce, requestItems, verifierOrigin, responseUri }: {
+  state: string; nonce: string; requestItems: RequestItem[]; verifierOrigin: string; responseUri: string;
+}) {
   return (
     <div className="request-box">
       <h2>Technical Details</h2>
@@ -183,19 +265,15 @@ function TechnicalDetails({ state, nonce, requestItems }: { state: string; nonce
       </div>
       <div className="request-detail">
         <div className="label">client_id:</div>
-        <div className="value">{params.get('client_id')}</div>
-      </div>
-      <div className="request-detail">
-        <div className="label">response_type:</div>
-        <div className="value">{params.get('response_type')}</div>
+        <div className="value">well_known:{verifierOrigin}</div>
       </div>
       <div className="request-detail">
         <div className="label">response_mode:</div>
-        <div className="value">{params.get('response_mode')}</div>
+        <div className="value">direct_post.jwt</div>
       </div>
       <div className="request-detail">
         <div className="label">response_uri:</div>
-        <div className="value">{params.get('response_uri')}</div>
+        <div className="value">{responseUri}</div>
       </div>
       <div className="request-detail">
         <div className="label">state:</div>
@@ -204,6 +282,10 @@ function TechnicalDetails({ state, nonce, requestItems }: { state: string; nonce
       <div className="request-detail">
         <div className="label">nonce:</div>
         <div className="value">{nonce}</div>
+      </div>
+      <div className="request-detail">
+        <div className="label">Request Object:</div>
+        <div className="value" style={{ color: '#4ade80' }}>Signature verified ✓</div>
       </div>
       <div className="request-detail">
         <div className="label">Requested items ({requestItems.length}):</div>
@@ -222,7 +304,7 @@ function TechnicalDetails({ state, nonce, requestItems }: { state: string; nonce
   );
 }
 
-function InsuranceSection({ checked, onChange, hasPatient }: { checked: boolean; onChange: (v: boolean) => void; hasPatient: boolean }) {
+function InsuranceSection({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="section">
       <h3>📋 Requested Records</h3>
@@ -258,19 +340,10 @@ function ClinicalSection({ checked, onChange }: { checked: boolean; onChange: (v
 }
 
 function QuestionnaireSection({
-  item,
-  idx,
-  checked,
-  onChange,
-  values,
-  onValueChange
+  item, idx, checked, onChange, values, onValueChange
 }: {
-  item: RequestItem;
-  idx: number;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  values: Record<string, string>;
-  onValueChange: (linkId: string, value: string) => void;
+  item: RequestItem; idx: number; checked: boolean; onChange: (v: boolean) => void;
+  values: Record<string, string>; onValueChange: (linkId: string, value: string) => void;
 }) {
   const questionnaire = item.questionnaire;
   if (!questionnaire) return null;
@@ -318,8 +391,13 @@ function QuestionnaireSection({
   );
 }
 
+// ============================================================================
+// Main App
+// ============================================================================
+
 export default function App() {
-  const parsed = useMemo(() => parseRequest(), []);
+  const [parsed, setParsed] = useState<VerifiedRequest | { error: string } | null>(null);
+  const [resolving, setResolving] = useState(true);
 
   const [shareInsurance, setShareInsurance] = useState(true);
   const [shareClinical, setShareClinical] = useState(true);
@@ -328,49 +406,64 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Initialize questionnaire states
-  useMemo(() => {
-    if ('error' in parsed) return;
+  useEffect(() => {
+    resolveRequest().then(result => {
+      setParsed(result);
+      setResolving(false);
 
-    const qItems = parsed.requestItems.filter(i => i.type === 'fhir-questionnaire');
-    const initialShare: Record<string, boolean> = {};
-    const initialValues: Record<string, Record<string, string>> = {};
+      // Initialize questionnaire states
+      if (!('error' in result)) {
+        const qItems = result.requestItems.filter(i => i.type === 'fhir-questionnaire');
+        const initialShare: Record<string, boolean> = {};
+        const initialValues: Record<string, Record<string, string>> = {};
 
-    qItems.forEach(item => {
-      initialShare[item.id] = true;
-      initialValues[item.id] = {};
-
-      // Pre-fill values
-      if (item.questionnaire?.item) {
-        item.questionnaire.item.forEach(q => {
-          if (q.linkId === '1') initialValues[item.id][q.linkId] = 'Jane Doe';
-          else if (q.linkId === '2') initialValues[item.id][q.linkId] = '1985-06-15';
-          else if (q.linkId === '3') initialValues[item.id][q.linkId] = 'Hypertension';
-          else if (q.linkId === '4') initialValues[item.id][q.linkId] = 'Lisinopril';
-          else if (q.linkId === '5') initialValues[item.id][q.linkId] = 'Penicillin';
+        qItems.forEach(item => {
+          initialShare[item.id] = true;
+          initialValues[item.id] = {};
+          if (item.questionnaire?.item) {
+            item.questionnaire.item.forEach(q => {
+              if (q.linkId === '1') initialValues[item.id][q.linkId] = 'Jane Doe';
+              else if (q.linkId === '2') initialValues[item.id][q.linkId] = '1985-06-15';
+              else if (q.linkId === '3') initialValues[item.id][q.linkId] = 'Hypertension';
+              else if (q.linkId === '4') initialValues[item.id][q.linkId] = 'Lisinopril';
+              else if (q.linkId === '5') initialValues[item.id][q.linkId] = 'Penicillin';
+            });
+          }
         });
+
+        if (Object.keys(initialShare).length > 0) {
+          setShareQuestionnaires(initialShare);
+          setQuestionnaireValues(initialValues);
+        }
       }
     });
+  }, []);
 
-    if (Object.keys(initialShare).length > 0) {
-      setShareQuestionnaires(initialShare);
-      setQuestionnaireValues(initialValues);
-    }
-  }, [parsed]);
+  if (resolving) {
+    return (
+      <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
+        <div className="logo">
+          {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
+        </div>
+        <h1>Flexpa</h1>
+        <p style={{ color: '#9ca3af' }}>Verifying request...</p>
+      </div>
+    );
+  }
 
-  if ('error' in parsed) {
+  if (!parsed || 'error' in parsed) {
     return (
       <div className="container">
         <div className="logo">
           {[...Array(6)].map((_, i) => <div key={i} className="pixel" />)}
         </div>
         <h1>Flexpa</h1>
-        <div className="error-message">{parsed.error}</div>
+        <div className="error-message">{parsed?.error || 'Unknown error'}</div>
       </div>
     );
   }
 
-  const { state, returnUrl, nonce, requestItems, dcqlQuery, responseUri, clientMetadata } = parsed;
+  const { verifierOrigin, state, nonce, requestItems, dcqlQuery, responseUri, clientMetadata } = parsed;
 
   if (submitted) {
     return (
@@ -397,12 +490,12 @@ export default function App() {
   const handleCancel = async () => {
     setSubmitting(true);
     try {
-      const payload = {
-        error: 'access_denied',
-        error_description: 'User declined to share',
-        state
-      };
-      await encryptAndPost(payload, clientMetadata, responseUri);
+      const payload = { error: 'access_denied', error_description: 'User declined to share', state };
+      const postResult = await encryptAndPost(payload, clientMetadata, responseUri);
+      if (postResult.redirect_uri) {
+        window.location.href = postResult.redirect_uri;
+        return;
+      }
     } catch (err) {
       console.error('Failed to post cancel response:', err);
     }
@@ -419,9 +512,7 @@ export default function App() {
       const addPresentation = (type: string, data: unknown): Presentation => {
         const hash = JSON.stringify({ type, data });
         const existingId = artifactIdCache.get(hash);
-        if (existingId) {
-          return { artifact_ref: existingId };
-        }
+        if (existingId) return { artifact_ref: existingId };
         const artifact_id = `art_${artifactCounter++}`;
         artifactIdCache.set(hash, artifact_id);
         return { artifact_id, type, data };
@@ -455,9 +546,7 @@ export default function App() {
 
         if (resourceType === 'Coverage') {
           presentations.push(addPresentation('fhir_resource', {
-            resourceType: 'Coverage',
-            id: 'coverage-1',
-            status: 'active',
+            resourceType: 'Coverage', id: 'coverage-1', status: 'active',
             subscriberId: 'W123456789',
             beneficiary: { reference: 'Patient/patient-1', display: 'Jane Doe' },
             payor: [{ display: 'Aetna' }],
@@ -465,8 +554,7 @@ export default function App() {
           }));
         } else if (resourceType === 'Patient') {
           presentations.push(addPresentation('fhir_resource', {
-            resourceType: 'Patient',
-            id: 'patient-1',
+            resourceType: 'Patient', id: 'patient-1',
             name: [{ text: 'Jane Doe', family: 'Doe', given: ['Jane'] }],
             birthDate: '1985-06-15'
           }));
@@ -474,15 +562,9 @@ export default function App() {
           const values = questionnaireValues[cred.id] || {};
           const items = Object.entries(values)
             .filter(([, v]) => v)
-            .map(([linkId, value]) => ({
-              linkId,
-              answer: [{ valueString: value }]
-            }));
-
+            .map(([linkId, value]) => ({ linkId, answer: [{ valueString: value }] }));
           presentations.push(addPresentation('fhir_resource', {
-            resourceType: 'QuestionnaireResponse',
-            status: 'completed',
-            item: items
+            resourceType: 'QuestionnaireResponse', status: 'completed', item: items
           }));
         }
 
@@ -490,7 +572,13 @@ export default function App() {
       });
 
       const payload = { vp_token, state };
-      await encryptAndPost(payload, clientMetadata, responseUri);
+      const postResult = await encryptAndPost(payload, clientMetadata, responseUri);
+
+      if (postResult.redirect_uri) {
+        window.location.href = postResult.redirect_uri;
+        return;
+      }
+
       tryCloseOrShowDone();
     } catch (err) {
       console.error('Failed to post share response:', err);
@@ -506,16 +594,13 @@ export default function App() {
       <h1>Flexpa</h1>
       <div className="subtitle">Building blocks of health data</div>
 
-      <RequesterOrigin returnUrl={returnUrl} />
-      <TechnicalDetails state={state} nonce={nonce} requestItems={requestItems} />
+      <RequesterOrigin verifierOrigin={verifierOrigin} />
+      <TechnicalDetails state={state} nonce={nonce} requestItems={requestItems}
+        verifierOrigin={verifierOrigin} responseUri={responseUri} />
 
       {profiles.length > 0 && (
         <>
-          <InsuranceSection
-            checked={shareInsurance}
-            onChange={setShareInsurance}
-            hasPatient={hasPatient}
-          />
+          <InsuranceSection checked={shareInsurance} onChange={setShareInsurance} />
           {hasPatient && (
             <ClinicalSection checked={shareClinical} onChange={setShareClinical} />
           )}

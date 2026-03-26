@@ -1,7 +1,10 @@
 /**
  * SMART Health Check-in Client Library
  * OID4VP profile for browser-based health data sharing
- * Uses direct_post.jwt with ephemeral keys to a zero-trust relay for E2E encryption
+ *
+ * Uses well_known: client identifier prefix, signed Request Objects,
+ * direct_post.jwt with ephemeral keys, and a verifier-controlled response endpoint.
+ * Supports same-device (popup) and cross-device (QR) flows.
  */
 
 import { generateKeyPair, exportJWK, compactDecrypt, type KeyLike } from 'jose';
@@ -32,12 +35,6 @@ export interface DCQLQuery {
   credential_sets?: CredentialSet[];
 }
 
-/**
- * Artifact type identifiers for credential data
- * - "fhir_resource": A FHIR resource object (e.g., Coverage, Patient)
- * - "shc": A SMART Health Card (compact JWS format)
- * - "shl": A SMART Health Link (shlink:/ URI)
- */
 export type ArtifactType = 'fhir_resource' | 'shc' | 'shl';
 
 export interface FullArtifactPresentation {
@@ -75,25 +72,25 @@ export interface ClientMetadata {
 export interface RequestOptions {
   /** URL of the health app picker/check-in page */
   checkinBase: string;
-  /** Base URL of the zero-trust relay server */
-  relayUrl: string;
+  /** Bare HTTPS origin of the Verifier */
+  verifierBase: string;
+  /** Flow mode: same-device (popup) or cross-device (QR) */
+  flow?: 'same-device' | 'cross-device';
   /** Callback invoked when OID4VP request is constructed */
-  onRequestStart?: (params: OID4VPRequestParams) => void;
+  onRequestStart?: (info: RequestStartInfo) => void;
   /** If true (default), response includes rehydrated credentials object */
   rehydrate?: boolean;
   /** Request timeout in milliseconds (default: 120000) */
   timeout?: number;
 }
 
-export interface OID4VPRequestParams {
+export interface RequestStartInfo {
+  flow: 'same-device' | 'cross-device';
   client_id: string;
-  response_type: 'vp_token';
-  response_mode: 'direct_post.jwt';
-  response_uri: string;
-  client_metadata: ClientMetadata;
-  state: string;
-  nonce: string;
-  dcql_query: DCQLQuery;
+  request_uri: string;
+  launch_url: string;
+  transaction_id: string;
+  request_id: string;
 }
 
 export interface SHLError extends Error {
@@ -105,16 +102,12 @@ export interface SHLError extends Error {
 // Utilities
 // ============================================================================
 
-/** Generate 128-bit random hex string */
-function generateRandomState(): string {
+function generateRandomHex(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Generate ephemeral ECDH-ES P-256 key pair for JWE encryption */
 async function generateEphemeralKeyPair() {
   const { publicKey, privateKey } = await generateKeyPair('ECDH-ES', { crv: 'P-256' });
   const publicJwk = await exportJWK(publicKey);
@@ -123,44 +116,82 @@ async function generateEphemeralKeyPair() {
   return { publicKey, privateKey, publicJwk };
 }
 
-/** Decrypt a compact JWE string using the ephemeral private key */
 async function decryptJwe(jwe: string, privateKey: KeyLike): Promise<unknown> {
   const { plaintext } = await compactDecrypt(jwe, privateKey);
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
 
-/** Create a relay session and return the session_id */
-async function createRelaySession(relayUrl: string): Promise<string> {
-  const resp = await fetch(`${relayUrl}/session`, { method: 'POST' });
-  if (!resp.ok) throw new Error(`Failed to create relay session: ${resp.status}`);
-  const data = await resp.json() as { session_id: string };
-  return data.session_id;
+// ============================================================================
+// Transaction helpers
+// ============================================================================
+
+interface TransactionInit {
+  transaction_id: string;
+  request_id: string;
+  read_secret: string;
+  request_uri: string;
 }
 
-/** Long-poll the relay — single request held open until data arrives or timeout */
-async function pollRelay(relayUrl: string, sessionId: string, _timeout: number): Promise<string> {
-  const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
-  if (!resp.ok) throw new Error(`Relay poll error: ${resp.status}`);
-  const data = await resp.json() as { status: string; response?: string };
-  if (data.status === 'complete' && data.response) {
-    return data.response;
+async function initTransaction(
+  verifierBase: string,
+  params: {
+    flow: 'same-device' | 'cross-device';
+    redirect_uri?: string;
+    ephemeral_pub_jwk: object;
+    dcql_query: DCQLQuery;
   }
-  throw new Error('Request timeout: no response received from relay');
+): Promise<TransactionInit> {
+  const resp = await fetch(`${verifierBase}/oid4vp/init`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error(`Failed to init transaction: ${resp.status}`);
+  return resp.json() as Promise<TransactionInit>;
+}
+
+async function fetchResult(
+  verifierBase: string,
+  params: { transaction_id: string; read_secret: string; response_code?: string }
+): Promise<string> {
+  const resp = await fetch(`${verifierBase}/oid4vp/result`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error(`Result fetch error: ${resp.status}`);
+  const data = await resp.json() as { status: string; response?: string };
+  if (data.status === 'complete' && data.response) return data.response;
+  if (data.status === 'pending') throw new Error('pending');
+  throw new Error('Unexpected result status: ' + data.status);
+}
+
+function waitForResponseCode(transactionId: string, timeout: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+    const timer = setTimeout(() => {
+      bc.close();
+      reject(new Error('Timeout waiting for response_code'));
+    }, timeout);
+
+    bc.onmessage = (event: MessageEvent) => {
+      if (event.data?.response_code) {
+        clearTimeout(timer);
+        bc.close();
+        resolve(event.data.response_code);
+      }
+    };
+  });
 }
 
 // ============================================================================
 // Core Functions
 // ============================================================================
 
-/**
- * Rehydrate vp_token by resolving inline references to actual data.
- * Two-pass resolution: catalog artifact_ids, then resolve artifact_refs.
- */
 export function rehydrateResponse(response: RawResponse): RehydratedResponse {
   const credentials: { [id: string]: unknown[] } = {};
   const catalog = new Map<string, unknown>();
 
-  // Pass 1: catalog artifact_ids
   for (const presentations of Object.values(response.vp_token)) {
     for (const p of presentations) {
       if ('type' in p && 'data' in p && 'artifact_id' in p && p.artifact_id) {
@@ -169,12 +200,9 @@ export function rehydrateResponse(response: RawResponse): RehydratedResponse {
     }
   }
 
-  // Pass 2: resolve references
   for (const [id, presentations] of Object.entries(response.vp_token)) {
     credentials[id] = presentations.map(p => {
-      if ('artifact_ref' in p) {
-        return catalog.get((p as RefArtifactPresentation).artifact_ref);
-      }
+      if ('artifact_ref' in p) return catalog.get((p as RefArtifactPresentation).artifact_ref);
       return (p as FullArtifactPresentation).data;
     });
   }
@@ -182,122 +210,140 @@ export function rehydrateResponse(response: RawResponse): RehydratedResponse {
   return { ...response, credentials };
 }
 
+async function decryptAndProcess(
+  jweString: string,
+  privateKey: KeyLike,
+  expectedState: string,
+  shouldRehydrate: boolean
+): Promise<RawResponse | RehydratedResponse> {
+  const decrypted = await decryptJwe(jweString, privateKey) as {
+    state: string;
+    vp_token?: VPToken;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (decrypted.state !== expectedState) {
+    throw new Error('State mismatch in decrypted response');
+  }
+
+  if (decrypted.error) {
+    const err = new Error(decrypted.error_description || decrypted.error) as unknown as SHLError;
+    err.code = decrypted.error;
+    err.state = decrypted.state;
+    throw err;
+  }
+
+  if (!decrypted.vp_token) throw new Error('No vp_token in decrypted response');
+
+  const response: RawResponse = { state: decrypted.state, vp_token: decrypted.vp_token };
+  return shouldRehydrate ? rehydrateResponse(response) : response;
+}
+
 /**
- * Initiate a SMART Health Check-in credential request
- * Uses direct_post.jwt with ephemeral keys and a zero-trust relay
+ * Initiate a SMART Health Check-in credential request.
  */
 export async function request(
   dcqlQuery: DCQLQuery,
   opts: RequestOptions
 ): Promise<RawResponse | RehydratedResponse> {
   const checkinBase = opts.checkinBase.replace(/\/+$/, '');
-  const relayUrl = opts.relayUrl.replace(/\/+$/, '');
+  const verifierBase = opts.verifierBase.replace(/\/+$/, '');
   if (!checkinBase) throw new Error('checkinBase required');
-  if (!relayUrl) throw new Error('relayUrl required');
+  if (!verifierBase) throw new Error('verifierBase required');
 
   if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
     throw new Error('dcqlQuery must be an object with a credentials array');
   }
 
-  const state = generateRandomState();
-  const nonce = generateRandomState();
+  const flow = opts.flow || 'same-device';
   const shouldRehydrate = opts.rehydrate !== false;
   const timeout = opts.timeout ?? 2 * 60 * 1000;
 
   // Generate ephemeral key pair for E2E encryption
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
 
-  // Create relay session
-  const sessionId = await createRelaySession(relayUrl);
-
-  // Build OID4VP request
-  // redirect_uri and response_uri must match exactly
-  const responseUri = `${relayUrl}/post/${sessionId}`;
-  const clientId = `redirect_uri:${responseUri}`;
-  const clientMetadata: ClientMetadata = {
-    jwks: { keys: [publicJwk] },
-    encrypted_response_enc_values_supported: ['A256GCM']
-  };
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: 'vp_token',
-    response_mode: 'direct_post.jwt',
-    response_uri: responseUri,
-    client_metadata: JSON.stringify(clientMetadata),
-    nonce,
-    state,
-    dcql_query: JSON.stringify(dcqlQuery)
+  // Initialize transaction with verifier backend
+  const txn = await initTransaction(verifierBase, {
+    flow,
+    redirect_uri: flow === 'same-device' ? `${verifierBase}/oid4vp/return` : undefined,
+    ephemeral_pub_jwk: publicJwk,
+    dcql_query: dcqlQuery,
   });
+
+  // Build minimal bootstrap URL
+  const client_id = `well_known:${verifierBase}`;
+  const bootstrapParams = new URLSearchParams({
+    client_id,
+    request_uri: txn.request_uri,
+    request_uri_method: 'post',
+  });
+  const launch_url = `${checkinBase}/?${bootstrapParams.toString()}`;
 
   if (opts.onRequestStart) {
     opts.onRequestStart({
-      client_id: clientId,
-      response_type: 'vp_token',
-      response_mode: 'direct_post.jwt',
-      response_uri: responseUri,
-      client_metadata: clientMetadata,
-      state,
-      nonce,
-      dcql_query: dcqlQuery
+      flow,
+      client_id,
+      request_uri: txn.request_uri,
+      launch_url,
+      transaction_id: txn.transaction_id,
+      request_id: txn.request_id,
     });
   }
 
-  const url = `${checkinBase}/?${params.toString()}`;
-  const popup = window.open(url, '_blank');
+  if (flow === 'same-device') {
+    const popup = window.open(launch_url, '_blank');
+    if (!popup) throw new Error('Popup blocked - please allow popups for this site');
 
-  if (!popup) {
-    throw new Error('Popup blocked - please allow popups for this site');
-  }
-
-  try {
-    // Poll relay for encrypted response
-    const jweString = await pollRelay(relayUrl, sessionId, timeout);
-
-    // Decrypt JWE using ephemeral private key
-    const decrypted = await decryptJwe(jweString, privateKey) as {
-      state: string;
-      vp_token?: VPToken;
-      error?: string;
-      error_description?: string;
-    };
-
-    // Validate state
-    if (decrypted.state !== state) {
-      throw new Error('State mismatch in decrypted response');
-    }
-
-    // Handle error responses
-    if (decrypted.error) {
-      const err = new Error(decrypted.error_description || decrypted.error) as unknown as SHLError;
-      err.code = decrypted.error;
-      err.state = decrypted.state;
-      throw err;
-    }
-
-    if (!decrypted.vp_token) {
-      throw new Error('No vp_token in decrypted response');
-    }
-
-    const response: RawResponse = {
-      state: decrypted.state,
-      vp_token: decrypted.vp_token
-    };
-
-    return shouldRehydrate ? rehydrateResponse(response) : response;
-  } finally {
     try {
-      if (popup && !popup.closed) popup.close();
-    } catch { /* ignore */ }
+      const response_code = await waitForResponseCode(txn.transaction_id, timeout);
+      const jweString = await fetchResult(verifierBase, {
+        transaction_id: txn.transaction_id,
+        read_secret: txn.read_secret,
+        response_code,
+      });
+      return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+    } finally {
+      try { if (popup && !popup.closed) popup.close(); } catch { /* ignore */ }
+    }
+  } else {
+    // Cross-device: caller renders launch_url as QR via onRequestStart
+    // Long-poll for result
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try {
+        const jweString = await fetchResult(verifierBase, {
+          transaction_id: txn.transaction_id,
+          read_secret: txn.read_secret,
+        });
+        return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+      } catch (err) {
+        if (err instanceof Error && err.message === 'pending') continue;
+        throw err;
+      }
+    }
+    throw new Error('Cross-device request timeout');
   }
 }
 
 /**
  * Handle return context in popup window.
- * With direct_post.jwt, data flows through the relay, not the fragment.
- * This function is retained for popup cleanup only.
+ * Detects #response_code in the hash, signals the opener via postMessage.
  */
 export async function maybeHandleReturn(): Promise<boolean> {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const responseCode = params.get('response_code');
+  const transactionId = params.get('transaction_id');
+
+  if (responseCode && transactionId) {
+    const bc = new BroadcastChannel(`shc-return-${transactionId}`);
+    bc.postMessage({ response_code: responseCode });
+    bc.close();
+    window.close();
+    return true;
+  }
+
   if (window.opener) {
     window.close();
     return true;
@@ -320,9 +366,5 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SHL = {
-    request,
-    maybeHandleReturn,
-    rehydrateResponse
-  };
+  window.SHL = { request, maybeHandleReturn, rehydrateResponse };
 }

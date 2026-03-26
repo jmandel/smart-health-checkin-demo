@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# Test static build in single-origin mode
-# Serves the demo site + relay on a single port.
-# The requester is at the root so response_uri is under redirect_uri.
+# Single-origin mode: serves demo + verifier on one port.
 
 cleanup() {
   echo ""
@@ -17,11 +15,11 @@ echo "🔨 Building project..."
 bun build.ts
 
 echo ""
-echo "🚀 Starting combined relay + static server..."
+echo "🚀 Starting combined verifier + static server..."
 echo ""
 echo "  • http://localhost:3003/"
 echo ""
 
-STATIC_DIR=build/smart-health-checkin-demo PORT=3003 bun demo/relay/server.ts &
+VERIFIER_BASE="http://localhost:3003" STATIC_DIR=build/smart-health-checkin-demo PORT=3003 bun demo/relay/server.ts &
 
 wait

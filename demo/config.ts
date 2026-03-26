@@ -1,6 +1,6 @@
 /**
  * Configuration for SMART Health Check-in demo
- * Supports both multi-origin (localhost subdomains) and single-origin (GitHub Pages) deployments
+ * Supports both multi-origin (localhost subdomains) and single-origin deployments
  */
 
 export interface AppConfig {
@@ -21,8 +21,8 @@ export interface Config {
     url: string;
     checkin: string;
   };
-  relay: {
-    url: string;
+  verifier: {
+    base: string;
   };
   checkin: {
     url: string;
@@ -32,8 +32,6 @@ export interface Config {
 
 function createConfig(): Config {
   const isLocalMultiOrigin = location.hostname.includes('.localhost');
-  const isGitHubPages = location.hostname.includes('joshuamandel.com');
-  const ghPagesBase = '/smart-health-checkin-demo';
 
   if (isLocalMultiOrigin) {
     return {
@@ -42,8 +40,8 @@ function createConfig(): Config {
         url: 'http://requester.localhost:3000',
         checkin: 'http://checkin.localhost:3001'
       },
-      relay: {
-        url: 'http://requester.localhost:3000'
+      verifier: {
+        base: 'http://requester.localhost:3000'
       },
       checkin: {
         url: 'http://checkin.localhost:3001',
@@ -82,22 +80,18 @@ function createConfig(): Config {
     };
   }
 
-  // Single-origin setup (GitHub Pages or fallback)
-  const base = isGitHubPages
-    ? `https://joshuamandel.com${ghPagesBase}`
-    : `${location.origin}${ghPagesBase}`;
-
+  // Single-origin setup
   return {
     mode: 'single-origin',
     requester: {
-      url: base,
-      checkin: `${base}/checkin`
+      url: location.origin,
+      checkin: `${location.origin}/checkin`
     },
-    relay: {
-      url: location.origin
+    verifier: {
+      base: location.origin
     },
     checkin: {
-      url: `${base}/checkin`,
+      url: `${location.origin}/checkin`,
       apps: [
         {
           id: 'flexpa',
@@ -107,7 +101,7 @@ function createConfig(): Config {
           accentColor: '#84cc16',
           logo: 'F',
           logoStyle: 'bold',
-          launchBase: `${base}/source-flexpa`
+          launchBase: `${location.origin}/source-flexpa`
         },
         {
           id: 'bwell',
@@ -115,7 +109,7 @@ function createConfig(): Config {
           description: 'AI-powered platform for connected care',
           color: '#2a2f74',
           logo: 'b',
-          launchBase: `${base}/source-bwell`
+          launchBase: `${location.origin}/source-bwell`
         },
         {
           id: 'premera',
@@ -123,7 +117,7 @@ function createConfig(): Config {
           description: 'Health insurance member portal',
           color: '#0099D8',
           logo: 'P',
-          launchBase: `${base}/source-premera`
+          launchBase: `${location.origin}/source-premera`
         }
       ]
     }

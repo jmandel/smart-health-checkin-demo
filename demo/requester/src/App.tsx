@@ -118,7 +118,7 @@ function TransactionBrowser({ request: req, response }: { request: object | null
   return (
     <div className="transaction-browser">
       <div className="browser-section">
-        <div className="browser-header">Request (OID4VP)</div>
+        <div className="browser-header">Request (OID4VP Bootstrap)</div>
         <pre className="browser-content">{JSON.stringify(req, null, 2)}</pre>
       </div>
       <div className="browser-section">
@@ -150,17 +150,16 @@ export default function App() {
     try {
       const result = await request(dcqlQuery, {
         checkinBase: config.requester.checkin,
-        relayUrl: config.relay.url,
-        onRequestStart: (params) => {
-          const sanitized = { ...params };
-          setRequestLog(sanitized);
+        verifierBase: config.verifier.base,
+        flow: 'same-device',
+        onRequestStart: (info) => {
+          setRequestLog(info);
           setResponseLog({ status: 'Waiting for response...' });
         }
       }) as RehydratedResponse;
 
       setResponseLog(result);
 
-      // Process credentials
       if (result.credentials) {
         const newTasks = { ...tasks };
 
@@ -206,21 +205,9 @@ export default function App() {
           <p className="subtitle">Please complete your registration by providing the following information:</p>
 
           <div className="task-list">
-            <TaskItem
-              title="Insurance Information"
-              description="Digital insurance card with coverage details"
-              completed={tasks.insurance}
-            />
-            <TaskItem
-              title="Clinical History"
-              description="Health records, medications, and allergies"
-              completed={tasks.clinical}
-            />
-            <TaskItem
-              title="Patient Intake Form"
-              description="Basic demographics and health concerns"
-              completed={tasks.intake}
-            />
+            <TaskItem title="Insurance Information" description="Digital insurance card with coverage details" completed={tasks.insurance} />
+            <TaskItem title="Clinical History" description="Health records, medications, and allergies" completed={tasks.clinical} />
+            <TaskItem title="Patient Intake Form" description="Basic demographics and health concerns" completed={tasks.intake} />
           </div>
 
           {complete && (
@@ -229,13 +216,9 @@ export default function App() {
             </div>
           )}
 
-          {coverage && patient && (
-            <InsuranceCard coverage={coverage} patient={patient} />
-          )}
+          {coverage && patient && <InsuranceCard coverage={coverage} patient={patient} />}
 
-          {error && (
-            <div className="error-banner">Error: {error}</div>
-          )}
+          {error && <div className="error-banner">Error: {error}</div>}
 
           <button
             className={`checkin-button ${complete ? 'complete' : ''}`}

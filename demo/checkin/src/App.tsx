@@ -12,77 +12,50 @@ interface AppConfig {
   launchBase: string;
 }
 
-interface Request {
+interface BootstrapRequest {
   protocol: string;
   client_id: string;
-  response_type: string;
-  response_mode: string;
-  response_uri: string | null;
-  client_metadata: string | null;
-  nonce: string;
-  state: string;
-  dcql_query: object;
+  request_uri: string;
+  request_uri_method: string;
 }
 
-function parseRequest(): Request | { error: string } {
+function parseRequest(): BootstrapRequest | { error: string } {
   const urlParams = new URLSearchParams(window.location.search);
-  const protocol = urlParams.get('protocol') || 'smart-health-checkin-v1';
+  const clientId = urlParams.get('client_id');
+  const requestUri = urlParams.get('request_uri');
+  const requestUriMethod = urlParams.get('request_uri_method');
 
-  if (protocol === 'smart-health-checkin-v1' || urlParams.get('response_type') === 'vp_token') {
-    try {
-      const clientIdRaw = urlParams.get('client_id');
-      const responseType = urlParams.get('response_type');
-      const responseMode = urlParams.get('response_mode');
-      const responseUri = urlParams.get('response_uri');
-      const clientMetadata = urlParams.get('client_metadata');
-      const nonce = urlParams.get('nonce');
-      const state = urlParams.get('state');
-
-      if (!clientIdRaw || !state || !nonce) {
-        return { error: 'Missing required parameters (client_id, state, or nonce)' };
-      }
-
-      const req: Request = {
-        protocol: 'smart-health-checkin-v1',
-        client_id: clientIdRaw,
-        response_type: responseType || 'vp_token',
-        response_mode: responseMode || 'direct_post.jwt',
-        response_uri: responseUri,
-        client_metadata: clientMetadata,
-        nonce,
-        state,
-        dcql_query: JSON.parse(urlParams.get('dcql_query') || '{}')
-      };
-      console.log('[Check-in] Request (OID4VP):', req);
-      return req;
-    } catch (e) {
-      return { error: 'Invalid OID4VP request: ' + (e as Error).message };
+  if (clientId?.startsWith('well_known:')) {
+    if (!requestUri || !requestUriMethod) {
+      return { error: 'Missing request_uri or request_uri_method for well_known: flow' };
     }
+    const req: BootstrapRequest = {
+      protocol: 'smart-health-checkin-v1',
+      client_id: clientId,
+      request_uri: requestUri,
+      request_uri_method: requestUriMethod,
+    };
+    console.log('[Check-in] Bootstrap request:', req);
+    return req;
   }
 
-  return { error: 'Missing request parameter. This page should be opened by the SMART Health Check-in library.' };
+  return { error: 'Missing or invalid client_id. Expected well_known: prefix.' };
 }
 
-function AppCard({ app, req, disabled }: { app: AppConfig; req: Request; disabled: boolean }) {
+function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest; disabled: boolean }) {
   const handleClick = () => {
     if (disabled) return;
 
     console.log('[Check-in] Launching app:', app.id);
 
+    // Forward only bootstrap params
     const appParams = new URLSearchParams();
     appParams.set('client_id', req.client_id);
-    appParams.set('response_type', 'vp_token');
-    appParams.set('response_mode', req.response_mode);
-    appParams.set('state', req.state);
-    appParams.set('nonce', req.nonce);
-    appParams.set('dcql_query', JSON.stringify(req.dcql_query));
-
-    // Forward direct_post.jwt params
-    if (req.response_uri) appParams.set('response_uri', req.response_uri);
-    if (req.client_metadata) appParams.set('client_metadata', req.client_metadata);
+    appParams.set('request_uri', req.request_uri);
+    appParams.set('request_uri_method', req.request_uri_method);
 
     const launchUrl = app.launchBase + '?' + appParams.toString();
-    console.log('[Check-in] Launch URL (OID4VP):', launchUrl);
+    console.log('[Check-in] Launch URL:', launchUrl);
 
     const w = window.open(launchUrl, '_blank');
     if (!w) {
@@ -145,7 +118,6 @@ export default function App() {
     );
   }
 
-  // Group apps by category
   const categories: Record<string, { title: string; apps: AppConfig[] }> = {
     'ehr': { title: 'Health Systems', apps: [] },
     'phr': { title: 'Connected Apps', apps: [] },
