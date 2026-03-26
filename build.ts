@@ -87,7 +87,8 @@ if (tscResult.exitCode === 0) {
 // These are React apps in demo/ that get built and output to build/smart-health-checkin-demo/
 const DEMO_DIR = join(ROOT, 'demo');
 const DEMO_APPS = [
-  { dir: 'requester', out: '.' },      // Requester is the root/landing page
+  { dir: 'portal', out: 'portal' },
+  { dir: 'kiosk', out: 'kiosk' },
   { dir: 'source-flexpa', out: 'source-flexpa' },
   { dir: 'checkin', out: 'checkin' },
 ];
@@ -118,10 +119,16 @@ for (const app of DEMO_APPS) {
   });
 
   if (result.success) {
-    console.log(`  ✓ ${app.out === '.' ? '(root - requester)' : app.out + '/'}`);
+    console.log(`  ✓ ${app.out}/`);
   } else {
     console.error(`  ✗ ${app.dir} build failed:`, result.logs);
   }
+}
+
+// Copy landing page
+if (existsSync(join(DEMO_DIR, 'index.html'))) {
+  cpSync(join(DEMO_DIR, 'index.html'), join(BUILD_DIR, 'index.html'));
+  console.log('  ✓ index.html (landing page)');
 }
 
 // - Library dist files (for CDN-style access)

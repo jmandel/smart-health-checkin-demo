@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # SMART Health Check-in - Multi-Origin Local Development
-# The requester runs on the combined verifier+static server.
 
 cleanup() {
   echo ""
@@ -16,18 +15,20 @@ echo "🔨 Building project..."
 bun build.ts
 
 echo ""
-echo "🚀 Starting SMART Health Check-in demo in multi-origin mode..."
+echo "🚀 Starting SMART Health Check-in demo..."
 echo ""
-echo "  • Requester + Verifier:  http://requester.localhost:3000"
-echo "  • Check-in:              http://checkin.localhost:3001"
-echo "  • Flexpa:                http://flexpa.localhost:3002"
+echo "  • Landing:              http://requester.localhost:3000"
+echo "  • Portal (same-device): http://requester.localhost:3000/portal/"
+echo "  • Kiosk (cross-device): http://requester.localhost:3000/kiosk/"
+echo "  • Check-in picker:      http://checkin.localhost:3001"
+echo "  • Flexpa source:        http://flexpa.localhost:3002"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 echo ""
 
 BUILD_DIR="build/smart-health-checkin-demo"
 
-echo "Starting Requester + Verifier on port 3000..."
+echo "Starting Verifier + Demo on port 3000..."
 (VERIFIER_BASE="http://requester.localhost:3000" STATIC_DIR="$BUILD_DIR" PORT=3000 bun demo/serve-demo.ts 2>&1 | sed "s/^/[Verifier] /") &
 
 echo "Starting Check-in on port 3001..."

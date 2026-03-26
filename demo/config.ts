@@ -1,6 +1,5 @@
 /**
  * Configuration for SMART Health Check-in demo
- * Supports both multi-origin (localhost subdomains) and single-origin deployments
  */
 
 export interface AppConfig {
@@ -17,7 +16,11 @@ export interface AppConfig {
 
 export interface Config {
   mode: 'multi-origin' | 'single-origin';
-  requester: {
+  portal: {
+    url: string;
+    checkin: string;
+  };
+  kiosk: {
     url: string;
     checkin: string;
   };
@@ -36,8 +39,12 @@ function createConfig(): Config {
   if (isLocalMultiOrigin) {
     return {
       mode: 'multi-origin',
-      requester: {
+      portal: {
         url: 'http://requester.localhost:3000',
+        checkin: 'http://checkin.localhost:3001'
+      },
+      kiosk: {
+        url: 'http://requester.localhost:3000/kiosk/',
         checkin: 'http://checkin.localhost:3001'
       },
       verifier: {
@@ -47,32 +54,21 @@ function createConfig(): Config {
         url: 'http://checkin.localhost:3001',
         apps: [
           {
-            id: 'premera',
-            name: 'Premera Blue Cross',
-            description: 'Health insurance member portal',
-            category: 'healthplan',
-            color: '#0099D8',
-            logo: 'P',
+            id: 'premera', name: 'Premera Blue Cross',
+            description: 'Health insurance member portal', category: 'healthplan',
+            color: '#0099D8', logo: 'P',
             launchBase: 'http://premera.localhost:3004'
           },
           {
-            id: 'flexpa',
-            name: 'Flexpa',
-            description: 'Connected health data platform',
-            category: 'phr',
-            color: '#0d9488',
-            accentColor: '#84cc16',
-            logo: 'F',
-            logoStyle: 'bold',
+            id: 'flexpa', name: 'Flexpa',
+            description: 'Connected health data platform', category: 'phr',
+            color: '#0d9488', accentColor: '#84cc16', logo: 'F', logoStyle: 'bold',
             launchBase: 'http://flexpa.localhost:3002'
           },
           {
-            id: 'bwell',
-            name: 'b.well Connected Health',
-            description: 'AI-powered platform for connected care',
-            category: 'phr',
-            color: '#2a2f74',
-            logo: 'b',
+            id: 'bwell', name: 'b.well Connected Health',
+            description: 'AI-powered platform for connected care', category: 'phr',
+            color: '#2a2f74', logo: 'b',
             launchBase: 'http://bwell.localhost:3003'
           }
         ]
@@ -80,11 +76,14 @@ function createConfig(): Config {
     };
   }
 
-  // Single-origin setup
   return {
     mode: 'single-origin',
-    requester: {
-      url: location.origin,
+    portal: {
+      url: `${location.origin}/portal`,
+      checkin: `${location.origin}/checkin`
+    },
+    kiosk: {
+      url: `${location.origin}/kiosk`,
       checkin: `${location.origin}/checkin`
     },
     verifier: {
@@ -94,29 +93,21 @@ function createConfig(): Config {
       url: `${location.origin}/checkin`,
       apps: [
         {
-          id: 'flexpa',
-          name: 'Flexpa',
+          id: 'flexpa', name: 'Flexpa',
           description: 'Connected health data platform',
-          color: '#0d9488',
-          accentColor: '#84cc16',
-          logo: 'F',
-          logoStyle: 'bold',
+          color: '#0d9488', accentColor: '#84cc16', logo: 'F', logoStyle: 'bold',
           launchBase: `${location.origin}/source-flexpa`
         },
         {
-          id: 'bwell',
-          name: 'b.well Connected Health',
+          id: 'bwell', name: 'b.well Connected Health',
           description: 'AI-powered platform for connected care',
-          color: '#2a2f74',
-          logo: 'b',
+          color: '#2a2f74', logo: 'b',
           launchBase: `${location.origin}/source-bwell`
         },
         {
-          id: 'premera',
-          name: 'Premera Blue Cross',
+          id: 'premera', name: 'Premera Blue Cross',
           description: 'Health insurance member portal',
-          color: '#0099D8',
-          logo: 'P',
+          color: '#0099D8', logo: 'P',
           launchBase: `${location.origin}/source-premera`
         }
       ]

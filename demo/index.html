@@ -2,381 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SMART Health Check-in Pattern</title>
+  <title>SMART Health Check-in Demo</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
-      padding: 0;
       background: #f8fafc;
       color: #1e293b;
-      line-height: 1.6;
-    }
-    .hero {
-      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-      color: white;
-      padding: 60px 20px 80px;
-      text-align: center;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    h1 {
-      font-size: 42px;
-      margin: 0 0 12px 0;
-      font-weight: 700;
-    }
-    .subtitle {
-      font-size: 22px;
-      margin: 0 0 32px 0;
-      opacity: 0.95;
-      font-weight: 300;
-    }
-    .cta-button {
-      display: inline-block;
-      padding: 16px 40px;
-      background: white;
-      color: #0284c7;
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 18px;
-      font-weight: 600;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      transition: all 0.2s;
-    }
-    .cta-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
-    }
-    .mode-badge {
-      display: inline-block;
-      padding: 8px 16px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 32px;
-    }
-    .content {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 40px 20px;
     }
-    .section {
+    h1 { font-size: 32px; margin: 0 0 8px 0; text-align: center; }
+    .subtitle { color: #64748b; margin: 0 0 48px 0; text-align: center; font-size: 18px; }
+    .cards { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+    .card {
+      flex: 1;
+      min-width: 300px;
+      max-width: 380px;
       background: white;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 32px;
-      margin-bottom: 32px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    .section h2 {
-      margin: 0 0 20px 0;
-      font-size: 28px;
-      color: #0f172a;
-    }
-    .section h3 {
-      margin: 24px 0 12px 0;
-      font-size: 20px;
-      color: #334155;
-    }
-    .section p {
-      margin: 0 0 16px 0;
-      color: #475569;
-    }
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin: 24px 0;
-    }
-    .feature-card {
-      padding: 20px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border-left: 4px solid #0284c7;
-    }
-    .feature-card h4 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      color: #0f172a;
-    }
-    .feature-card p {
-      margin: 0;
-      font-size: 14px;
-      color: #64748b;
-    }
-    .highlight-box {
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      padding: 16px;
-      margin: 20px 0;
-      border-radius: 4px;
-    }
-    .highlight-box strong {
-      color: #92400e;
-    }
-    ul {
-      margin: 16px 0;
-      padding-left: 24px;
-    }
-    li {
-      margin: 8px 0;
-      color: #475569;
-    }
-    .footer {
-      text-align: center;
-      padding: 40px 20px;
-      color: #64748b;
-      font-size: 14px;
-    }
-    .footer a {
-      color: #0284c7;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
     }
-    .footer a:hover {
-      text-decoration: underline;
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     }
-    code {
-      background: #f1f5f9;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-      font-size: 0.9em;
-      color: #0f172a;
+    .card-icon { font-size: 40px; margin-bottom: 16px; }
+    .card h2 { margin: 0 0 8px 0; font-size: 22px; }
+    .card p { margin: 0 0 16px 0; color: #64748b; font-size: 15px; line-height: 1.5; }
+    .card-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    .code-block {
-      background: #f1f5f9;
-      border-radius: 8px;
-      padding: 24px;
-      margin: 24px 0;
-      font-family: monospace;
+    .badge-same { background: #dbeafe; color: #1e40af; }
+    .badge-cross { background: #f0fdf4; color: #166534; }
+    .footer {
+      margin-top: 48px;
+      text-align: center;
+      color: #94a3b8;
       font-size: 14px;
-      overflow-x: auto;
-      line-height: 1.6;
     }
+    .footer a { color: #0284c7; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="hero">
-    <div class="mode-badge" id="mode-badge">Loading...</div>
-    <div class="container">
-      <h1>SMART Health Check-in Pattern</h1>
-      <div class="subtitle">A web-standard approach to "Kill the Clipboard"</div>
-      <a href="./requester/" class="cta-button">
-        Launch Simulation: Dr. Mandel's Clinic
-      </a>
-    </div>
-  </div>
+  <h1>SMART Health Check-in</h1>
+  <div class="subtitle">Two demos, one protocol</div>
 
-  <div class="content">
-    <div class="container">
-      <div class="section">
-        <h2>The CMS Interoperability Framework: Kill the Clipboard by 2026</h2>
-        <p>
-          The CMS Interoperability Framework aims to "Kill the Clipboard" by 2026, enabling patients
-          to digitally share health records and insurance data with providers.
-        </p>
-        <p>
-          We already have robust data standards for this: <strong>SMART Health Cards (SHC)</strong> and
-          <strong>SMART Health Links (SHL)</strong>. These standards excel at modeling the data and work
-          beautifully for in-person interactions: a patient simply shows a QR code on their phone, and
-          a receptionist scans it.
-        </p>
-        <p>
-          However, the most efficient time to collect registration data is <strong>before the patient
-          arrives at the clinic</strong>, while they are at home. In this remote context, the workflow
-          breaks down.
-        </p>
-      </div>
+  <div class="cards">
+    <a class="card" href="./portal/">
+      <div class="card-icon">🏥</div>
+      <h2>Patient Portal</h2>
+      <p>Patient is on their own device. They tap a button, a popup opens, they select their health app and share data.</p>
+      <span class="card-badge badge-same">Same-Device Flow</span>
+    </a>
 
-      <div class="section">
-        <h2>The Problem: Friction in Remote Exchange</h2>
-        <p>
-          Without a dedicated browser standard for data sharing, current remote workflows force patients into complex, manual processes:
-        </p>
-        <ul>
-          <li>
-            <strong>File System:</strong> Providers ask patients to "Upload your Health Card," assuming
-            the patient knows how to export a file from their health app, locate it in their device's
-            file system, and upload it.
-          </li>
-          <li>
-            <strong>Copy-Paste:</strong> Patients must switch contexts, opening a health app to generate
-            a sharing link, copying a long URL, switching back to the registration portal, and pasting it.
-          </li>
-          <li>
-            <strong>"Self-Scan":</strong> If a provider displays a QR code on a registration screen for
-            the patient to scan, a patient using a mobile phone physically cannot scan the screen they
-            are looking at.
-          </li>
-        </ul>
-        <p>
-          These barriers prevent widespread adoption. This demo shows how a browser-based protocol can solve these challenges.
-        </p>
-      </div>
-
-      <div class="section">
-        <h2>The Solution: Browser-Based Health Data Exchange</h2>
-        <p>
-          This demo implements a browser-based protocol for seamless health data sharing using modern web standards.
-          The protocol uses the <strong>W3C Digital Credentials API</strong> as the browser interface, orchestrating
-          <strong>OID4VP (OpenID for Verifiable Presentations)</strong> flows with
-          <strong>DCQL (Digital Credentials Query Language)</strong> to enable patients to securely share
-          health information from their personal health apps directly with healthcare providers.
-        </p>
-        <p>
-          The approach provides several key benefits:
-        </p>
-        <ul>
-          <li><strong>User-Friendly:</strong> Patients can share data with a familiar "Sign in with..." experience,
-              without manual file uploads or copy-pasting URLs.</li>
-          <li><strong>Privacy-Preserving:</strong> Data flows directly from the patient's health app to the provider,
-              with no intermediary storage or logging.</li>
-          <li><strong>Flexible:</strong> Supports sharing various types of health information including insurance cards,
-              clinical records, and completed intake forms.</li>
-        </ul>
-        <p>
-          For complete technical details about the protocol specification, implementation, and security model,
-          see the <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">GitHub repository</a>.
-        </p>
-      </div>
-
-      <div class="section">
-        <h2>How It Works</h2>
-        <p>
-          The workflow connects healthcare providers with patients' personal health apps through
-          a simple, secure exchange:
-        </p>
-
-        <h3>1. Provider Requests Information</h3>
-        <p>
-          A healthcare provider's registration site initiates the flow by specifying what information
-          is needed — for example, an insurance card, clinical history, and a completed intake form.
-        </p>
-
-        <h3>2. Patient Selects Their Health App</h3>
-        <p>
-          The patient chooses their health app from a list of compatible options (such as their
-          health plan app, personal health record, or EHR patient portal).
-        </p>
-
-        <h3>3. Patient Reviews and Authorizes</h3>
-        <p>
-          Within their chosen health app, the patient can:
-        </p>
-        <ul>
-          <li>
-            <strong>Review requested information:</strong> See exactly what data the provider is asking for
-          </li>
-          <li>
-            <strong>Auto-fill forms:</strong> Let the app pre-populate intake forms with known information
-            like name, date of birth, and current medications
-          </li>
-          <li>
-            <strong>Control what to share:</strong> Select which records to include or exclude
-          </li>
-          <li>
-            <strong>Add notes:</strong> Provide additional context or information as needed
-          </li>
-        </ul>
-
-        <h3>4. Data Securely Delivered</h3>
-        <p>
-          The health app packages the authorized information and sends it directly to the provider's
-          system, completing the registration process instantly.
-        </p>
-      </div>
-
-      <div class="section">
-        <h2>Privacy and Security</h2>
-        <p>
-          Privacy and security are fundamental to the design:
-        </p>
-        <ul>
-          <li>
-            <strong>Direct Data Transfer:</strong> Health information flows directly from the patient's
-            health app to the healthcare provider, with no intermediary storage or logging.
-          </li>
-          <li>
-            <strong>Patient Control:</strong> Patients explicitly authorize each data sharing transaction
-            and can select exactly what information to share.
-          </li>
-          <li>
-            <strong>Standards-Based:</strong> Built on established healthcare interoperability standards
-            including FHIR and verifiable credential formats.
-          </li>
-          <li>
-            <strong>No Central Infrastructure:</strong> The protocol requires no centralized servers or
-            databases that could become a privacy risk or single point of failure.
-          </li>
-        </ul>
-        <p>
-          For detailed information about the security model and protocol implementation, see the
-          <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">technical documentation</a>.
-        </p>
-      </div>
-
-      <div class="section">
-        <h2>Key Benefits</h2>
-        <div class="feature-grid">
-          <div class="feature-card">
-            <h4>Familiar Experience</h4>
-            <p>The flow mirrors the standard "Sign in with..." experience that users already trust from other web applications.</p>
-          </div>
-          <div class="feature-card">
-            <h4>Reduces Manual Work</h4>
-            <p>Automates data entry by pulling information directly from patients' existing health apps, eliminating clipboard-based workflows.</p>
-          </div>
-          <div class="feature-card">
-            <h4>Comprehensive Data</h4>
-            <p>Supports sharing multiple types of health information — from insurance cards to clinical records to intake questionnaires — in a single transaction.</p>
-          </div>
-        </div>
-        <p style="margin-top: 24px;">
-          This approach provides a practical, deployable solution to meet the CMS "Kill the Clipboard"
-          objective using current web technologies.
-        </p>
-      </div>
-
-      <div class="section">
-        <h2>Try the Demo</h2>
-        <p>
-          Experience the SMART Health Check-in pattern in action with our interactive simulation
-          of <strong>Dr. Mandel's Family Medicine</strong> clinic. The demo shows:
-        </p>
-        <ul>
-          <li>A realistic patient registration workflow</li>
-          <li>Integration with multiple health data sources (health plans, EHRs, PHRs)</li>
-          <li>Pre-population of forms using patient health records</li>
-          <li>Transparent JSON transaction logs showing the protocol in action</li>
-        </ul>
-        <div style="text-align: center; margin-top: 32px;">
-          <a href="./requester/" class="cta-button">
-            Launch Dr. Mandel's Clinic Demo
-          </a>
-        </div>
-      </div>
-    </div>
+    <a class="card" href="./kiosk/">
+      <div class="card-icon">🖥️</div>
+      <h2>Front Desk Kiosk</h2>
+      <p>Staff starts the check-in at a workstation. A QR code appears. The patient scans it on their phone to share data.</p>
+      <span class="card-badge badge-cross">Cross-Device Flow</span>
+    </a>
   </div>
 
   <div class="footer">
-    <div class="container">
-      <p>
-        <strong>SMART Health Check-in Protocol</strong><br>
-        A demonstration of browser-based health data sharing using W3C Digital Credentials API, OID4VP and DCQL<br>
-        <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">View Protocol Details on GitHub</a>
-      </p>
-    </div>
+    <p>
+      Both demos use the same protocol stack: <code>well_known:</code> verifier identity,
+      signed Request Objects, <code>direct_post.jwt</code>, and the same wallet/picker/source apps.<br>
+      <a href="https://github.com/jmandel/smart-health-checkin-demo" target="_blank">View on GitHub</a>
+    </p>
   </div>
-
-  <script src="./config.js"></script>
-  <script>
-    // Show current mode
-    const modeBadge = document.getElementById('mode-badge');
-    modeBadge.textContent = ZTWRConfig.mode === 'multi-origin'
-      ? 'Multi-Origin Mode (localhost)'
-      : 'Single-Origin Mode (GitHub Pages)';
-  </script>
 </body>
 </html>
