@@ -10,11 +10,15 @@ The relay stores only opaque JWE ciphertext. It never possesses the decryption k
 VERIFIER_BASE=https://clinic.example.com bun demo/relay/server.ts
 ```
 
+This gives you same-device flows immediately. **Cross-device endpoints are disabled by default** — they reject with `verifier_session_required` because cross-device flows require authenticated session binding to prevent an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI. To enable cross-device, mount the handler with your own `getVerifierSessionId` callback (see "Mounted in your own server" below).
+
 If `SIGNING_KEY` is omitted, an ephemeral ES256 key pair is generated at startup.
 
 ## Deployment options
 
 ### 1. Standalone server
+
+Same-device only (cross-device disabled for safety):
 
 ```bash
 VERIFIER_BASE=https://clinic.example.com \
@@ -35,6 +39,8 @@ location /oid4vp/                      { proxy_pass http://127.0.0.1:3003; }
 
 ### 3. Mounted in your own server
 
+Same-device only:
+
 ```typescript
 import { createRelayHandler } from './demo/relay/handler.ts';
 
@@ -42,7 +48,27 @@ const { handler: relay } = await createRelayHandler({
   verifierBase: 'https://clinic.example.com',
   metadata: { client_name: 'My Clinic' },
 });
+```
 
+With cross-device enabled (requires session binding):
+
+```typescript
+const { handler: relay } = await createRelayHandler({
+  verifierBase: 'https://clinic.example.com',
+  metadata: { client_name: 'My Clinic' },
+  requireVerifierSessionForCrossDevice: true,
+  getVerifierSessionId: (req) => {
+    // Return a stable session ID from your auth layer (cookie, JWT, etc.)
+    // Return null to reject the request.
+    const session = getSessionFromYourAuthLayer(req);
+    return session?.id ?? null;
+  },
+});
+```
+
+Then use in any Bun server:
+
+```typescript
 Bun.serve({
   async fetch(req) {
     const resp = await relay(req);
@@ -196,6 +222,12 @@ Cross-device response:
 - `request_id` alone is never sufficient to retrieve stored data.
 - `transaction_id` is never sent to the wallet or included in wallet-facing redirects.
 - The relay cannot decrypt JWE payloads — only the requester's ephemeral private key can.
+
+### Cross-device requires session binding
+
+Without session binding, an attacker can create a cross-device transaction with their own ephemeral key, show the QR to a victim, then redeem and decrypt the PHI. The `transaction_id` and `read_secret` are not stolen — the attacker *created* them.
+
+The standalone `server.ts` sets `requireVerifierSessionForCrossDevice: true` by default, which disables cross-device endpoints unless a `getVerifierSessionId` callback is provided. To enable cross-device, mount the handler in your own server with your auth layer.
 
 ## Configuration
 

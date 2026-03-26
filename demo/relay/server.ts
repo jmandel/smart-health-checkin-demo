@@ -1,6 +1,9 @@
 /**
  * Standalone OID4VP relay server.
  *
+ * Same-device flows work out of the box. Cross-device endpoints reject
+ * with 403 unless you provide your own session binding (see README).
+ *
  * Configuration via environment variables:
  *   PORT          - listen port (default 3003)
  *   VERIFIER_BASE - external base URL (default http://localhost:$PORT)
@@ -17,6 +20,9 @@ const { handler } = await createRelayHandler({
   verifierBase: VERIFIER_BASE,
   signingKeyJwk: process.env.SIGNING_KEY,
   metadata: process.env.CLIENT_NAME ? { client_name: process.env.CLIENT_NAME } : undefined,
+  // Cross-device requires session binding — reject unless the caller
+  // mounts the handler with their own getVerifierSessionId callback.
+  requireVerifierSessionForCrossDevice: true,
 });
 
 Bun.serve({
@@ -35,3 +41,5 @@ Bun.serve({
 
 console.log(`Relay listening on http://localhost:${PORT}`);
 console.log(`  VERIFIER_BASE: ${VERIFIER_BASE}`);
+console.log(`  Cross-device: disabled (no session binding configured)`);
+console.log(`  Same-device: enabled`);
