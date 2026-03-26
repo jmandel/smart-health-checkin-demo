@@ -314,6 +314,32 @@ h1 {
 .resource-field-label { color: #64748b; }
 .resource-field-value { font-weight: 500; color: #1e293b; }
 
+.resource-raw {
+  font-family: monospace;
+  font-size: 12px;
+  color: #475569;
+  word-break: break-all;
+  padding: 4px 0;
+}
+
+.resource-json {
+  font-family: monospace;
+  font-size: 11px;
+  color: #475569;
+  margin: 4px 0 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.resource-details summary {
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
 .collapsible-json { margin-top: 8px; }
 
 .collapsible-header {
