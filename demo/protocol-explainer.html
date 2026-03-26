@@ -180,7 +180,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>What is this?</h2>
+  <h2 id="overview">What is this?</h2>
   <p>
     SMART Health Check-in is an open protocol that lets patients share health records
     from their personal health apps directly with healthcare providers through a browser.
@@ -212,7 +212,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Roles</h2>
+  <h2 id="roles">Roles</h2>
   <div class="card" style="font-size:14px">
     <table style="width:100%;border-collapse:collapse">
       <tr style="border-bottom:1px solid #e2e8f0">
@@ -233,11 +233,11 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>What Can Be Requested</h2>
+  <h2 id="credentials">What Can Be Requested</h2>
   <p>Requests use the <a href="https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#dcql_query" style="color:var(--blue)">DCQL query language</a> with a custom credential format called <code>smart_artifact</code>. Three kinds of health data can be requested through the <code>meta</code> field:</p>
 
   <div class="card" style="border-left:4px solid var(--blue)">
-    <h3 style="margin-top:0">FHIR Resources</h3>
+    <h3 id="fhir-resources" style="margin-top:0">FHIR Resources</h3>
     <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
@@ -245,7 +245,7 @@
   </div>
 
   <div class="card" style="border-left:4px solid var(--green)">
-    <h3 style="margin-top:0">Questionnaires</h3>
+    <h3 id="questionnaires" style="margin-top:0">Questionnaires</h3>
     <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill answers from existing records. Returned as a FHIR QuestionnaireResponse.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"questionnaire"</span>: {
@@ -260,7 +260,7 @@
   </div>
 
   <div class="card" style="border-left:4px solid var(--purple)">
-    <h3 style="margin-top:0">SMART Health Cards</h3>
+    <h3 id="shc" style="margin-top:0">SMART Health Cards</h3>
     <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a <code>signing_strategy</code>.</p>
     <p style="font-size:13px;color:var(--slate)">If <code>signing_strategy</code> is omitted, the wallet may return any format. If present, it lists acceptable strategies: <code>["shc_v1", "none"]</code> = prefer signed, accept unsigned. <code>["shc_v1"]</code> = must be signed.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
@@ -289,7 +289,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>The Request: From URL to Credentials</h2>
+  <h2 id="request">The Request: From URL to Credentials</h2>
   <p>A SMART Health Check-in request is a series of expansions. A compact bootstrap URL
     resolves into a signed JWT, which contains the full request parameters including the
     ephemeral encryption key. Here's what each layer looks like:</p>
@@ -354,7 +354,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>The Response: Encrypted, Then Decrypted</h2>
+  <h2 id="response">The Response: Encrypted, Then Decrypted</h2>
   <div class="card expand-chain">
     <div class="expand-level l0">
       <div class="expand-header">Wallet encrypts and POSTs <span class="badge badge-green">direct_post.jwt</span></div>
@@ -395,7 +395,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Same-Device Flow</h2>
+  <h2 id="same-device">Same-Device Flow</h2>
   <p style="color:var(--slate);font-size:15px;margin-bottom:8px">Patient is on their own device — portal, patient app, or third-party site.</p>
 
   <div class="swim-lane lane-verifier">
@@ -463,7 +463,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Cross-Device Flow</h2>
+  <h2 id="cross-device">Cross-Device Flow</h2>
   <p style="color:var(--slate);font-size:15px;margin-bottom:8px">Staff starts the check-in at a workstation. Patient completes it on their phone.</p>
 
   <div class="swim-lane lane-verifier">
@@ -533,9 +533,9 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Security Model</h2>
+  <h2 id="security">Security Model</h2>
 
-  <h3>Secret Distribution</h3>
+  <h3 id="secrets">Secret Distribution</h3>
   <table class="secret-table">
     <thead>
       <tr><th>Secret</th><th>Known By</th><th>Purpose</th></tr>
@@ -574,7 +574,7 @@
     </tbody>
   </table>
 
-  <h3>Key Properties</h3>
+  <h3 id="properties">Key Properties</h3>
   <div class="card" style="font-size:14px">
     <ul style="margin:0;padding-left:20px">
       <li><strong>E2E Encryption:</strong> The relay/verifier backend stores opaque JWE ciphertext. It never possesses the decryption key.</li>
@@ -590,7 +590,7 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Shim API</h2>
+  <h2 id="shim-api">Shim API</h2>
   <div class="data-box">
     <pre>import { request, maybeHandleReturn } from 'smart-health-checkin';
 
@@ -614,7 +614,7 @@ const result = await request(dcqlQuery, {
 
 <!-- ======================================== -->
 <section>
-  <h2>Demo Architecture</h2>
+  <h2 id="demo">Demo Architecture</h2>
   <div class="card" style="font-size:14px">
     <table style="width:100%;border-collapse:collapse">
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600;width:180px">Portal</td><td style="padding:8px">Same-device demo. Calls shim with <code>flow: 'same-device'</code>.</td></tr>
