@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
@@ -40,6 +40,67 @@ const dcqlQuery: DCQLQuery = {
   ]
 };
 
+// ============================================================================
+// Login gate
+// ============================================================================
+
+function hasSessionCookie(): boolean {
+  return document.cookie.includes('staff_session=');
+}
+
+function StaffLogin({ onLogin }: { onLogin: (name: string) => void }) {
+  const [username, setUsername] = useState('frontdesk');
+  const [password, setPassword] = useState('demo');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
+    const resp = await fetch('/demo/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+      credentials: 'same-origin',
+    });
+
+    if (resp.ok) {
+      const data = await resp.json() as { username: string };
+      onLogin(data.username);
+    } else {
+      setError('Invalid credentials');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="login-panel">
+      <h2>Staff Sign-in</h2>
+      <p className="login-hint">This simulates clinic staff authentication. The session cookie binds cross-device transactions to this workstation.</p>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Username
+          <input type="text" value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" />
+        </label>
+        <label>
+          Password
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+        </label>
+        {error && <div className="login-error">{error}</div>}
+        <button type="submit" disabled={submitting} className="start-button">
+          {submitting ? 'Signing in...' : 'Sign in'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ============================================================================
+// QR panel
+// ============================================================================
+
 function QRPanel({ url }: { url: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -49,40 +110,43 @@ function QRPanel({ url }: { url: string }) {
     }
   }, [url]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(url);
-  };
-
   return (
     <div className="qr-panel">
       <canvas ref={canvasRef} />
       <p className="qr-instruction">Scan with patient's phone or share the link</p>
       <div className="qr-link-row">
         <input type="text" readOnly value={url} className="qr-link-input" />
-        <button onClick={handleCopy} className="qr-copy-btn">Copy</button>
+        <button onClick={() => navigator.clipboard.writeText(url)} className="qr-copy-btn">Copy</button>
         <button onClick={() => window.open(url, '_blank')} className="qr-copy-btn">Open</button>
       </div>
     </div>
   );
 }
 
+// ============================================================================
+// Main app
+// ============================================================================
+
 export default function App() {
+  const [staffName, setStaffName] = useState<string | null>(
+    hasSessionCookie() ? 'Staff' : null
+  );
+
   const demo = useDemoRequest(dcqlQuery, {
     checkinBase: config.kiosk.checkin,
     verifierBase: config.verifier.base,
     flow: 'cross-device',
   });
 
-  // Auto-start on mount
+  // Auto-start after login
   const started = useRef(false);
   useEffect(() => {
-    if (!started.current) {
+    if (staffName && !started.current) {
       started.current = true;
       demo.start();
     }
-  }, []);
+  }, [staffName]);
 
-  // Extract summary from result
   let receivedCount = 0;
   if (demo.result?.credentials) {
     for (const items of Object.values(demo.result.credentials)) {
@@ -96,7 +160,9 @@ export default function App() {
         <div className="header-content">
           <div className="logo">DM</div>
           <h2 className="clinic-name">Dr. Mandel's Family Medicine</h2>
-          <span className="header-badge">Front Desk</span>
+          <span className="header-badge">
+            {staffName ? `Staff: ${staffName}` : 'Front Desk'}
+          </span>
         </div>
       </header>
 
@@ -106,7 +172,11 @@ export default function App() {
           <h1>Front Desk Check-in</h1>
           <p className="subtitle">Start a check-in for a patient using their phone</p>
 
-          {demo.loading && demo.requestInfo && (
+          {!staffName && (
+            <StaffLogin onLogin={(name) => setStaffName(name)} />
+          )}
+
+          {staffName && demo.loading && demo.requestInfo && (
             <div className="waiting-panel">
               <QRPanel url={demo.requestInfo.launch_url} />
               <div className="waiting-status">
@@ -116,7 +186,7 @@ export default function App() {
             </div>
           )}
 
-          {demo.loading && !demo.requestInfo && (
+          {staffName && demo.loading && !demo.requestInfo && (
             <div className="waiting-status">
               <span className="loader" />
               <span>Initializing...</span>

@@ -206,6 +206,52 @@ h1 {
   margin: 16px 0;
 }
 
+.login-panel {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 32px;
+  border: 1px solid #e2e8f0;
+}
+
+.login-panel h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+}
+
+.login-hint {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.login-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.login-panel input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.login-error {
+  color: #dc2626;
+  font-size: 14px;
+}
+
 .transaction-browser {
   margin-top: 32px;
   border-top: 1px solid #e2e8f0;

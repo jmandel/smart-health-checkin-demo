@@ -1492,7 +1492,8 @@
     const resp = await fetch(`${verifierBase}/oid4vp/${flow}/init`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params)
+      body: JSON.stringify(params),
+      credentials: "include"
     });
     if (!resp.ok)
       throw new Error(`Failed to init transaction: ${resp.status}`);
@@ -1502,7 +1503,8 @@
     const resp = await fetch(`${verifierBase}/oid4vp/${flow}/results`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params)
+      body: JSON.stringify(params),
+      credentials: "include"
     });
     if (!resp.ok)
       throw new Error(`Result fetch error: ${resp.status}`);
