@@ -1500,18 +1500,13 @@
     const data = await resp.json();
     return data.session_id;
   }
-  async function pollRelay(relayUrl, sessionId, timeout) {
-    const deadline = Date.now() + timeout;
-    const interval = 1000;
-    while (Date.now() < deadline) {
-      const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
-      if (!resp.ok)
-        throw new Error(`Relay poll error: ${resp.status}`);
-      const data = await resp.json();
-      if (data.status === "complete" && data.response) {
-        return data.response;
-      }
-      await new Promise((r) => setTimeout(r, interval));
+  async function pollRelay(relayUrl, sessionId, _timeout) {
+    const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
+    if (!resp.ok)
+      throw new Error(`Relay poll error: ${resp.status}`);
+    const data = await resp.json();
+    if (data.status === "complete" && data.response) {
+      return data.response;
     }
     throw new Error("Request timeout: no response received from relay");
   }

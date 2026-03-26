@@ -4,18 +4,23 @@
  * A simple, stateless relay that temporarily caches opaque JWE strings.
  * It never possesses the private key and cannot read or alter PHI.
  *
+ * Uses long polling: the GET /poll/:session_id request is held open until
+ * the wallet POSTs the encrypted response, then responds instantly.
+ *
  * Endpoints:
  *   POST /session          - Create a new session, returns { session_id }
  *   POST /post/:session_id - Wallet posts encrypted JWE response
- *   GET  /poll/:session_id - Browser polls for response
+ *   GET  /poll/:session_id - Browser long-polls for response
  */
 
 const PORT = parseInt(process.env.PORT || '3003', 10);
 const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LONG_POLL_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 interface Session {
   jwe?: string;
   created: number;
+  waiters: Array<(jwe: string) => void>;
 }
 
 const sessions = new Map<string, Session>();
@@ -57,7 +62,7 @@ Bun.serve({
     // POST /session - Create new session
     if (req.method === 'POST' && url.pathname === '/session') {
       const sessionId = generateSessionId();
-      sessions.set(sessionId, { created: Date.now() });
+      sessions.set(sessionId, { created: Date.now(), waiters: [] });
       return Response.json({ session_id: sessionId }, { headers: corsHeaders });
     }
 
@@ -78,7 +83,6 @@ Bun.serve({
         const params = new URLSearchParams(body);
         jwe = params.get('response') || '';
       } else {
-        // Also accept JSON body for flexibility
         const body = await req.json() as { response?: string };
         jwe = body.response || '';
       }
@@ -87,11 +91,17 @@ Bun.serve({
         return Response.json({ error: 'missing_response' }, { status: 400, headers: corsHeaders });
       }
 
+      // Wake up any waiting long-poll clients
+      for (const resolve of session.waiters) {
+        resolve(jwe);
+      }
+      session.waiters = [];
       session.jwe = jwe;
+
       return Response.json({ status: 'ok' }, { headers: corsHeaders });
     }
 
-    // GET /poll/:session_id - Browser polls for response
+    // GET /poll/:session_id - Browser long-polls for response
     const pollMatch = url.pathname.match(/^\/poll\/([a-f0-9]+)$/);
     if (req.method === 'GET' && pollMatch) {
       const sessionId = pollMatch[1];
@@ -100,13 +110,29 @@ Bun.serve({
         return Response.json({ error: 'session_not_found' }, { status: 404, headers: corsHeaders });
       }
 
+      // Already have data — return immediately
       if (session.jwe) {
         const jwe = session.jwe;
         sessions.delete(sessionId);
         return Response.json({ status: 'complete', response: jwe }, { headers: corsHeaders });
       }
 
-      return Response.json({ status: 'pending' }, { headers: corsHeaders });
+      // Hold connection open until data arrives or timeout
+      return new Promise<Response>((resolve) => {
+        const timer = setTimeout(() => {
+          // Remove this waiter and return timeout
+          session.waiters = session.waiters.filter(w => w !== onData);
+          resolve(Response.json({ status: 'timeout' }, { headers: corsHeaders }));
+        }, LONG_POLL_TIMEOUT_MS);
+
+        const onData = (jwe: string) => {
+          clearTimeout(timer);
+          sessions.delete(sessionId);
+          resolve(Response.json({ status: 'complete', response: jwe }, { headers: corsHeaders }));
+        };
+
+        session.waiters.push(onData);
+      });
     }
 
     return Response.json({ error: 'not_found' }, { status: 404, headers: corsHeaders });

@@ -137,18 +137,13 @@ async function createRelaySession(relayUrl: string): Promise<string> {
   return data.session_id;
 }
 
-/** Poll the relay until a response arrives or timeout */
-async function pollRelay(relayUrl: string, sessionId: string, timeout: number): Promise<string> {
-  const deadline = Date.now() + timeout;
-  const interval = 1000;
-  while (Date.now() < deadline) {
-    const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
-    if (!resp.ok) throw new Error(`Relay poll error: ${resp.status}`);
-    const data = await resp.json() as { status: string; response?: string };
-    if (data.status === 'complete' && data.response) {
-      return data.response;
-    }
-    await new Promise(r => setTimeout(r, interval));
+/** Long-poll the relay — single request held open until data arrives or timeout */
+async function pollRelay(relayUrl: string, sessionId: string, _timeout: number): Promise<string> {
+  const resp = await fetch(`${relayUrl}/poll/${sessionId}`);
+  if (!resp.ok) throw new Error(`Relay poll error: ${resp.status}`);
+  const data = await resp.json() as { status: string; response?: string };
+  if (data.status === 'complete' && data.response) {
+    return data.response;
   }
   throw new Error('Request timeout: no response received from relay');
 }
