@@ -98,6 +98,32 @@
     padding: 12px; border-radius: 6px; overflow-x: auto;
   }
 
+  .expand-chain { margin: 24px 0; }
+  .expand-level {
+    border-left: 3px solid #cbd5e1;
+    margin-left: 12px;
+    padding: 0 0 0 20px;
+  }
+  .expand-level.l0 { border-left-color: var(--blue); margin-left: 0; }
+  .expand-level.l1 { border-left-color: var(--purple); }
+  .expand-level.l2 { border-left-color: var(--green); }
+  .expand-level.l3 { border-left-color: var(--orange); }
+  .expand-header {
+    font-weight: 600; font-size: 15px; margin: 16px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .expand-header .arrow { color: var(--slate-light); font-size: 12px; }
+  .expand-desc { color: var(--slate); font-size: 14px; margin: 0 0 8px; line-height: 1.6; }
+  .expand-code {
+    background: #1e293b; color: #e2e8f0; padding: 12px 16px;
+    border-radius: 6px; font-family: monospace; font-size: 12px;
+    overflow-x: auto; margin: 8px 0 12px; line-height: 1.6;
+  }
+  .expand-code .key { color: #7dd3fc; }
+  .expand-code .val { color: #fde68a; }
+  .expand-code .comment { color: #64748b; font-style: italic; }
+  .expand-code .highlight { color: #4ade80; font-weight: 600; }
+
   .badge {
     display: inline-block; padding: 3px 10px; border-radius: 10px;
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
@@ -179,81 +205,113 @@
 
 <!-- ======================================== -->
 <section>
-  <h2>Protocol Layers</h2>
+  <h2>The Request: From URL to Credentials</h2>
+  <p>A SMART Health Check-in request is a series of expansions. A compact bootstrap URL
+    resolves into a signed JWT, which contains the full request parameters including the
+    ephemeral encryption key. Here's what each layer looks like:</p>
 
-  <div class="card">
-    <h3 style="margin-top:0">1. Verifier Identity: <code>well_known:</code></h3>
-    <p>The verifier identifies itself with a custom OID4VP client identifier prefix:</p>
-    <div class="data-box">
-      <code>client_id = well_known:https://clinic.example.com</code>
+  <div class="card expand-chain">
+
+    <div class="expand-level l0">
+      <div class="expand-header">Bootstrap URL <span class="badge badge-blue">shown in popup or QR</span></div>
+      <p class="expand-desc">The URL the patient sees is intentionally minimal — just three parameters. This keeps QR codes small.</p>
+      <div class="expand-code"><span class="key">client_id</span>=<span class="val">well_known:https://clinic.example.com</span>
+<span class="key">request_uri</span>=<span class="val">https://clinic.example.com/oid4vp/requests/abc123</span>
+<span class="key">request_uri_method</span>=<span class="val">post</span></div>
+
+      <div class="expand-level l1">
+        <div class="expand-header"><span class="arrow">&#9660;</span> <code>client_id</code> resolves to Verifier Metadata</div>
+        <p class="expand-desc">The wallet strips the <code>well_known:</code> prefix to get the origin, then fetches <code>/.well-known/openid4vp-client</code>:</p>
+        <div class="expand-code">{
+  <span class="key">"client_id"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,
+  <span class="key">"jwks_uri"</span>: <span class="val">"https://clinic.example.com/.well-known/jwks.json"</span>,
+  <span class="key">"client_name"</span>: <span class="val">"General Hospital Cardiology"</span>,  <span class="comment">// display only — not trusted without allowlist</span>
+  <span class="key">"request_object_signing_alg_values_supported"</span>: [<span class="val">"ES256"</span>]
+}</div>
+      </div>
+
+      <div class="expand-level l1">
+        <div class="expand-header"><span class="arrow">&#9660;</span> <code>request_uri</code> resolves to a Signed Request Object</div>
+        <p class="expand-desc">The wallet POSTs to <code>request_uri</code> and gets a signed JWT. It verifies the signature using keys from <code>jwks_uri</code>. This is where all the real parameters live:</p>
+        <div class="expand-code">{
+  <span class="key">"iss"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,
+  <span class="key">"aud"</span>: <span class="val">"https://self-issued.me/v2"</span>,
+  <span class="key">"client_id"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,  <span class="comment">// must match bootstrap</span>
+  <span class="key">"response_type"</span>: <span class="val">"vp_token"</span>,
+  <span class="key">"response_mode"</span>: <span class="val">"direct_post.jwt"</span>,
+  <span class="key">"response_uri"</span>: <span class="highlight">"https://clinic.example.com/oid4vp/responses/wt_7f3a..."</span>,
+  <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,
+  <span class="key">"nonce"</span>: <span class="val">"n-0S6_WzA2Mj"</span>,
+  <span class="key">"dcql_query"</span>: { ... },          <span class="comment">// what credentials to request</span>
+  <span class="key">"client_metadata"</span>: {
+    <span class="key">"jwks"</span>: { <span class="key">"keys"</span>: [{       <span class="comment">// ephemeral encryption key for THIS request</span>
+      <span class="key">"kty"</span>: <span class="val">"EC"</span>, <span class="key">"crv"</span>: <span class="val">"P-256"</span>, <span class="key">"use"</span>: <span class="val">"enc"</span>, <span class="key">"alg"</span>: <span class="val">"ECDH-ES"</span>,
+      <span class="key">"x"</span>: <span class="val">"..."</span>, <span class="key">"y"</span>: <span class="val">"..."</span>
+    }]},
+    <span class="key">"encrypted_response_enc_values_supported"</span>: [<span class="val">"A256GCM"</span>]
+  }
+}</div>
+        <p class="expand-desc">Because the JWT is signed by the Verifier's key, every value here — including <code>response_uri</code> — is authenticated by the signature. No separate metadata check is needed.</p>
+
+        <div class="expand-level l2">
+          <div class="expand-header"><span class="arrow">&#9660;</span> <code>dcql_query</code> describes what's being requested</div>
+          <p class="expand-desc">The DCQL query uses format <code>smart_artifact</code> to request FHIR resources, questionnaires, or signed health cards:</p>
+          <div class="expand-code">{
+  <span class="key">"credentials"</span>: [
+    { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
+    { <span class="key">"id"</span>: <span class="val">"req_patient"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/us-core-patient"</span> } }
+  ],
+  <span class="key">"credential_sets"</span>: [          <span class="comment">// both optional</span>
+    { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_patient"</span>]], <span class="key">"required"</span>: false }
+  ]
+}</div>
+        </div>
+      </div>
     </div>
-    <p>The wallet resolves metadata by fetching <code>/.well-known/openid4vp-client</code>
-      from the verifier origin. This document provides:</p>
-    <ul>
-      <li><code>jwks_uri</code> — signing keys for verifying Request Objects</li>
-      <li>Optional display fields (<code>client_name</code>, <code>logo_uri</code>) — but these
-        must NOT be trusted without an out-of-band allowlist</li>
-    </ul>
   </div>
+</section>
 
-  <div class="card">
-    <h3 style="margin-top:0">2. Bootstrap Request</h3>
-    <p>The URL shown to the wallet (via popup or QR code) is intentionally minimal:</p>
-    <div class="data-box">
-      <pre>client_id=well_known:https://clinic.example.com
-request_uri=https://clinic.example.com/oid4vp/requests/abc123
-request_uri_method=post</pre>
-    </div>
-    <p>This keeps QR codes small. All real parameters live in the signed Request Object.</p>
-  </div>
+<!-- ======================================== -->
+<section>
+  <h2>The Response: Encrypted, Then Decrypted</h2>
+  <div class="card expand-chain">
+    <div class="expand-level l0">
+      <div class="expand-header">Wallet encrypts and POSTs <span class="badge badge-green">direct_post.jwt</span></div>
+      <p class="expand-desc">The wallet builds <code>{ vp_token, state }</code>, encrypts it as a JWE using the ephemeral key from the Request Object, and POSTs the opaque ciphertext to <code>response_uri</code>. The server stores it without being able to read it.</p>
 
-  <div class="card">
-    <h3 style="margin-top:0">3. Signed Request Object</h3>
-    <p>The wallet POSTs to <code>request_uri</code> and receives a signed JWT containing:</p>
-    <ul>
-      <li><code>response_uri</code> — request-specific write endpoint (validated against metadata)</li>
-      <li><code>client_metadata.jwks</code> — ephemeral encryption key for this transaction</li>
-      <li><code>dcql_query</code> — what credentials are being requested</li>
-      <li><code>state</code>, <code>nonce</code> — correlation and freshness</li>
-    </ul>
-    <p>The wallet verifies the JWT signature against keys from <code>jwks_uri</code> before trusting any of these values. Because the Request Object is signed by the Verifier's key, the <code>response_uri</code> is authenticated by the signature itself — no separate metadata validation is needed.</p>
-  </div>
+      <div class="note" style="margin:12px 0">
+        <strong>First-write-wins:</strong> the first POST is authoritative. Retries with the same JWE are idempotent. A different payload is rejected with 409.
+      </div>
 
-  <div class="card">
-    <h3 style="margin-top:0">4. Encrypted Response (<code>direct_post.jwt</code>)</h3>
-    <p>The wallet encrypts <code>{ vp_token, state }</code> as a JWE using the ephemeral key, then
-      POSTs it to <code>response_uri</code>. The verifier backend stores the opaque ciphertext
-      without being able to read it.</p>
-
-    <div class="note">
-      The response endpoint uses <strong>first-write-wins</strong>: the first POST is authoritative,
-      retries with the same JWE are idempotent, and a different payload is rejected with 409.
-    </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0">5. DCQL Data Profile: <code>smart_artifact</code></h3>
-    <p>Credentials are requested using DCQL with format <code>smart_artifact</code>.
-      Responses use inline references for deduplication:</p>
-    <div class="data-box">
-      <pre>{
-  "vp_token": {
-    "req_insurance": [{
-      "artifact_id": "cov_1",
-      "type": "fhir_resource",
-      "data": { "resourceType": "Coverage", ... }
+      <div class="expand-level l1">
+        <div class="expand-header"><span class="arrow">&#9660;</span> Verifier decrypts the JWE</div>
+        <p class="expand-desc">Only the Verifier's browser (which holds the ephemeral private key) can decrypt. The result contains <code>vp_token</code> with inline references for deduplication:</p>
+        <div class="expand-code">{
+  <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,         <span class="comment">// validated against expected value</span>
+  <span class="key">"vp_token"</span>: {
+    <span class="val">"req_insurance"</span>: [{
+      <span class="key">"artifact_id"</span>: <span class="val">"cov_1"</span>,
+      <span class="key">"type"</span>: <span class="val">"fhir_resource"</span>,
+      <span class="key">"data"</span>: { <span class="key">"resourceType"</span>: <span class="val">"Coverage"</span>, <span class="key">"subscriberId"</span>: <span class="val">"W123456789"</span>, ... }
     }],
-    "req_history": [{
-      "artifact_ref": "cov_1"
+    <span class="val">"req_patient"</span>: [{
+      <span class="key">"artifact_ref"</span>: <span class="val">"cov_1"</span>    <span class="comment">// references the same artifact — no duplication</span>
+    }, {
+      <span class="key">"type"</span>: <span class="val">"fhir_resource"</span>,
+      <span class="key">"data"</span>: { <span class="key">"resourceType"</span>: <span class="val">"Patient"</span>, ... }
     }]
   }
-}</pre>
+}</div>
+        <p class="expand-desc" style="margin-top:12px;font-size:13px;color:var(--slate)">
+          This profile authenticates the request and provides encrypted transport, but does not
+          prove artifact provenance. Unless an artifact carries its own verifiable proof (e.g., a SMART Health Card),
+          it should be treated as a transaction-bound submission.
+        </p>
+      </div>
     </div>
-    <p style="font-size:14px;color:var(--slate)">
-      This profile authenticates the request and provides encrypted transport, but does not
-      prove artifact provenance. Unless an artifact carries its own verifiable proof,
-      it should be treated as a transaction-bound submission.
-    </p>
   </div>
 </section>
 
