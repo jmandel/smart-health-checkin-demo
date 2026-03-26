@@ -100,7 +100,6 @@ Bun.serve({
         jwks_uri: `${VERIFIER_BASE}/.well-known/jwks.json`,
         request_object_signing_alg_values_supported: ['ES256'],
         response_uri_prefixes: [`${VERIFIER_BASE}/oid4vp/post/`],
-        redirect_uris: [`${VERIFIER_BASE}/oid4vp/return`],
         vp_formats_supported: {},
       }, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -284,30 +283,6 @@ Bun.serve({
         };
 
         txn.waiters.push(onData);
-      });
-    }
-
-    // --- Same-device return page ---
-
-    if (req.method === 'GET' && url.pathname === '/oid4vp/return') {
-      return new Response(`<!DOCTYPE html>
-<html><head><title>Returning...</title></head>
-<body>
-<script>
-const h = location.hash.substring(1);
-const p = new URLSearchParams(h);
-const rc = p.get('response_code');
-const tid = p.get('transaction_id');
-if (rc && tid) {
-  const bc = new BroadcastChannel('shc-return-' + tid);
-  bc.postMessage({response_code: rc});
-  bc.close();
-}
-window.close();
-</script>
-<p>Returning to application... You can close this tab.</p>
-</body></html>`, {
-        headers: { 'Content-Type': 'text/html' },
       });
     }
 

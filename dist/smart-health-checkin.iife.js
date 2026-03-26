@@ -1580,7 +1580,7 @@
     const { privateKey, publicJwk } = await generateEphemeralKeyPair();
     const txn = await initTransaction(verifierBase, {
       flow,
-      redirect_uri: flow === "same-device" ? `${verifierBase}/oid4vp/return` : undefined,
+      redirect_uri: flow === "same-device" ? new URL(location.pathname, location.origin).toString() : undefined,
       ephemeral_pub_jwk: publicJwk,
       dcql_query: dcqlQuery
     });
