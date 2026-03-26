@@ -104,10 +104,18 @@ export default function App() {
           <h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Patient Check-in</h1>
           <p style={{ color: '#64748b', margin: '0 0 24px 0' }}>Share your health records to complete registration</p>
 
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 16, marginBottom: 24, fontSize: 14, lineHeight: 1.6, color: '#166534' }}>
-            <strong>Cross-origin demo:</strong> This app is a standalone static site.
-            It uses the SMART Health Check-in shim to talk to a shared verifier relay at <code>{VERIFIER_BASE}</code>.
-            The verifier identity shown to your health app comes from that server, not from this page's domain.
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16, marginBottom: 24, fontSize: 14, lineHeight: 1.8, color: '#475569' }}>
+            <strong style={{ color: '#1e293b' }}>SMART Health Check-in</strong> is an open protocol for browser-based health data sharing.
+            It uses <a href="https://openid.net/specs/openid-4-verifiable-presentations-1_0.html" style={{ color: '#166534' }}>OpenID for Verifiable Presentations</a> with
+            end-to-end encryption, signed request objects, and support for same-device and cross-device flows.
+            <br /><br />
+            This page is a <strong>standalone static app</strong> on a separate domain, demonstrating that any site can
+            participate in the protocol by pointing at a shared verifier relay. The verifier identity shown to your
+            health app comes from <code>{VERIFIER_BASE}</code>, not from this page's domain.
+            <br /><br />
+            <a href="https://smart-health-checkin.exe.xyz/" style={{ color: '#166534', fontWeight: 500 }}>Full demo experience</a>
+            {' | '}
+            <a href="https://github.com/jmandel/smart-health-checkin-demo" style={{ color: '#166534', fontWeight: 500 }}>GitHub</a>
           </div>
 
           {!result && !error && (
