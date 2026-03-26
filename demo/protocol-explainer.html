@@ -26,7 +26,7 @@
 
   .container { max-width: 860px; margin: 0 auto; padding: 0 20px; }
 
-  section { padding: 48px 0; }
+  section { padding: 48px 0; overflow-x: hidden; }
   section + section { border-top: 1px solid #e2e8f0; }
   h2 { font-size: 28px; margin: 0 0 24px; }
   h3 { font-size: 20px; margin: 32px 0 12px; color: var(--blue-dark); }
@@ -64,7 +64,7 @@
   }
 
   .actor { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-  .actor-shim { background: #dbeafe; color: #1e40af; }
+  .actor-shim { background: #f1f5f9; color: #475569; }
   .actor-verifier { background: #fef3c7; color: #92400e; }
   .actor-wallet { background: #d1fae5; color: #065f46; }
   .actor-picker { background: #f3e8ff; color: #6b21a8; }
@@ -118,22 +118,33 @@
     background: #1e293b; color: #e2e8f0; padding: 12px 16px;
     border-radius: 6px; font-family: monospace; font-size: 12px;
     overflow-x: auto; margin: 8px 0 12px; line-height: 1.8;
-    white-space: pre; word-wrap: break-word;
+    white-space: pre-wrap; word-break: break-word;
   }
   .expand-code .key { color: #7dd3fc; }
   .expand-code .val { color: #fde68a; }
   .expand-code .comment { color: #64748b; font-style: italic; }
   .expand-code .highlight { color: #4ade80; font-weight: 600; }
 
-  .shim-step {
-    border-left: 3px dashed #94a3b8 !important;
+  .swim-lane {
+    border-radius: 12px; padding: 24px; margin: 16px 0;
+    border: 1px solid #e2e8f0;
   }
-  .shim-step .flow-num { opacity: 0.7; }
-  .shim-badge {
-    display: inline-block; padding: 2px 6px; border-radius: 4px;
-    font-size: 10px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.05em; background: #f1f5f9; color: #64748b;
-    margin-left: 8px; vertical-align: middle;
+  .swim-lane.lane-verifier { background: #fefce8; border-color: #fde68a; }
+  .swim-lane.lane-shim { background: #f8fafc; border-color: #cbd5e1; border-style: dashed; }
+  .swim-lane.lane-wallet { background: #ecfdf5; border-color: #a7f3d0; }
+  .swim-lane-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+  .swim-lane-title { font-weight: 700; font-size: 16px; }
+  .swim-lane-detail { color: var(--slate); font-size: 14px; line-height: 1.7; }
+  .swim-lane-detail code {
+    background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; font-size: 12px;
+  }
+  .swim-lane-note {
+    font-size: 12px; color: var(--slate-light); margin-top: 8px; font-style: italic;
+  }
+  .swim-arrow {
+    text-align: center; color: #94a3b8; font-size: 20px; margin: 4px 0;
   }
 
   .badge {
@@ -264,60 +275,6 @@
   }
 }</div>
         <p class="expand-desc">Because the JWT is signed by the Verifier's key, every value here — including <code>response_uri</code> — is authenticated by the signature. No separate metadata check is needed.</p>
-
-        <div class="expand-level l2">
-          <div class="expand-header"><span class="arrow">&#9660;</span> <code>dcql_query</code> describes what's being requested</div>
-          <p class="expand-desc">The DCQL query uses format <code>smart_artifact</code>. Three kinds of health data can be requested through <code>meta</code>:</p>
-
-          <div class="split" style="margin:16px 0;gap:12px">
-            <div style="background:#f0f9ff;border-radius:8px;padding:16px;border-left:4px solid var(--blue)">
-              <div style="font-weight:700;font-size:14px;margin-bottom:6px">FHIR Resources</div>
-              <div style="font-size:13px;color:var(--slate);margin-bottom:8px">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</div>
-              <div class="expand-code" style="font-size:11px;margin:0"><span class="key">"meta"</span>: {
-  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
-}</div>
-            </div>
-            <div style="background:#f0fdf4;border-radius:8px;padding:16px;border-left:4px solid var(--green)">
-              <div style="font-weight:700;font-size:14px;margin-bottom:6px">Questionnaires</div>
-              <div style="font-size:13px;color:var(--slate);margin-bottom:8px">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill from existing records. Returned as a QuestionnaireResponse.</div>
-              <div class="expand-code" style="font-size:11px;margin:0"><span class="key">"meta"</span>: {
-  <span class="key">"questionnaire"</span>: {
-    <span class="key">"resourceType"</span>: <span class="val">"Questionnaire"</span>,
-    <span class="key">"title"</span>: <span class="val">"Patient Intake Form"</span>,
-    <span class="key">"item"</span>: [
-      { <span class="key">"linkId"</span>: <span class="val">"1"</span>, <span class="key">"text"</span>: <span class="val">"Full Name"</span>, <span class="key">"type"</span>: <span class="val">"string"</span> },
-      { <span class="key">"linkId"</span>: <span class="val">"2"</span>, <span class="key">"text"</span>: <span class="val">"Allergies"</span>, <span class="key">"type"</span>: <span class="val">"text"</span> }
-    ]
-  }
-}</div>
-            </div>
-          </div>
-          <div style="background:#fdf4ff;border-radius:8px;padding:16px;border-left:4px solid var(--purple);margin-bottom:12px">
-            <div style="font-weight:700;font-size:14px;margin-bottom:6px">SMART Health Cards</div>
-            <div style="font-size:13px;color:var(--slate);margin-bottom:8px">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by specifying a FHIR profile plus a signing strategy.</div>
-            <div class="expand-code" style="font-size:11px;margin:0"><span class="key">"meta"</span>: {
-  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
-  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"shc_v2"</span>]
-}</div>
-          </div>
-
-          <p class="expand-desc">A full query combines these into a <code>credentials</code> array. Use <code>credential_sets</code> with <code>required: false</code> to mark items as optional:</p>
-          <div class="expand-code">{
-  <span class="key">"credentials"</span>: [
-    { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
-    { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } },
-    { <span class="key">"id"</span>: <span class="val">"req_immunization"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
-      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...Immunization"</span>, <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>] } }
-  ],
-  <span class="key">"credential_sets"</span>: [
-    { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
-    { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false },
-    { <span class="key">"options"</span>: [[<span class="val">"req_immunization"</span>]], <span class="key">"required"</span>: false }
-  ]
-}</div>
-        </div>
       </div>
     </div>
   </div>
@@ -366,65 +323,123 @@
 
 <!-- ======================================== -->
 <section>
+  <h2>What Can Be Requested</h2>
+  <p>The <code>dcql_query</code> in the signed Request Object specifies what health data is needed. Three kinds of data can be requested through the <code>meta</code> field:</p>
+
+  <div class="card" style="border-left:4px solid var(--blue)">
+    <h3 style="margin-top:0">FHIR Resources</h3>
+    <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
+}</div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--green)">
+    <h3 style="margin-top:0">Questionnaires</h3>
+    <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill answers from existing records. Returned as a FHIR QuestionnaireResponse.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"questionnaire"</span>: {
+    <span class="key">"resourceType"</span>: <span class="val">"Questionnaire"</span>,
+    <span class="key">"title"</span>: <span class="val">"Patient Intake Form"</span>,
+    <span class="key">"item"</span>: [
+      { <span class="key">"linkId"</span>: <span class="val">"1"</span>, <span class="key">"text"</span>: <span class="val">"Full Name"</span>, <span class="key">"type"</span>: <span class="val">"string"</span> },
+      { <span class="key">"linkId"</span>: <span class="val">"2"</span>, <span class="key">"text"</span>: <span class="val">"Allergies"</span>, <span class="key">"type"</span>: <span class="val">"text"</span> }
+    ]
+  }
+}</div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--purple)">
+    <h3 style="margin-top:0">SMART Health Cards</h3>
+    <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a signing strategy.</p>
+    <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
+  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
+  <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"shc_v2"</span>]
+}</div>
+  </div>
+
+  <p>A full query combines these into a <code>credentials</code> array. Use <code>credential_sets</code> with <code>required: false</code> to mark items as optional:</p>
+  <div class="expand-code">{
+  <span class="key">"credentials"</span>: [
+    { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
+    { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } },
+    { <span class="key">"id"</span>: <span class="val">"req_immunization"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...Immunization"</span>, <span class="key">"signing_strategy"</span>: [<span class="val">"shc_v1"</span>] } }
+  ],
+  <span class="key">"credential_sets"</span>: [
+    { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_immunization"</span>]], <span class="key">"required"</span>: false }
+  ]
+}</div>
+</section>
+
+<!-- ======================================== -->
+<section>
   <h2>Same-Device Flow</h2>
-  <p class="note" style="font-size:13px">
-    Steps with dashed borders are <strong>shim orchestration</strong> — browser-side ceremony managed by the
-    <code>smart-health-checkin</code> library. In future, the W3C Digital Credentials API will handle
-    these natively, and only the protocol-level steps (wallet verification, encryption, POST) will remain.
-  </p>
-  <div class="flow-diagram">
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--blue)">1</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Generate keys &amp; init transaction</div>
-        <div class="flow-detail">Ephemeral ECDH key pair generated in browser. <code>POST /oid4vp/same-device/init</code> with the public key, <code>redirect_uri</code> (current page), and <code>dcql_query</code>. Returns <code>transaction_id</code>, <code>read_secret</code>, <code>request_uri</code>.</div>
-      </div>
-    </div>
+  <p style="color:var(--slate);font-size:15px;margin-bottom:8px">Patient is on their own device — portal, patient app, or third-party site.</p>
 
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--blue)">2</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Open popup to picker</div>
-        <div class="flow-detail">Popup URL: <code>checkinBase/?client_id=well_known:...&amp;request_uri=...&amp;request_uri_method=post</code>. Shim starts listening on BroadcastChannel.</div>
-      </div>
+  <div class="swim-lane lane-verifier">
+    <div class="swim-lane-header">
+      <span class="actor actor-verifier">Verifier</span>
+      <span class="swim-lane-title">Generate the Request</span>
     </div>
-
-    <div class="flow-step">
-      <div class="flow-num" style="background:var(--purple)">3</div>
-      <div class="flow-body">
-        <span class="actor actor-picker">Picker</span>
-        <div class="flow-title">User selects health app</div>
-        <div class="flow-detail">Picker forwards the three bootstrap params to the source app, opens it in a new popup, closes itself.</div>
-      </div>
+    <div class="swim-lane-detail">
+      The Verifier backend creates a transaction and a signed Request Object. The browser generates an ephemeral ECDH key pair — the private key stays in memory, the public key is embedded in the signed Request Object so the wallet can encrypt the response.
     </div>
+  </div>
 
-    <div class="flow-step">
-      <div class="flow-num" style="background:var(--green)">4</div>
-      <div class="flow-body">
-        <span class="actor actor-wallet">Source App</span>
-        <div class="flow-title">Verify request &amp; collect consent</div>
-        <div class="flow-detail">Fetch <code>/.well-known/openid4vp-client</code> → <code>jwks_uri</code> → POST to <code>request_uri</code> for signed Request Object → verify JWT signature → extract <code>response_uri</code>, <code>dcql_query</code>, ephemeral key. Show consent UI.</div>
-      </div>
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-shim">
+    <div class="swim-lane-header">
+      <span class="actor actor-shim">Shim</span>
+      <span class="swim-lane-title">Deliver the Request</span>
     </div>
-
-    <div class="flow-step">
-      <div class="flow-num" style="background:var(--green)">5</div>
-      <div class="flow-body">
-        <span class="actor actor-wallet">Source App</span>
-        <div class="flow-title">Encrypt &amp; POST response</div>
-        <div class="flow-detail">Encrypt <code>{ vp_token, state }</code> as JWE → POST to <code>response_uri</code>. Server returns <code>{ redirect_uri: "portalPage#response_code=..." }</code>. Source app navigates there.</div>
-      </div>
+    <div class="swim-lane-detail">
+      The shim calls <code>POST /oid4vp/same-device/init</code> to start the transaction, receives <code>transaction_id</code>, <code>read_secret</code>, and <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code>, <code>request_uri</code>, <code>request_uri_method</code> and opens a popup to the picker. Starts listening for the return via BroadcastChannel.
     </div>
+    <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
+  </div>
 
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--blue)">6</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (browser)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Receive response_code &amp; fetch result</div>
-        <div class="flow-detail">Popup lands on portal page → <code>maybeHandleReturn()</code> broadcasts <code>response_code</code> via BroadcastChannel → shim POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> → decrypts JWE → returns credentials to app.</div>
-      </div>
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-wallet">
+    <div class="swim-lane-header">
+      <span class="actor actor-wallet">Wallet</span>
+      <span class="swim-lane-title">Verify, Consent, Respond</span>
+    </div>
+    <div class="swim-lane-detail">
+      The wallet (via a picker) receives the bootstrap URL. It fetches <code>/.well-known/openid4vp-client</code> from the verifier origin to get the <code>jwks_uri</code>. It POSTs to <code>request_uri</code> to get the signed Request Object JWT, verifies the signature, and extracts <code>response_uri</code>, <code>dcql_query</code>, and the ephemeral encryption key.
+      <br><br>
+      After the user reviews and consents, the wallet encrypts <code>{ vp_token, state }</code> as a JWE and POSTs it to <code>response_uri</code>. The server returns <code>{ redirect_uri: "portalPage#response_code=..." }</code>. The wallet navigates there.
+    </div>
+  </div>
+
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-shim">
+    <div class="swim-lane-header">
+      <span class="actor actor-shim">Shim</span>
+      <span class="swim-lane-title">Complete the Exchange</span>
+    </div>
+    <div class="swim-lane-detail">
+      The popup lands back on the Verifier's page. <code>maybeHandleReturn()</code> extracts <code>response_code</code> from the URL fragment and broadcasts it via BroadcastChannel. The shim receives it and POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> to retrieve the encrypted JWE.
+    </div>
+    <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
+  </div>
+
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-verifier">
+    <div class="swim-lane-header">
+      <span class="actor actor-verifier">Verifier</span>
+      <span class="swim-lane-title">Receive the Response</span>
+    </div>
+    <div class="swim-lane-detail">
+      The shim decrypts the JWE using the ephemeral private key, validates that <code>state</code> matches the expected value, resolves any <code>artifact_ref</code> inline references, and returns the credentials to the application.
     </div>
   </div>
 </section>
@@ -432,57 +447,70 @@
 <!-- ======================================== -->
 <section>
   <h2>Cross-Device Flow</h2>
-  <div class="flow-diagram">
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--green)">1</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Generate keys &amp; init transaction</div>
-        <div class="flow-detail">Same key generation. <code>POST /oid4vp/cross-device/init</code> (requires staff session cookie). No <code>redirect_uri</code>. Returns same transaction credentials.</div>
-      </div>
-    </div>
+  <p style="color:var(--slate);font-size:15px;margin-bottom:8px">Staff starts the check-in at a workstation. Patient completes it on their phone.</p>
 
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--green)">2</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Display QR code</div>
-        <div class="flow-detail">No popup opened. <code>onRequestStart</code> gives the app <code>launch_url</code>. App renders QR code + copy/open link. Shim starts long-polling <code>/oid4vp/cross-device/results</code>.</div>
-      </div>
+  <div class="swim-lane lane-verifier">
+    <div class="swim-lane-header">
+      <span class="actor actor-verifier">Verifier</span>
+      <span class="swim-lane-title">Generate the Request</span>
     </div>
-
-    <div class="flow-step">
-      <div class="flow-num" style="background:var(--purple)">3</div>
-      <div class="flow-body">
-        <span class="actor actor-picker">Picker (Patient's Phone)</span>
-        <div class="flow-title">Patient scans QR &amp; selects app</div>
-        <div class="flow-detail">Same picker, same bootstrap params. Patient picks their health app.</div>
-      </div>
+    <div class="swim-lane-detail">
+      Same as same-device: transaction created, ephemeral key pair generated. The difference is <code>POST /oid4vp/cross-device/init</code> — which requires a staff session cookie. No <code>redirect_uri</code> is needed.
     </div>
+  </div>
 
-    <div class="flow-step">
-      <div class="flow-num" style="background:var(--orange)">4</div>
-      <div class="flow-body">
-        <span class="actor actor-wallet">Source App (Patient's Phone)</span>
-        <div class="flow-title">Verify, consent, encrypt, POST</div>
-        <div class="flow-detail">Same verification flow as same-device. After POST, server returns <code>{ status: "ok" }</code> (no redirect). Source app shows "Submission complete."</div>
-      </div>
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-shim">
+    <div class="swim-lane-header">
+      <span class="actor actor-shim">Shim</span>
+      <span class="swim-lane-title">Display QR Code</span>
     </div>
+    <div class="swim-lane-detail">
+      No popup is opened. Instead, <code>onRequestStart</code> provides the <code>launch_url</code> to the app, which renders it as a QR code and copyable link. The shim begins long-polling <code>/oid4vp/cross-device/results</code> with <code>transaction_id</code> and <code>read_secret</code>.
+    </div>
+    <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
+  </div>
 
-    <div class="flow-step shim-step">
-      <div class="flow-num" style="background:var(--green)">5</div>
-      <div class="flow-body">
-        <span class="actor actor-verifier">Verifier (kiosk)</span> <span class="shim-badge">shim</span>
-        <div class="flow-title">Long-poll resolves</div>
-        <div class="flow-detail">Long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. Shim decrypts with ephemeral private key, validates <code>state</code>, returns credentials to app.</div>
-      </div>
+  <div class="swim-arrow">&#9660; patient scans QR on their phone</div>
+
+  <div class="swim-lane lane-wallet">
+    <div class="swim-lane-header">
+      <span class="actor actor-wallet">Wallet (patient's phone)</span>
+      <span class="swim-lane-title">Verify, Consent, Respond</span>
+    </div>
+    <div class="swim-lane-detail">
+      Identical to same-device: picker → source app → verify signed Request Object → consent → encrypt → POST JWE to <code>response_uri</code>. Server returns <code>{ status: "ok" }</code> (no redirect). Source app shows "Submission complete."
+    </div>
+  </div>
+
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-shim">
+    <div class="swim-lane-header">
+      <span class="actor actor-shim">Shim</span>
+      <span class="swim-lane-title">Long-Poll Resolves</span>
+    </div>
+    <div class="swim-lane-detail">
+      The long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. No <code>response_code</code> needed — the staff session cookie authenticates result retrieval.
+    </div>
+    <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
+  </div>
+
+  <div class="swim-arrow">&#9660;</div>
+
+  <div class="swim-lane lane-verifier">
+    <div class="swim-lane-header">
+      <span class="actor actor-verifier">Verifier</span>
+      <span class="swim-lane-title">Receive the Response</span>
+    </div>
+    <div class="swim-lane-detail">
+      Same decryption and rehydration as same-device. The kiosk displays the received credentials.
     </div>
   </div>
 
   <div class="note">
-    Cross-device init/results require an authenticated staff session (cookie). This prevents
-    an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI.
-    The standalone relay server disables cross-device by default.
+    Cross-device init/results require an authenticated staff session. This prevents an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI. The standalone relay server disables cross-device by default.
   </div>
 </section>
 
