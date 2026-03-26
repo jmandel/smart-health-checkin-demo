@@ -107,7 +107,14 @@ Bun.serve({
 
       for (const candidate of [filePath, join(filePath, 'index.html')]) {
         const file = Bun.file(candidate);
-        if (await file.exists()) return new Response(file);
+        if (await file.exists()) {
+          return new Response(file, {
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Private-Network': 'true',
+            },
+          });
+        }
       }
     }
 

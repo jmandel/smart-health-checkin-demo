@@ -135,6 +135,26 @@ if (existsSync(join(DEMO_DIR, 'index.html'))) {
 cpSync(DIST, join(BUILD_DIR, 'dist'), { recursive: true });
 console.log('  ✓ dist/ (library files)');
 
+// Build external-portal example
+const EXTERNAL_PORTAL_DIR = join(ROOT, 'examples', 'external-portal');
+const EXTERNAL_PORTAL_OUT = join(ROOT, 'build', 'external-portal');
+const externalHtml = join(EXTERNAL_PORTAL_DIR, 'index.html');
+if (existsSync(externalHtml)) {
+  if (existsSync(EXTERNAL_PORTAL_OUT)) rmSync(EXTERNAL_PORTAL_OUT, { recursive: true });
+  mkdirSync(EXTERNAL_PORTAL_OUT, { recursive: true });
+  const epResult = await Bun.build({
+    entrypoints: [externalHtml],
+    outdir: EXTERNAL_PORTAL_OUT,
+    target: 'browser',
+    minify: true,
+  });
+  if (epResult.success) {
+    console.log('  ✓ external-portal/ (example)');
+  } else {
+    console.error('  ✗ external-portal build failed:', epResult.logs);
+  }
+}
+
 console.log('\nBuild complete!');
 console.log(`\nStatic site ready at: build/smart-health-checkin-demo/`);
 console.log('Run ./start-static.sh to test locally');
