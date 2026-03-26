@@ -42,7 +42,7 @@ start_server() {
   (cd "$BUILD_DIR/$app" && bunx http-server -p $port -c-1 2>&1 | sed "s/^/[$name] /") &
 }
 
-start_server "requester" 3000 "Requester"
+start_server "." 3000 "Requester"
 start_server "checkin" 3001 "Check-in"
 start_server "source-flexpa" 3002 "Flexpa"
 

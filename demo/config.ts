@@ -30,6 +30,11 @@ export interface Config {
   };
 }
 
+// Injected at build time by Bun's define (see build.ts).
+// Falls back to empty string if not set.
+declare const __RELAY_URL__: string;
+const RELAY_URL_OVERRIDE = typeof __RELAY_URL__ !== 'undefined' ? __RELAY_URL__ : '';
+
 function createConfig(): Config {
   const isLocalMultiOrigin = location.hostname.includes('.localhost');
   const isGitHubPages = location.hostname.includes('joshuamandel.com');
@@ -43,7 +48,7 @@ function createConfig(): Config {
         checkin: 'http://checkin.localhost:3001'
       },
       relay: {
-        url: 'http://relay.localhost:3003'
+        url: RELAY_URL_OVERRIDE || 'http://relay.localhost:3003'
       },
       checkin: {
         url: 'http://checkin.localhost:3001',
@@ -90,13 +95,13 @@ function createConfig(): Config {
   return {
     mode: 'single-origin',
     requester: {
-      url: `${base}/requester`,
+      url: base,
       checkin: `${base}/checkin`
     },
     relay: {
-      url: isGitHubPages
+      url: RELAY_URL_OVERRIDE || (isGitHubPages
         ? 'https://vprelay.exe.xyz'
-        : 'http://localhost:3003'
+        : 'http://localhost:3003')
     },
     checkin: {
       url: `${base}/checkin`,

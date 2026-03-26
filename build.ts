@@ -86,7 +86,18 @@ if (tscResult.exitCode === 0) {
 // Build demo apps for static deployment
 // These are React apps in demo/ that get built and output to build/smart-health-checkin-demo/
 const DEMO_DIR = join(ROOT, 'demo');
-const DEMO_APPS = ['requester', 'source-flexpa', 'checkin'];
+const DEMO_APPS = [
+  { dir: 'requester', out: '.' },      // Requester is the root/landing page
+  { dir: 'source-flexpa', out: 'source-flexpa' },
+  { dir: 'checkin', out: 'checkin' },
+];
+
+// Build-time env var override for relay URL
+const relayUrl = process.env.RELAY_URL || '';
+const define = { '__RELAY_URL__': JSON.stringify(relayUrl) };
+if (relayUrl) {
+  console.log(`\nRelay URL override: ${relayUrl}`);
+}
 
 console.log('\nBuilding demo apps for static deployment...');
 
@@ -97,13 +108,13 @@ if (existsSync(BUILD_DIR)) {
 mkdirSync(BUILD_DIR, { recursive: true });
 
 for (const app of DEMO_APPS) {
-  const htmlPath = join(DEMO_DIR, app, 'index.html');
+  const htmlPath = join(DEMO_DIR, app.dir, 'index.html');
   if (!existsSync(htmlPath)) {
-    console.log(`  ⚠ Skipping ${app} (index.html not found)`);
+    console.log(`  ⚠ Skipping ${app.dir} (index.html not found)`);
     continue;
   }
 
-  const outdir = join(BUILD_DIR, app);
+  const outdir = join(BUILD_DIR, app.out);
   mkdirSync(outdir, { recursive: true });
 
   const result = await Bun.build({
@@ -111,20 +122,14 @@ for (const app of DEMO_APPS) {
     outdir,
     target: 'browser',
     minify: true,
+    define,
   });
 
   if (result.success) {
-    console.log(`  ✓ ${app}/`);
+    console.log(`  ✓ ${app.out === '.' ? '(root - requester)' : app.out + '/'}`);
   } else {
-    console.error(`  ✗ ${app} build failed:`, result.logs);
+    console.error(`  ✗ ${app.dir} build failed:`, result.logs);
   }
-}
-
-// Copy static files that don't need building
-// - Main landing page
-if (existsSync(join(DEMO_DIR, 'index.html'))) {
-  cpSync(join(DEMO_DIR, 'index.html'), join(BUILD_DIR, 'index.html'));
-  console.log('  ✓ index.html (landing page)');
 }
 
 // - Library dist files (for CDN-style access)
