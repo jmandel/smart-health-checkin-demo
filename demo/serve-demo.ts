@@ -28,10 +28,14 @@ function getSessionFromCookie(req: Request): string | null {
 
 // --- Relay with session binding ---
 
+// Allowed origins for same-device redirect_uri (supports cross-origin frontends like GH Pages)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_SAME_DEVICE_ORIGINS || '').split(',').filter(Boolean);
+
 const { handler: relay } = await createRelayHandler({
   verifierBase: VERIFIER_BASE,
   metadata: { client_name: "Dr. Mandel's Family Medicine" },
   requireVerifierSessionForCrossDevice: true,
+  allowedSameDeviceOrigins: ALLOWED_ORIGINS,
   getVerifierSessionId: (req) => {
     const sessionId = getSessionFromCookie(req);
     if (sessionId && staffSessions.has(sessionId)) return sessionId;

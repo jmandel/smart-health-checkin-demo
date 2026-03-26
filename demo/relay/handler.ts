@@ -51,6 +51,13 @@ export interface RelayConfig {
 
   /** If true, cross-device init/results require a valid verifier session. Default false. */
   requireVerifierSessionForCrossDevice?: boolean;
+
+  /**
+   * Allowed origins for same-device redirect_uri. If omitted or empty,
+   * only same-origin redirects (matching verifierBase) are accepted.
+   * Set to ['*'] to allow any origin (not recommended for production).
+   */
+  allowedSameDeviceOrigins?: string[];
 }
 
 // ============================================================================
@@ -98,7 +105,10 @@ export async function createRelayHandler(config: RelayConfig) {
     longPollTimeoutMs = 2 * 60 * 1000,
     getVerifierSessionId,
     requireVerifierSessionForCrossDevice = false,
+    allowedSameDeviceOrigins = [],
   } = config;
+
+  const verifierOrigin = new URL(verifierBase).origin;
 
   // --- Signing key ---
   let signingPrivKey: KeyLike;
@@ -144,6 +154,30 @@ export async function createRelayHandler(config: RelayConfig) {
     byRequestId.delete(txn.request_id);
     byWriteToken.delete(txn.write_token);
     byTransactionId.delete(txn.transaction_id);
+  }
+
+  // --- Redirect URI validation ---
+
+  function validateSameDeviceRedirectUri(uri: string): string | null {
+    let parsed: URL;
+    try {
+      parsed = new URL(uri);
+    } catch {
+      return 'redirect_uri must be an absolute URL';
+    }
+    if (parsed.hash) return 'redirect_uri must not contain a fragment';
+    if (parsed.username || parsed.password) return 'redirect_uri must not contain credentials';
+
+    const redirectOrigin = parsed.origin;
+
+    // Same origin as verifier is always allowed
+    if (redirectOrigin === verifierOrigin) return null;
+
+    // Check allowlist
+    if (allowedSameDeviceOrigins.includes('*')) return null;
+    if (allowedSameDeviceOrigins.includes(redirectOrigin)) return null;
+
+    return `redirect_uri origin ${redirectOrigin} is not allowed (verifier origin: ${verifierOrigin})`;
   }
 
   // --- Metadata ---
@@ -322,6 +356,10 @@ export async function createRelayHandler(config: RelayConfig) {
       };
       if (!body.redirect_uri) {
         return Response.json({ error: 'redirect_uri required for same-device' }, { status: 400, headers: PUBLIC_CORS });
+      }
+      const validationError = validateSameDeviceRedirectUri(body.redirect_uri);
+      if (validationError) {
+        return Response.json({ error: 'invalid_redirect_uri', error_description: validationError }, { status: 400, headers: PUBLIC_CORS });
       }
       const txn = createTransaction('same-device', body);
       return initResponse(txn);

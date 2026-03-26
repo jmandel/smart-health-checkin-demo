@@ -33,8 +33,11 @@ export interface Config {
   };
 }
 
+const DEMO_SERVER = 'https://smart-health-checkin.exe.xyz';
+
 function createConfig(): Config {
   const isLocalMultiOrigin = location.hostname.includes('.localhost');
+  const isGitHubPages = location.hostname.includes('joshuamandel.com');
 
   if (isLocalMultiOrigin) {
     return {
@@ -76,6 +79,43 @@ function createConfig(): Config {
     };
   }
 
+  if (isGitHubPages) {
+    // GH Pages: static frontend, verifier/relay at DEMO_SERVER
+    const ghBase = `${location.origin}/smart-health-checkin-demo`;
+    return {
+      mode: 'single-origin',
+      portal: {
+        url: `${ghBase}/portal`,
+        checkin: `${ghBase}/checkin`
+      },
+      kiosk: {
+        url: `${ghBase}/kiosk`,
+        checkin: `${ghBase}/checkin`
+      },
+      verifier: {
+        base: DEMO_SERVER
+      },
+      checkin: {
+        url: `${ghBase}/checkin`,
+        apps: [
+          {
+            id: 'flexpa', name: 'Flexpa',
+            description: 'Connected health data platform',
+            color: '#0d9488', accentColor: '#84cc16', logo: 'F', logoStyle: 'bold',
+            launchBase: `${ghBase}/source-flexpa`
+          },
+          {
+            id: 'bwell', name: 'b.well Connected Health',
+            description: 'AI-powered platform for connected care',
+            color: '#2a2f74', logo: 'b',
+            launchBase: `${ghBase}/source-bwell`
+          }
+        ]
+      }
+    };
+  }
+
+  // Single-origin: everything on same server
   return {
     mode: 'single-origin',
     portal: {
@@ -103,12 +143,6 @@ function createConfig(): Config {
           description: 'AI-powered platform for connected care',
           color: '#2a2f74', logo: 'b',
           launchBase: `${location.origin}/source-bwell`
-        },
-        {
-          id: 'premera', name: 'Premera Blue Cross',
-          description: 'Health insurance member portal',
-          color: '#0099D8', logo: 'P',
-          launchBase: `${location.origin}/source-premera`
         }
       ]
     }
