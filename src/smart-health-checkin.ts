@@ -21,7 +21,7 @@ export interface CredentialQuery {
     profile?: string;
     questionnaire?: object;
     questionnaireUrl?: string;
-    signing_strategy?: string[];
+    signingStrategy?: string[];
   };
 }
 

@@ -270,7 +270,7 @@ The credential query object uses a standard DCQL structure. Properties specific 
 | `meta.profile` | String | **Optional.** Canonical URL of a FHIR StructureDefinition (e.g., for Patient, Coverage). |
 | `meta.questionnaire` | Object | **Optional.** Full FHIR Questionnaire JSON to be rendered/completed by the user. |
 | `meta.questionnaireUrl` | String | **Optional.** Alternative to `questionnaire`: URL reference to a Questionnaire resource. |
-| `meta.signing_strategy` | Array | **Optional.** Array of acceptable signing strategies. Defined values: `"none"` (unsigned FHIR resource), `"shc_v1"`, `"shc_v2"`. If omitted, the Wallet MAY return any format. If present, the Wallet MUST use one of the listed strategies. Example: `["shc_v1", "none"]` accepts either signed or unsigned. |
+| `meta.signingStrategy` | Array | **Optional.** Array of acceptable signing strategies. Defined values: `"none"` (unsigned FHIR resource), `"shc_v1"`, `"shc_v2"`. If omitted, the Wallet MAY return any format. If present, the Wallet MUST use one of the listed strategies. Example: `["shc_v1", "none"]` accepts either signed or unsigned. |
 
 #### Handling Optionality
 To mark a credential as optional while remaining strictly compliant with generic DCQL parsers, requests MUST wrap the targeted credential ID in a non-required `credential_sets` object.
