@@ -171,7 +171,7 @@
 
 <div class="hero">
   <h1>SMART Health Check-in</h1>
-  <div class="sub">A browser-based protocol for secure health data sharing</div>
+  <div class="sub">A standards-based protocol for secure health data sharing</div>
   <div class="links">
     <a href="https://smart-health-checkin.exe.xyz/">Live Demo</a>
     <a href="https://github.com/jmandel/smart-health-checkin-demo">GitHub</a>
@@ -185,9 +185,11 @@
   <h2 id="overview">What is this?</h2>
   <p>
     SMART Health Check-in is an open protocol that lets patients share health records
-    from their personal health apps directly with healthcare providers through a browser.
+    from their personal health apps directly with healthcare providers.
     It uses <strong>OpenID for Verifiable Presentations (OID4VP)</strong> with end-to-end
     encryption, signed request objects, and support for both same-device and cross-device flows.
+    A browser shim makes it easy to use from web applications, but the underlying protocol
+    works from any environment that can make HTTP requests and handle JWE encryption.
   </p>
   <p>
     This page is a visual overview. For the full specification, see the
