@@ -45,7 +45,7 @@ Same-device only:
 import { createRelayHandler } from './demo/relay/handler.ts';
 
 const { handler: relay } = await createRelayHandler({
-  verifierBase: 'https://clinic.example.com',
+  wellKnownClientUrl: 'https://clinic.example.com',
   metadata: { client_name: 'My Clinic' },
 });
 ```
@@ -54,7 +54,7 @@ With cross-device enabled (requires session binding):
 
 ```typescript
 const { handler: relay } = await createRelayHandler({
-  verifierBase: 'https://clinic.example.com',
+  wellKnownClientUrl: 'https://clinic.example.com',
   metadata: { client_name: 'My Clinic' },
   requireVerifierSessionForCrossDevice: true,
   getVerifierSessionId: (req) => {
@@ -249,7 +249,7 @@ The standalone `server.ts` sets `requireVerifierSessionForCrossDevice: true` by 
 
 ```typescript
 interface RelayConfig {
-  verifierBase: string;
+  wellKnownClientUrl: string;
   metadata?: Record<string, unknown>;
   signingKeyJwk?: string;
   sessionTtlMs?: number;                 // default 300000 (5 min)

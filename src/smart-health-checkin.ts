@@ -71,9 +71,9 @@ export interface ClientMetadata {
 
 export interface RequestOptions {
   /** URL of the health app picker/check-in page */
-  checkinBase: string;
+  walletUrl: string;
   /** Bare HTTPS origin of the Verifier */
-  verifierBase: string;
+  wellKnownClientUrl: string;
   /** Flow mode: same-device (popup) or cross-device (QR) */
   flow?: 'same-device' | 'cross-device';
   /** Callback invoked when OID4VP request is constructed */
@@ -142,7 +142,7 @@ interface TransactionInit {
 }
 
 async function initTransaction(
-  verifierBase: string,
+  wellKnownClientUrl: string,
   flow: 'same-device' | 'cross-device',
   params: {
     redirect_uri?: string;
@@ -150,7 +150,7 @@ async function initTransaction(
     dcql_query: DCQLQuery;
   }
 ): Promise<TransactionInit> {
-  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/init`, {
+  const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -161,11 +161,11 @@ async function initTransaction(
 }
 
 async function fetchResult(
-  verifierBase: string,
+  wellKnownClientUrl: string,
   flow: 'same-device' | 'cross-device',
   params: { transaction_id: string; read_secret: string; response_code?: string }
 ): Promise<string> {
-  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/results`, {
+  const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/results`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -264,10 +264,10 @@ export async function request(
   dcqlQuery: DCQLQuery,
   opts: RequestOptions
 ): Promise<RawResponse | RehydratedResponse> {
-  const checkinBase = opts.checkinBase.replace(/\/+$/, '');
-  const verifierBase = opts.verifierBase.replace(/\/+$/, '');
-  if (!checkinBase) throw new Error('checkinBase required');
-  if (!verifierBase) throw new Error('verifierBase required');
+  const walletUrl = opts.walletUrl.replace(/\/+$/, '');
+  const wellKnownClientUrl = opts.wellKnownClientUrl.replace(/\/+$/, '');
+  if (!walletUrl) throw new Error('walletUrl required');
+  if (!wellKnownClientUrl) throw new Error('wellKnownClientUrl required');
 
   if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
     throw new Error('dcqlQuery must be an object with a credentials array');
@@ -286,20 +286,20 @@ export async function request(
     : undefined;
 
   // Initialize transaction with verifier backend
-  const txn = await initTransaction(verifierBase, flow, {
+  const txn = await initTransaction(wellKnownClientUrl, flow, {
     redirect_uri,
     ephemeral_pub_jwk: publicJwk,
     dcql_query: dcqlQuery,
   });
 
   // Build minimal bootstrap URL
-  const client_id = `well_known:${verifierBase}`;
+  const client_id = `well_known:${wellKnownClientUrl}`;
   const bootstrapParams = new URLSearchParams({
     client_id,
     request_uri: txn.request_uri,
     request_uri_method: 'post',
   });
-  const launch_url = `${checkinBase}/?${bootstrapParams.toString()}`;
+  const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
 
   if (opts.onRequestStart) {
     opts.onRequestStart({
@@ -325,7 +325,7 @@ export async function request(
     try {
       const channelName = `shc-return-${redirect_uri}`;
       const response_code = await waitForResponseCode(channelName, timeout);
-      const jweString = await fetchResult(verifierBase, flow, {
+      const jweString = await fetchResult(wellKnownClientUrl, flow, {
         transaction_id: txn.transaction_id,
         read_secret: txn.read_secret,
         response_code,
@@ -340,7 +340,7 @@ export async function request(
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       try {
-        const jweString = await fetchResult(verifierBase, flow, {
+        const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
           read_secret: txn.read_secret,
         });

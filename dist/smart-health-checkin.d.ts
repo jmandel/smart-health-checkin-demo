@@ -55,9 +55,9 @@ export interface ClientMetadata {
 }
 export interface RequestOptions {
     /** URL of the health app picker/check-in page */
-    checkinBase: string;
+    walletUrl: string;
     /** Bare HTTPS origin of the Verifier */
-    verifierBase: string;
+    wellKnownClientUrl: string;
     /** Flow mode: same-device (popup) or cross-device (QR) */
     flow?: 'same-device' | 'cross-device';
     /** Callback invoked when OID4VP request is constructed */

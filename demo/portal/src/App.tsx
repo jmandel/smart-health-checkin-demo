@@ -77,8 +77,8 @@ function InsuranceCard({ coverage, patient }: { coverage: Coverage; patient: Pat
 
 export default function App() {
   const demo = useDemoRequest(dcqlQuery, {
-    checkinBase: config.portal.checkin,
-    verifierBase: config.verifier.base,
+    walletUrl: config.portal.walletUrl,
+    wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'same-device',
   });
 

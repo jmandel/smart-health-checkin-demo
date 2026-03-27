@@ -18,15 +18,13 @@ export interface Config {
   mode: 'multi-origin' | 'single-origin';
   portal: {
     url: string;
-    checkin: string;
+    walletUrl: string;
   };
   kiosk: {
     url: string;
-    checkin: string;
+    walletUrl: string;
   };
-  verifier: {
-    base: string;
-  };
+  wellKnownClientUrl: string;
   checkin: {
     url: string;
     apps: AppConfig[];
@@ -44,15 +42,13 @@ function createConfig(): Config {
       mode: 'multi-origin',
       portal: {
         url: 'http://requester.localhost:3000',
-        checkin: 'http://checkin.localhost:3001'
+        walletUrl: 'http://checkin.localhost:3001',
       },
       kiosk: {
         url: 'http://requester.localhost:3000/kiosk/',
-        checkin: 'http://checkin.localhost:3001'
+        walletUrl: 'http://checkin.localhost:3001',
       },
-      verifier: {
-        base: 'http://requester.localhost:3000'
-      },
+      wellKnownClientUrl: 'http://requester.localhost:3000',
       checkin: {
         url: 'http://checkin.localhost:3001',
         apps: [
@@ -60,41 +56,38 @@ function createConfig(): Config {
             id: 'premera', name: 'Premera Blue Cross',
             description: 'Health insurance member portal', category: 'healthplan',
             color: '#0099D8', logo: 'P',
-            launchBase: 'http://premera.localhost:3004'
+            launchBase: 'http://premera.localhost:3004',
           },
           {
             id: 'sample-health', name: 'Sample Health App',
             description: 'Connected health data platform', category: 'phr',
             color: '#0d9488', accentColor: '#84cc16', logo: 'S', logoStyle: 'bold',
-            launchBase: 'http://sample-health.localhost:3002'
+            launchBase: 'http://sample-health.localhost:3002',
           },
           {
             id: 'bwell', name: 'b.well Connected Health',
             description: 'AI-powered platform for connected care', category: 'phr',
             color: '#2a2f74', logo: 'b',
-            launchBase: 'http://bwell.localhost:3003'
-          }
-        ]
-      }
+            launchBase: 'http://bwell.localhost:3003',
+          },
+        ],
+      },
     };
   }
 
   if (isGitHubPages) {
-    // GH Pages: static frontend, verifier/relay at DEMO_SERVER
     const ghBase = `${location.origin}/smart-health-checkin-demo`;
     return {
       mode: 'single-origin',
       portal: {
         url: `${ghBase}/portal`,
-        checkin: `${ghBase}/checkin`
+        walletUrl: `${ghBase}/checkin`,
       },
       kiosk: {
         url: `${ghBase}/kiosk`,
-        checkin: `${ghBase}/checkin`
+        walletUrl: `${ghBase}/checkin`,
       },
-      verifier: {
-        base: DEMO_SERVER
-      },
+      wellKnownClientUrl: DEMO_SERVER,
       checkin: {
         url: `${ghBase}/checkin`,
         apps: [
@@ -102,33 +95,30 @@ function createConfig(): Config {
             id: 'sample-health', name: 'Sample Health App',
             description: 'Connected health data platform',
             color: '#0d9488', accentColor: '#84cc16', logo: 'S', logoStyle: 'bold',
-            launchBase: `${ghBase}/source-app`
+            launchBase: `${ghBase}/source-app`,
           },
           {
             id: 'bwell', name: 'b.well Connected Health',
             description: 'AI-powered platform for connected care',
             color: '#2a2f74', logo: 'b',
-            launchBase: `${ghBase}/source-bwell`
-          }
-        ]
-      }
+            launchBase: `${ghBase}/source-bwell`,
+          },
+        ],
+      },
     };
   }
 
-  // Single-origin: everything on same server
   return {
     mode: 'single-origin',
     portal: {
       url: `${location.origin}/portal`,
-      checkin: `${location.origin}/checkin`
+      walletUrl: `${location.origin}/checkin`,
     },
     kiosk: {
       url: `${location.origin}/kiosk`,
-      checkin: `${location.origin}/checkin`
+      walletUrl: `${location.origin}/checkin`,
     },
-    verifier: {
-      base: location.origin
-    },
+    wellKnownClientUrl: location.origin,
     checkin: {
       url: `${location.origin}/checkin`,
       apps: [
@@ -136,16 +126,16 @@ function createConfig(): Config {
           id: 'sample-health', name: 'Sample Health App',
           description: 'Connected health data platform',
           color: '#0d9488', accentColor: '#84cc16', logo: 'S', logoStyle: 'bold',
-          launchBase: `${location.origin}/source-app`
+          launchBase: `${location.origin}/source-app`,
         },
         {
           id: 'bwell', name: 'b.well Connected Health',
           description: 'AI-powered platform for connected care',
           color: '#2a2f74', logo: 'b',
-          launchBase: `${location.origin}/source-bwell`
-        }
-      ]
-    }
+          launchBase: `${location.origin}/source-bwell`,
+        },
+      ],
+    },
   };
 }
 

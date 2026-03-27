@@ -133,8 +133,8 @@ export default function App() {
   );
 
   const demo = useDemoRequest(dcqlQuery, {
-    checkinBase: config.kiosk.checkin,
-    verifierBase: config.verifier.base,
+    walletUrl: config.kiosk.walletUrl,
+    wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'cross-device',
   });
 

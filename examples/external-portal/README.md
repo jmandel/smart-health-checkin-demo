@@ -13,7 +13,7 @@ A standalone static page that uses the SMART Health Check-in protocol with a sha
 ## How it works
 
 1. This page loads `smart-health-checkin.iife.js` from the relay server
-2. On click, it calls `SmartHealthCheckin.request()` with `verifierBase` pointing to the relay
+2. On click, it calls `SmartHealthCheckin.request()` with `wellKnownClientUrl` pointing to the relay
 3. The shim opens a popup to the picker (also on the relay server)
 4. The wallet/source app verifies the signed Request Object from the relay
 5. The wallet encrypts and POSTs the response to the relay's `response_uri`

@@ -266,7 +266,7 @@ Behavior:
 - public endpoint
 - emits signed Request Object
 - `state = request_id`
-- `response_uri = ${verifierBase}/oid4vp/responses/${write_token}`
+- `response_uri = ${wellKnownClientUrl}/oid4vp/responses/${write_token}`
 
 ### `POST /oid4vp/responses/:write_token`
 
@@ -349,7 +349,7 @@ Suggested shape:
 
 ```ts
 interface RelayConfig {
-  verifierBase: string;
+  wellKnownClientUrl: string;
   metadata?: Record<string, unknown>;
   signingKeyJwk?: string;
   sessionTtlMs?: number;

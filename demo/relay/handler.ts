@@ -29,7 +29,7 @@ import {
 
 export interface RelayConfig {
   /** External base URL for this verifier (used in client_id, JWTs, metadata URLs) */
-  verifierBase: string;
+  wellKnownClientUrl: string;
 
   /** Extra fields merged into the /.well-known/openid4vp-client metadata */
   metadata?: Record<string, unknown>;
@@ -54,7 +54,7 @@ export interface RelayConfig {
 
   /**
    * Allowed origins for same-device redirect_uri. If omitted or empty,
-   * only same-origin redirects (matching verifierBase) are accepted.
+   * only same-origin redirects (matching wellKnownClientUrl) are accepted.
    * Set to ['*'] to allow any origin (not recommended for production).
    */
   allowedSameDeviceOrigins?: string[];
@@ -100,7 +100,7 @@ const PUBLIC_CORS: Record<string, string> = {
 
 export async function createRelayHandler(config: RelayConfig) {
   const {
-    verifierBase,
+    wellKnownClientUrl,
     metadata: extraMetadata = {},
     sessionTtlMs = 5 * 60 * 1000,
     longPollTimeoutMs = 2 * 60 * 1000,
@@ -109,7 +109,7 @@ export async function createRelayHandler(config: RelayConfig) {
     allowedSameDeviceOrigins = [],
   } = config;
 
-  const verifierOrigin = new URL(verifierBase).origin;
+  const verifierOrigin = new URL(wellKnownClientUrl).origin;
 
   // --- Signing key ---
   let signingPrivKey: KeyLike;
@@ -182,10 +182,10 @@ export async function createRelayHandler(config: RelayConfig) {
   }
 
   // --- Metadata ---
-  const clientId = `well_known:${verifierBase}`;
+  const clientId = `well_known:${wellKnownClientUrl}`;
   const metadataDoc = {
     client_id: clientId,
-    jwks_uri: `${verifierBase}/.well-known/jwks.json`,
+    jwks_uri: `${wellKnownClientUrl}/.well-known/jwks.json`,
     request_object_signing_alg_values_supported: ['ES256'],
     vp_formats_supported: {},
     ...extraMetadata,
@@ -226,7 +226,7 @@ export async function createRelayHandler(config: RelayConfig) {
       transaction_id: txn.transaction_id,
       request_id: txn.request_id,
       read_secret: txn.read_secret,
-      request_uri: `${verifierBase}/oid4vp/requests/${txn.request_id}`,
+      request_uri: `${wellKnownClientUrl}/oid4vp/requests/${txn.request_id}`,
     }, { headers: PUBLIC_CORS });
   }
 
@@ -297,7 +297,7 @@ export async function createRelayHandler(config: RelayConfig) {
       const jwt = await new SignJWT({
         iss: clientId, aud: 'https://self-issued.me/v2', client_id: clientId,
         response_type: 'vp_token', response_mode: 'direct_post.jwt',
-        response_uri: `${verifierBase}/oid4vp/responses/${txn.write_token}`,
+        response_uri: `${wellKnownClientUrl}/oid4vp/responses/${txn.write_token}`,
         nonce: txn.nonce, state: txn.request_id,
         dcql_query: txn.dcql_query,
         client_metadata: {

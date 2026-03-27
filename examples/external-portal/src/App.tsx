@@ -77,8 +77,8 @@ export default function App() {
     setError(null);
     try {
       const res = await request(dcqlQuery, {
-        checkinBase: CHECKIN_BASE,
-        verifierBase: VERIFIER_BASE,
+        walletUrl: CHECKIN_BASE,
+        wellKnownClientUrl: VERIFIER_BASE,
         flow: 'same-device',
         onRequestStart: (info) => setRequestInfo(info),
       }) as RehydratedResponse;

@@ -1,72 +1,31 @@
 (() => {
-  var __create = Object.create;
-  var __getProtoOf = Object.getPrototypeOf;
   var __defProp = Object.defineProperty;
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
-  function __accessProp(key) {
-    return this[key];
-  }
-  var __toESMCache_node;
-  var __toESMCache_esm;
-  var __toESM = (mod, isNodeMode, target) => {
-    var canCache = mod != null && typeof mod === "object";
-    if (canCache) {
-      var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
-      var cached = cache.get(mod);
-      if (cached)
-        return cached;
-    }
-    target = mod != null ? __create(__getProtoOf(mod)) : {};
-    const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-    for (let key of __getOwnPropNames(mod))
-      if (!__hasOwnProp.call(to, key))
-        __defProp(to, key, {
-          get: __accessProp.bind(mod, key),
-          enumerable: true
-        });
-    if (canCache)
-      cache.set(mod, to);
-    return to;
-  };
+  var __moduleCache = /* @__PURE__ */ new WeakMap;
   var __toCommonJS = (from) => {
-    var entry = (__moduleCache ??= new WeakMap).get(from), desc;
+    var entry = __moduleCache.get(from), desc;
     if (entry)
       return entry;
     entry = __defProp({}, "__esModule", { value: true });
-    if (from && typeof from === "object" || typeof from === "function") {
-      for (var key of __getOwnPropNames(from))
-        if (!__hasOwnProp.call(entry, key))
-          __defProp(entry, key, {
-            get: __accessProp.bind(from, key),
-            enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-          });
-    }
+    if (from && typeof from === "object" || typeof from === "function")
+      __getOwnPropNames(from).map((key) => !__hasOwnProp.call(entry, key) && __defProp(entry, key, {
+        get: () => from[key],
+        enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+      }));
     __moduleCache.set(from, entry);
     return entry;
   };
-  var __moduleCache;
-  var __returnValue = (v) => v;
-  function __exportSetter(name, newValue) {
-    this[name] = __returnValue.bind(null, newValue);
-  }
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, {
         get: all[name],
         enumerable: true,
         configurable: true,
-        set: __exportSetter.bind(all, name)
+        set: (newValue) => all[name] = () => newValue
       });
   };
-  var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-    get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-  }) : x)(function(x) {
-    if (typeof require !== "undefined")
-      return require.apply(this, arguments);
-    throw Error('Dynamic require of "' + x + '" is not supported');
-  });
 
   // src/smart-health-checkin.ts
   var exports_smart_health_checkin = {};
@@ -1529,8 +1488,8 @@
     const { plaintext } = await compactDecrypt(jwe, privateKey);
     return JSON.parse(new TextDecoder().decode(plaintext));
   }
-  async function initTransaction(verifierBase, flow, params) {
-    const resp = await fetch(`${verifierBase}/oid4vp/${flow}/init`, {
+  async function initTransaction(wellKnownClientUrl, flow, params) {
+    const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/init`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
@@ -1540,8 +1499,8 @@
       throw new Error(`Failed to init transaction: ${resp.status}`);
     return resp.json();
   }
-  async function fetchResult(verifierBase, flow, params) {
-    const resp = await fetch(`${verifierBase}/oid4vp/${flow}/results`, {
+  async function fetchResult(wellKnownClientUrl, flow, params) {
+    const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/results`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
@@ -1608,12 +1567,12 @@
     return shouldRehydrate ? rehydrateResponse(response) : response;
   }
   async function request(dcqlQuery, opts) {
-    const checkinBase = opts.checkinBase.replace(/\/+$/, "");
-    const verifierBase = opts.verifierBase.replace(/\/+$/, "");
-    if (!checkinBase)
-      throw new Error("checkinBase required");
-    if (!verifierBase)
-      throw new Error("verifierBase required");
+    const walletUrl = opts.walletUrl.replace(/\/+$/, "");
+    const wellKnownClientUrl = opts.wellKnownClientUrl.replace(/\/+$/, "");
+    if (!walletUrl)
+      throw new Error("walletUrl required");
+    if (!wellKnownClientUrl)
+      throw new Error("wellKnownClientUrl required");
     if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
       throw new Error("dcqlQuery must be an object with a credentials array");
     }
@@ -1622,18 +1581,18 @@
     const timeout = opts.timeout ?? 2 * 60 * 1000;
     const { privateKey, publicJwk } = await generateEphemeralKeyPair();
     const redirect_uri = flow === "same-device" ? new URL(location.pathname, location.origin).toString() : undefined;
-    const txn = await initTransaction(verifierBase, flow, {
+    const txn = await initTransaction(wellKnownClientUrl, flow, {
       redirect_uri,
       ephemeral_pub_jwk: publicJwk,
       dcql_query: dcqlQuery
     });
-    const client_id = `well_known:${verifierBase}`;
+    const client_id = `well_known:${wellKnownClientUrl}`;
     const bootstrapParams = new URLSearchParams({
       client_id,
       request_uri: txn.request_uri,
       request_uri_method: "post"
     });
-    const launch_url = `${checkinBase}/?${bootstrapParams.toString()}`;
+    const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
     if (opts.onRequestStart) {
       opts.onRequestStart({
         flow,
@@ -1657,7 +1616,7 @@
       try {
         const channelName = `shc-return-${redirect_uri}`;
         const response_code = await waitForResponseCode(channelName, timeout);
-        const jweString = await fetchResult(verifierBase, flow, {
+        const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
           read_secret: txn.read_secret,
           response_code
@@ -1673,7 +1632,7 @@
       const deadline = Date.now() + timeout;
       while (Date.now() < deadline) {
         try {
-          const jweString = await fetchResult(verifierBase, flow, {
+          const jweString = await fetchResult(wellKnownClientUrl, flow, {
             transaction_id: txn.transaction_id,
             read_secret: txn.read_secret
           });

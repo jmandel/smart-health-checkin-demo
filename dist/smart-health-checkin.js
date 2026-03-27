@@ -1451,8 +1451,8 @@ async function decryptJwe(jwe, privateKey) {
   const { plaintext } = await compactDecrypt(jwe, privateKey);
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
-async function initTransaction(verifierBase, flow, params) {
-  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/init`, {
+async function initTransaction(wellKnownClientUrl, flow, params) {
+  const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/init`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -1462,8 +1462,8 @@ async function initTransaction(verifierBase, flow, params) {
     throw new Error(`Failed to init transaction: ${resp.status}`);
   return resp.json();
 }
-async function fetchResult(verifierBase, flow, params) {
-  const resp = await fetch(`${verifierBase}/oid4vp/${flow}/results`, {
+async function fetchResult(wellKnownClientUrl, flow, params) {
+  const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/results`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -1530,12 +1530,12 @@ async function decryptAndProcess(jweString, privateKey, expectedState, shouldReh
   return shouldRehydrate ? rehydrateResponse(response) : response;
 }
 async function request(dcqlQuery, opts) {
-  const checkinBase = opts.checkinBase.replace(/\/+$/, "");
-  const verifierBase = opts.verifierBase.replace(/\/+$/, "");
-  if (!checkinBase)
-    throw new Error("checkinBase required");
-  if (!verifierBase)
-    throw new Error("verifierBase required");
+  const walletUrl = opts.walletUrl.replace(/\/+$/, "");
+  const wellKnownClientUrl = opts.wellKnownClientUrl.replace(/\/+$/, "");
+  if (!walletUrl)
+    throw new Error("walletUrl required");
+  if (!wellKnownClientUrl)
+    throw new Error("wellKnownClientUrl required");
   if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
     throw new Error("dcqlQuery must be an object with a credentials array");
   }
@@ -1544,18 +1544,18 @@ async function request(dcqlQuery, opts) {
   const timeout = opts.timeout ?? 2 * 60 * 1000;
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
   const redirect_uri = flow === "same-device" ? new URL(location.pathname, location.origin).toString() : undefined;
-  const txn = await initTransaction(verifierBase, flow, {
+  const txn = await initTransaction(wellKnownClientUrl, flow, {
     redirect_uri,
     ephemeral_pub_jwk: publicJwk,
     dcql_query: dcqlQuery
   });
-  const client_id = `well_known:${verifierBase}`;
+  const client_id = `well_known:${wellKnownClientUrl}`;
   const bootstrapParams = new URLSearchParams({
     client_id,
     request_uri: txn.request_uri,
     request_uri_method: "post"
   });
-  const launch_url = `${checkinBase}/?${bootstrapParams.toString()}`;
+  const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
   if (opts.onRequestStart) {
     opts.onRequestStart({
       flow,
@@ -1579,7 +1579,7 @@ async function request(dcqlQuery, opts) {
     try {
       const channelName = `shc-return-${redirect_uri}`;
       const response_code = await waitForResponseCode(channelName, timeout);
-      const jweString = await fetchResult(verifierBase, flow, {
+      const jweString = await fetchResult(wellKnownClientUrl, flow, {
         transaction_id: txn.transaction_id,
         read_secret: txn.read_secret,
         response_code
@@ -1595,7 +1595,7 @@ async function request(dcqlQuery, opts) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       try {
-        const jweString = await fetchResult(verifierBase, flow, {
+        const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
           read_secret: txn.read_secret
         });

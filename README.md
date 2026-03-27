@@ -12,47 +12,6 @@ This repository contains:
 - a demo verifier backend / response endpoint that serves metadata and signed Request Objects and stores opaque encrypted responses
 
 
-## Repository Layout
-
-- `src/`: browser shim library
-- `demo/portal`: same-device demo
-- `demo/kiosk`: cross-device demo
-- `demo/checkin`: shared picker / routing page
-- `demo/source-app`: mock source app / wallet-side provider
-- `demo/relay`: demo verifier backend / response endpoint
-- `demo/shared`: shared demo UI helpers
-
-## request() Entry Point
-
-```javascript
-import { request } from 'smart-health-checkin';
-
-const result = await request(dcqlQuery, options);
-```
-
-**Parameters:**
-- `dcqlQuery` (Object, required): A standard DCQL query object. See the DCQL profile below for structure.
-- `options` (Object, required):
-  - `checkinBase` (String, required): URL of the health app picker (e.g., `'https://picker.example.com'`).
-  - `verifierBase` (String, required): Bare HTTPS origin for the Verifier named by `well_known:` (e.g., `'https://clinic.example.com'`). The shim derives `client_id`, metadata resolution, request, response, and result endpoints from this base URL by convention.
-  - `onRequestStart` (Function, optional): Callback invoked when the OID4VP request is constructed.
-  - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response resolves all internal references to output flat, easy-to-consume data arrays.
-
-**Response (Promise resolution)**
-```javascript
-{
-  state: '...',           // Echoed from request (decrypted)
-  vp_token: {...},        // Map from credential IDs to Presentation objects (decrypted)
-  credentials: {...}      // Rehydrated: map from credential IDs to unwrapped data (if rehydrate=true)
-}
-```
-
-When `rehydrate` is `true` (default), the `credentials` object maps credential IDs to arrays of unwrapped credential data, making it easy to consume:
-```javascript
-const { credentials } = result;
-const coverageData = credentials['req_insurance'][0]; // Direct access to the decrypted FHIR resource
-```
-
 ---
 
 ## 1. SMART Health Check-in Profile of OID4VP
@@ -379,8 +338,8 @@ import { request, maybeHandleReturn } from 'smart-health-checkin';
 
 // Make a request
 const result = await request(dcqlQuery, {
-  checkinBase: 'https://picker.example.com',
-  verifierBase: 'https://clinic.example.com',
+  walletUrl: 'https://picker.example.com',
+  wellKnownClientUrl: 'https://clinic.example.com',
   flow: 'same-device'
 });
 
@@ -426,3 +385,48 @@ For the cross-device demo, the local demo server includes a simple staff login s
 ## 5. License
 
 MIT License
+
+---
+
+## Repository Layout
+
+- `src/`: browser shim library
+- `demo/portal`: same-device demo
+- `demo/kiosk`: cross-device demo
+- `demo/checkin`: shared picker / routing page
+- `demo/source-app`: mock source app / wallet-side provider
+- `demo/relay`: demo verifier backend / response endpoint
+- `demo/shared`: shared demo UI helpers
+
+## request() Entry Point
+
+```javascript
+import { request } from 'smart-health-checkin';
+
+const result = await request(dcqlQuery, options);
+```
+
+**Parameters:**
+- `dcqlQuery` (Object, required): A standard DCQL query object. See the DCQL profile below for structure.
+- `options` (Object, required):
+  - `walletUrl` (String, required): URL of the health app picker (e.g., `'https://picker.example.com'`).
+  - `wellKnownClientUrl` (String, required): Bare HTTPS origin for the Verifier named by `well_known:` (e.g., `'https://clinic.example.com'`). The shim derives `client_id`, metadata resolution, request, response, and result endpoints from this base URL by convention.
+  - `onRequestStart` (Function, optional): Callback invoked when the OID4VP request is constructed.
+  - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response resolves all internal references to output flat, easy-to-consume data arrays.
+
+**Response (Promise resolution)**
+```javascript
+{
+  state: '...',           // Echoed from request (decrypted)
+  vp_token: {...},        // Map from credential IDs to Presentation objects (decrypted)
+  credentials: {...}      // Rehydrated: map from credential IDs to unwrapped data (if rehydrate=true)
+}
+```
+
+When `rehydrate` is `true` (default), the `credentials` object maps credential IDs to arrays of unwrapped credential data, making it easy to consume:
+```javascript
+const { credentials } = result;
+const coverageData = credentials['req_insurance'][0]; // Direct access to the decrypted FHIR resource
+```
+
+

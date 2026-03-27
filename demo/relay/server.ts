@@ -17,7 +17,7 @@ const PORT = parseInt(process.env.PORT || '3003', 10);
 const VERIFIER_BASE = process.env.VERIFIER_BASE || `http://localhost:${PORT}`;
 
 const { handler } = await createRelayHandler({
-  verifierBase: VERIFIER_BASE,
+  wellKnownClientUrl: VERIFIER_BASE,
   signingKeyJwk: process.env.SIGNING_KEY,
   metadata: process.env.CLIENT_NAME ? { client_name: process.env.CLIENT_NAME } : undefined,
   // Cross-device requires session binding — reject unless the caller

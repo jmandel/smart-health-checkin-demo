@@ -19,8 +19,8 @@ Target API for [src/smart-health-checkin.ts](/home/jmandel/hobby/SHCWalletApp/sh
 
 ```ts
 const result = await request(dcqlQuery, {
-  checkinBase: 'https://picker.example.com',
-  verifierBase: 'https://clinic.example.com',
+  walletUrl: 'https://picker.example.com',
+  wellKnownClientUrl: 'https://clinic.example.com',
   flow: 'same-device' | 'cross-device',
   rehydrate: true,
   timeout: 120000,
@@ -30,11 +30,11 @@ const result = await request(dcqlQuery, {
 
 Notes:
 
-- Replace the current `relayUrl` mental model with `verifierBase`.
+- Replace the current `relayUrl` mental model with `wellKnownClientUrl`.
 - The shim should derive:
-  - `client_id = well_known:${verifierBase}`
-  - metadata URL = `${verifierBase}/.well-known/openid4vp-client`
-  - request endpoint, response endpoint, and read endpoint from conventions under `verifierBase`
+  - `client_id = well_known:${wellKnownClientUrl}`
+  - metadata URL = `${wellKnownClientUrl}/.well-known/openid4vp-client`
+  - request endpoint, response endpoint, and read endpoint from conventions under `wellKnownClientUrl`
 - `flow` is the single high-level mode selector:
   - `same-device`: open popup, expect `#response_code`
   - `cross-device`: do not rely on redirect completion; instead expose QR/link details and wait on the read path
@@ -58,7 +58,7 @@ Primary file: [demo/relay/server.ts](/home/jmandel/hobby/SHCWalletApp/shl-share-
   - persist the declared flow mode in transaction state
   - return `request_uri` and any requester-local secrets
 - Add `GET /.well-known/openid4vp-client`:
-  - emit metadata for `well_known:${verifierBase}`
+  - emit metadata for `well_known:${wellKnownClientUrl}`
   - include `jwks_uri`
   - include allowed `response_uri_prefixes`
   - include allowed `redirect_uris`
@@ -101,7 +101,7 @@ Primary files:
   - response post prefix: `/oid4vp/post/`
   - result fetch: `/oid4vp/result`
   - return page: `/oid4vp/return`
-- Make the demo config expose `verifierBase` explicitly instead of only `relay.url`.
+- Make the demo config expose `wellKnownClientUrl` explicitly instead of only `relay.url`.
 
 ## Phase 3: Shim Library
 
@@ -110,7 +110,7 @@ Primary file: [src/smart-health-checkin.ts](/home/jmandel/hobby/SHCWalletApp/shl
 - Replace `redirect_uri:` request construction with `well_known:`.
 - Replace `createRelaySession()` with transaction initialization against `/oid4vp/init`.
 - Add `flow` to `RequestOptions`.
-- Rename `relayUrl` to `verifierBase` in the public API.
+- Rename `relayUrl` to `wellKnownClientUrl` in the public API.
 - Pass the selected `flow` to `/oid4vp/init` instead of inferring it later.
 - Construct a minimal bootstrap request:
   - `client_id`

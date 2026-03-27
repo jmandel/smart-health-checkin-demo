@@ -22,8 +22,8 @@ export interface DemoRequestState {
 }
 
 export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
-  checkinBase: string;
-  verifierBase: string;
+  walletUrl: string;
+  wellKnownClientUrl: string;
   flow: 'same-device' | 'cross-device';
 }) {
   const [state, setState] = useState<DemoRequestState>({
@@ -41,8 +41,8 @@ export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
 
     try {
       const result = await request(dcqlQuery, {
-        checkinBase: opts.checkinBase,
-        verifierBase: opts.verifierBase,
+        walletUrl: opts.walletUrl,
+        wellKnownClientUrl: opts.wellKnownClientUrl,
         flow: opts.flow,
         onRequestStart: (info) => {
           setState(s => ({
@@ -68,7 +68,7 @@ export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
         error: err instanceof Error ? err.message : 'Unknown error',
       }));
     }
-  }, [dcqlQuery, opts.checkinBase, opts.verifierBase, opts.flow]);
+  }, [dcqlQuery, opts.walletUrl, opts.wellKnownClientUrl, opts.flow]);
 
   return { ...state, start };
 }

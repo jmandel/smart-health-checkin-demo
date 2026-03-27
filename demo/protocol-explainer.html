@@ -566,8 +566,8 @@
     <pre>import { request, maybeHandleReturn } from 'smart-health-checkin';
 
 const result = await request(dcqlQuery, {
-  checkinBase: 'https://picker.example.com',
-  verifierBase: 'https://clinic.example.com',
+  walletUrl: 'https://picker.example.com',
+  wellKnownClientUrl: 'https://clinic.example.com',
   flow: 'same-device',   // or 'cross-device'
   onRequestStart(info) {
     // info.bootstrap  — { client_id, request_uri, request_uri_method }

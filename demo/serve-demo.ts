@@ -32,7 +32,7 @@ function getSessionFromCookie(req: Request): string | null {
 const ALLOWED_ORIGINS = (process.env.ALLOWED_SAME_DEVICE_ORIGINS || '').split(',').filter(Boolean);
 
 const { handler: relay } = await createRelayHandler({
-  verifierBase: VERIFIER_BASE,
+  wellKnownClientUrl: VERIFIER_BASE,
   metadata: { client_name: "Dr. Mandel's Family Medicine" },
   requireVerifierSessionForCrossDevice: true,
   allowedSameDeviceOrigins: ALLOWED_ORIGINS,
