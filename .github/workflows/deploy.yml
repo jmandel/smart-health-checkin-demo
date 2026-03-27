@@ -35,7 +35,7 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Build project
-        run: bun build.ts
+        run: bun build.ts --gh-pages
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
