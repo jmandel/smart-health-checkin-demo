@@ -16,3 +16,4 @@ build/
 test-results/
 playwright-report/
 test_output.txt
+dist/
