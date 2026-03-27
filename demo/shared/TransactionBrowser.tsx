@@ -134,10 +134,54 @@ function CollapsibleJson({ title, data }: { title: string; data: object | null }
 
 interface RequestInfo {
   flow?: string;
-  bootstrap?: object;
+  bootstrap?: { client_id?: string; request_uri?: string; request_uri_method?: string };
   launch_url?: string;
   transaction?: object;
   [key: string]: unknown;
+}
+
+function decodeJwtPayload(jwt: string): { header: object; payload: object } | null {
+  try {
+    const parts = jwt.split('.');
+    if (parts.length !== 3) return null;
+    const decode = (s: string) => JSON.parse(atob(s.replace(/-/g, '+').replace(/_/g, '/')));
+    return { header: decode(parts[0]), payload: decode(parts[1]) };
+  } catch {
+    return null;
+  }
+}
+
+function SignedRequestPanel({ requestUri }: { requestUri: string }) {
+  const [jwt, setJwt] = useState<{ raw: string; header: object; payload: object } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fetched = React.useRef(false);
+
+  React.useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+    fetch(requestUri, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+      .then(r => r.text())
+      .then(raw => {
+        const decoded = decodeJwtPayload(raw);
+        if (decoded) setJwt({ raw, ...decoded });
+        else setError('Could not decode JWT');
+      })
+      .catch(e => setError(e.message));
+  }, [requestUri]);
+
+  if (error) return null;
+  if (!jwt) return null;
+
+  return (
+    <>
+      <CollapsibleJson title="Signed Request Object — JWT Header" data={jwt.header} />
+      <CollapsibleJson title="Signed Request Object — JWT Payload (claims)" data={jwt.payload} />
+    </>
+  );
 }
 
 export function TransactionBrowser({ request: req, response }: { request: object | null; response: object | null }) {
@@ -147,6 +191,7 @@ export function TransactionBrowser({ request: req, response }: { request: object
   const resp = response as { credentials?: Record<string, unknown[]>; vp_token?: object; state?: string } | null;
   const credentials = resp?.credentials;
   const wireResponse = resp?.vp_token ? { state: resp.state, vp_token: resp.vp_token } : null;
+  const requestUri = reqInfo?.bootstrap?.request_uri;
 
   return (
     <div className="transaction-browser">
@@ -164,6 +209,7 @@ export function TransactionBrowser({ request: req, response }: { request: object
       )}
 
       <CollapsibleJson title="Bootstrap Request (sent to wallet/picker)" data={reqInfo?.bootstrap || null} />
+      {requestUri && <SignedRequestPanel requestUri={requestUri} />}
       <CollapsibleJson title="Shim Transaction (internal, not sent to wallet)" data={reqInfo?.transaction || null} />
       <CollapsibleJson title="Wire Response (vp_token)" data={wireResponse} />
     </div>
