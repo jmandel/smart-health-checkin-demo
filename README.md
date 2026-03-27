@@ -102,14 +102,12 @@ The bootstrap request shown in a browser popup or QR code SHOULD be minimal and 
 
 *   `client_id`
 *   `request_uri`
-*   `request_uri_method`
 
 **Bootstrap Example:**
 ```text
 https://wallet.example.com/authorize?
   client_id=well_known:https://clinic.example.com&
   request_uri=https://clinic.example.com/oid4vp/requests/123&
-  request_uri_method=post
 ```
 
 The actual request parameters MUST be conveyed in a signed Request Object fetched from `request_uri`.

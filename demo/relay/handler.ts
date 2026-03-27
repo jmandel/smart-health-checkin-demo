@@ -6,7 +6,7 @@
  * Public (wallet-facing):
  *   GET  /.well-known/openid4vp-client
  *   GET  /.well-known/jwks.json
- *   POST /oid4vp/requests/:request_id      — signed Request Object
+ *   GET  /oid4vp/requests/:request_id      — signed Request Object
  *   POST /oid4vp/responses/:write_token    — wallet submits encrypted response
  *
  * Verifier-facing:
@@ -288,9 +288,9 @@ export async function createRelayHandler(config: RelayConfig) {
       });
     }
 
-    // POST /oid4vp/requests/:request_id — signed Request Object
+    // GET /oid4vp/requests/:request_id — signed Request Object
     const requestMatch = url.pathname.match(/^\/oid4vp\/requests\/([a-f0-9]+)$/);
-    if (req.method === 'POST' && requestMatch) {
+    if ((req.method === 'GET' || req.method === 'POST') && requestMatch) {
       const txn = byRequestId.get(requestMatch[1]);
       if (!txn) return Response.json({ error: 'not_found' }, { status: 404, headers: PUBLIC_CORS });
 

@@ -159,11 +159,7 @@ function SignedRequestPanel({ requestUri }: { requestUri: string }) {
   React.useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
-    fetch(requestUri, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    })
+    fetch(requestUri)
       .then(r => r.text())
       .then(raw => {
         const decoded = decodeJwtPayload(raw);

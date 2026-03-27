@@ -90,7 +90,7 @@ These are called by wallets and source apps. They support CORS (`Access-Control-
 |--------|------|-------------|
 | `GET` | `/.well-known/openid4vp-client` | Verifier metadata |
 | `GET` | `/.well-known/jwks.json` | Verifier signing keys (JWKS) |
-| `POST` | `/oid4vp/requests/:request_id` | Returns signed Request Object JWT |
+| `GET` | `/oid4vp/requests/:request_id` | Returns signed Request Object JWT |
 | `POST` | `/oid4vp/responses/:write_token` | Wallet submits encrypted JWE response |
 
 ### Verifier-facing endpoints

@@ -31,7 +31,6 @@ async function main() {
 
     assert(checkinPopup.url().includes('well_known%3A'), 'URL should contain well_known: client_id');
     assert(checkinPopup.url().includes('request_uri='), 'URL should contain request_uri');
-    assert(checkinPopup.url().includes('request_uri_method=post'), 'URL should contain request_uri_method');
 
     console.log('\n=== Step 3: Click Sample Health App ===');
     const sourcePromise = context.waitForEvent('page', { timeout: TIMEOUT });

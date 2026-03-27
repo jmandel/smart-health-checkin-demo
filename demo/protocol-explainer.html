@@ -305,7 +305,7 @@
       <p class="expand-desc">The URL the patient sees is intentionally minimal — just three parameters. This keeps QR codes small.</p>
       <div class="expand-code"><span class="key">client_id</span>=<span class="val">well_known:https://clinic.example.com</span>
 <span class="key">request_uri</span>=<span class="val">https://clinic.example.com/oid4vp/requests/abc123</span>
-<span class="key">request_uri_method</span>=<span class="val">post</span></div>
+</div>
 
       <div class="expand-level l1">
         <div class="expand-header"><span class="arrow">&#9660;</span> <code>client_id</code> resolves to Verifier Metadata</div>
@@ -320,7 +320,7 @@
 
       <div class="expand-level l1">
         <div class="expand-header"><span class="arrow">&#9660;</span> <code>request_uri</code> resolves to a Signed Request Object</div>
-        <p class="expand-desc">The wallet POSTs to <code>request_uri</code> and gets a signed JWT. It verifies the signature using keys from <code>jwks_uri</code>. This is where all the real parameters live:</p>
+        <p class="expand-desc">The wallet fetches <code>request_uri</code> and gets a signed JWT. It verifies the signature using keys from <code>jwks_uri</code>. This is where all the real parameters live:</p>
         <div class="expand-code">{
   <span class="key">"iss"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,
   <span class="key">"aud"</span>: <span class="val">"https://self-issued.me/v2"</span>,
@@ -420,7 +420,7 @@
       <span class="swim-lane-title">Deliver the Request</span>
     </div>
     <div class="swim-lane-detail">
-      The shim calls <code>POST /oid4vp/same-device/init</code> to start the transaction, receives <code>transaction_id</code>, <code>read_secret</code>, and <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code>, <code>request_uri</code>, <code>request_uri_method</code> and opens a popup to the picker. Starts listening for the return via BroadcastChannel.
+      The shim calls <code>POST /oid4vp/same-device/init</code> to start the transaction, receives <code>transaction_id</code>, <code>read_secret</code>, and <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code> and <code>request_uri</code>, then opens a popup to the picker. Starts listening for the return via BroadcastChannel.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -433,7 +433,7 @@
       <span class="swim-lane-title">Verify, Consent, Respond</span>
     </div>
     <div class="swim-lane-detail">
-      The wallet (via a picker) receives the bootstrap URL. It fetches <code>/.well-known/openid4vp-client</code> from the verifier origin to get the <code>jwks_uri</code>. It POSTs to <code>request_uri</code> to get the signed Request Object JWT, verifies the signature, and extracts <code>response_uri</code>, <code>dcql_query</code>, and the ephemeral encryption key.
+      The wallet (via a picker) receives the bootstrap URL. It fetches <code>/.well-known/openid4vp-client</code> from the verifier origin to get the <code>jwks_uri</code>. It fetches <code>request_uri</code> to get the signed Request Object JWT, verifies the signature, and extracts <code>response_uri</code>, <code>dcql_query</code>, and the ephemeral encryption key.
       <br><br>
       After the user reviews and consents, the wallet encrypts <code>{ vp_token, state }</code> as a JWE and POSTs it to <code>response_uri</code>. The server returns <code>{ redirect_uri: "portalPage#response_code=..." }</code>. The wallet navigates there.
     </div>
@@ -572,7 +572,7 @@ const result = await request(dcqlQuery, {
   wellKnownClientUrl: 'https://clinic.example.com',
   flow: 'same-device',   // or 'cross-device'
   onRequestStart(info) {
-    // info.bootstrap  — { client_id, request_uri, request_uri_method }
+    // info.bootstrap  — { client_id, request_uri }
     // info.launch_url — full URL for popup or QR
     // info.transaction — { transaction_id, request_id, read_secret }
   }

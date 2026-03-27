@@ -16,7 +16,7 @@ interface BootstrapRequest {
   protocol: string;
   client_id: string;
   request_uri: string;
-  request_uri_method: string;
+  request_uri_method?: string;
 }
 
 function parseRequest(): BootstrapRequest | { error: string } {
@@ -26,14 +26,14 @@ function parseRequest(): BootstrapRequest | { error: string } {
   const requestUriMethod = urlParams.get('request_uri_method');
 
   if (clientId?.startsWith('well_known:')) {
-    if (!requestUri || !requestUriMethod) {
-      return { error: 'Missing request_uri or request_uri_method for well_known: flow' };
+    if (!requestUri) {
+      return { error: 'Missing request_uri for well_known: flow' };
     }
     const req: BootstrapRequest = {
       protocol: 'smart-health-checkin-v1',
       client_id: clientId,
       request_uri: requestUri,
-      request_uri_method: requestUriMethod,
+      request_uri_method: requestUriMethod || undefined,
     };
     console.log('[Check-in] Bootstrap request:', req);
     return req;
@@ -52,7 +52,7 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
     const appParams = new URLSearchParams();
     appParams.set('client_id', req.client_id);
     appParams.set('request_uri', req.request_uri);
-    appParams.set('request_uri_method', req.request_uri_method);
+    if (req.request_uri_method) appParams.set('request_uri_method', req.request_uri_method);
 
     const launchUrl = app.launchBase + '?' + appParams.toString();
     console.log('[Check-in] Launch URL:', launchUrl);

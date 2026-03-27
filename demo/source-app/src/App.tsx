@@ -88,7 +88,7 @@ async function resolveRequest(): Promise<VerifiedRequest | { error: string }> {
   const params = new URLSearchParams(location.search);
   const clientId = params.get('client_id');
   const requestUri = params.get('request_uri');
-  const requestUriMethod = params.get('request_uri_method') || 'post';
+  const requestUriMethod = params.get('request_uri_method') || 'get';
 
   if (!clientId?.startsWith('well_known:')) {
     return { error: 'Invalid client_id: must use well_known: prefix' };

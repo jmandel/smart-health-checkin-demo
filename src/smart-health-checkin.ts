@@ -90,7 +90,6 @@ export interface RequestStartInfo {
   bootstrap: {
     client_id: string;
     request_uri: string;
-    request_uri_method: string;
   };
   /** Full launch URL including bootstrap params */
   launch_url: string;
@@ -297,7 +296,6 @@ export async function request(
   const bootstrapParams = new URLSearchParams({
     client_id,
     request_uri: txn.request_uri,
-    request_uri_method: 'post',
   });
   const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
 
@@ -307,7 +305,6 @@ export async function request(
       bootstrap: {
         client_id,
         request_uri: txn.request_uri,
-        request_uri_method: 'post',
       },
       launch_url,
       transaction: {
