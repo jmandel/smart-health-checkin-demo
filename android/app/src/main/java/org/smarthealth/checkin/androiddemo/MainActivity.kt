@@ -201,7 +201,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                withContext(Dispatchers.IO) {
+                val postResult = withContext(Dispatchers.IO) {
                     val responsePayload = if (decline) {
                         buildErrorPayload(request)
                     } else {
@@ -210,14 +210,31 @@ class MainActivity : ComponentActivity() {
                     val jwe = encryptResponse(responsePayload, request.clientMetadata)
                     postResponse(request.responseUri, jwe)
                 }
-                complete()
+                complete(request, postResult)
             } catch (error: Exception) {
                 screenState = ScreenState.Error(error.message ?: error.toString())
             }
         }
     }
 
-    private fun complete() {
+    private fun complete(request: VerifiedRequest, postResult: JSONObject) {
+        if (request.completion == "redirect") {
+            val redirectUri = postResult.optString("redirect_uri", "")
+            if (redirectUri.isBlank()) {
+                screenState = ScreenState.Error("Expected redirect_uri for redirect completion.")
+                return
+            }
+            screenState = ScreenState.Submitting("Returning to requester", "Completing the same-device check-in in your browser.")
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(redirectUri)))
+            finish()
+            return
+        }
+
+        if (postResult.optString("redirect_uri", "").isNotBlank()) {
+            screenState = ScreenState.Error("Unexpected redirect_uri for deferred completion.")
+            return
+        }
+
         screenState = ScreenState.Complete
     }
 
