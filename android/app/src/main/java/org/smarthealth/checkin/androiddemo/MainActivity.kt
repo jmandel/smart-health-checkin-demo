@@ -201,7 +201,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                val postResult = withContext(Dispatchers.IO) {
+                withContext(Dispatchers.IO) {
                     val responsePayload = if (decline) {
                         buildErrorPayload(request)
                     } else {
@@ -210,31 +210,14 @@ class MainActivity : ComponentActivity() {
                     val jwe = encryptResponse(responsePayload, request.clientMetadata)
                     postResponse(request.responseUri, jwe)
                 }
-                complete(request, postResult)
+                complete()
             } catch (error: Exception) {
                 screenState = ScreenState.Error(error.message ?: error.toString())
             }
         }
     }
 
-    private fun complete(request: VerifiedRequest, postResult: JSONObject) {
-        if (request.completion == "redirect") {
-            val redirectUri = postResult.optString("redirect_uri", "")
-            if (redirectUri.isBlank()) {
-                screenState = ScreenState.Error("Expected redirect_uri for redirect completion.")
-                return
-            }
-            screenState = ScreenState.Submitting("Returning to check-in", "Opening the verifier completion page.")
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(redirectUri)))
-            finish()
-            return
-        }
-
-        if (postResult.optString("redirect_uri", "").isNotBlank()) {
-            screenState = ScreenState.Error("Unexpected redirect_uri for deferred completion.")
-            return
-        }
-
+    private fun complete() {
         screenState = ScreenState.Complete
     }
 
@@ -820,7 +803,7 @@ private fun DemoApp(
             is ScreenState.Loading -> LoadingScreen(state, padding)
             is ScreenState.Submitting -> SubmittingScreen(state, padding)
             is ScreenState.Error -> ErrorScreen(state, padding, onClose)
-            is ScreenState.Complete -> CompleteScreen(padding, onClose)
+            is ScreenState.Complete -> CompleteScreen(padding)
             is ScreenState.Consent -> ConsentScreen(
                 request = state.request,
                 selectedItems = selectedItems,
@@ -922,7 +905,7 @@ private fun ErrorScreen(state: ScreenState.Error, padding: PaddingValues, onClos
 }
 
 @Composable
-private fun CompleteScreen(padding: PaddingValues, onClose: () -> Unit) {
+private fun CompleteScreen(padding: PaddingValues) {
     CenterPanel(padding) {
         StatusDot(AppColors.Success, AppColors.SuccessSoft)
         Spacer(Modifier.height(24.dp))
@@ -938,10 +921,6 @@ private fun CompleteScreen(padding: PaddingValues, onClose: () -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             color = AppColors.Muted,
         )
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-            Text("Done")
-        }
     }
 }
 
