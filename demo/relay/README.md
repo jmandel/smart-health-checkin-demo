@@ -230,11 +230,19 @@ Conflict (different payload after first submission):
 - `transaction_id` is never sent to the wallet or included in wallet-facing redirects.
 - The relay cannot decrypt JWE payloads — only the requester's ephemeral private key can.
 
+### Same-device uses loop closure
+
+The phishing case to avoid is an attacker starting a real transaction, sending the launch URL to a victim, and then redeeming the victim's response. In the same-device flow, the launch URL is opened by the requesting browser as a popup. The requesting tab keeps `transaction_id`, `read_secret`, and the ephemeral private key. When the wallet posts the encrypted response, the relay returns only a fresh `response_code` in the validated `redirect_uri`.
+
+The `response_code` is not enough to fetch or decrypt the response. The same-device results endpoint also requires the `transaction_id` and `read_secret` held by the initiating tab, and the returned ciphertext still requires the initiating tab's private key. This is browser loop closure; it is not a patient identity proof.
+
 ### Cross-device requires session binding
 
 Without session binding, an attacker can create a cross-device transaction with their own ephemeral key, show the QR to a victim, then redeem and decrypt the PHI. The `transaction_id` and `read_secret` are not stolen — the attacker *created* them.
 
 The standalone `server.ts` sets `requireVerifierSessionForCrossDevice: true` by default, which disables cross-device endpoints unless a `getVerifierSessionId` callback is provided. To enable cross-device, mount the handler in your own server with your auth layer.
+
+The reference demo uses this only for staff/kiosk check-in, where the authenticated verifier session represents clinic staff and clinician-as-attacker is out of scope. Do not treat session binding alone as sufficient for patient-portal QR flows: a malicious patient could start a transaction from their own portal account and show the QR to another patient. That pattern needs verifier-enforced expected-subject binding, so the reference portal remains same-device only.
 
 ## Configuration
 

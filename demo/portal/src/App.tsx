@@ -3,77 +3,37 @@ import { maybeHandleReturn, type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
 import { useDemoRequest } from '../../shared/useDemoRequest';
 import { TransactionBrowser } from '../../shared/TransactionBrowser';
+import { migraineQuestionnaire } from '../../shared/migraineQuestionnaire';
+import { C4DIC_COVERAGE_PROFILE, SBC_INSURANCE_PLAN_PROFILE } from '../../shared/carinInsuranceExamples';
+import { CLINICAL_HISTORY_PROFILES } from '../../shared/clinicalHistoryExamples';
 import './styles.css';
-
-interface Coverage {
-  resourceType: 'Coverage';
-  subscriberId?: string;
-  class?: Array<{ type?: { coding?: Array<{ code?: string }> }; value?: string }>;
-  payor?: Array<{ display?: string }>;
-}
-
-interface Patient {
-  resourceType: 'Patient';
-  name?: Array<{ text?: string }>;
-  birthDate?: string;
-}
 
 const dcqlQuery: DCQLQuery = {
   credentials: [
     {
       id: 'coverage-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage' }
+      meta: { profile: C4DIC_COVERAGE_PROFILE }
     },
     {
-      id: 'patient-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient' }
+      id: 'sbc-insurance-plan-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { profile: SBC_INSURANCE_PLAN_PROFILE }
     },
     {
-      id: 'intake-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: {
-        questionnaire: {
-          resourceType: 'Questionnaire', id: 'patient-intake',
-          title: "Patient Intake Form - Dr. Mandel's Clinic", status: 'active',
-          item: [
-            { linkId: '1', text: 'Full Name', type: 'string', required: true },
-            { linkId: '2', text: 'Date of Birth', type: 'date', required: true },
-            { linkId: '3', text: 'Primary Health Concerns', type: 'text', required: false },
-            { linkId: '4', text: 'Current Medications', type: 'text', required: false },
-            { linkId: '5', text: 'Known Allergies', type: 'string', required: false }
-          ]
-        }
-      }
+      id: 'clinical-history-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { profiles: [...CLINICAL_HISTORY_PROFILES] }
+    },
+    {
+      id: 'migraine-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { questionnaire: migraineQuestionnaire }
     }
   ],
   credential_sets: [
     { options: [['coverage-1']], required: false },
-    { options: [['patient-1']], required: false },
-    { options: [['intake-questionnaire-1']], required: false }
+    { options: [['sbc-insurance-plan-1']], required: false },
+    { options: [['clinical-history-1']], required: false },
+    { options: [['migraine-questionnaire-1']], required: false }
   ]
 };
-
-function InsuranceCard({ coverage, patient }: { coverage: Coverage; patient: Patient }) {
-  const groupClass = coverage.class?.find(c => c.type?.coding?.[0]?.code === 'group');
-  return (
-    <div className="insurance-card">
-      <div className="insurance-card-header">DIGITAL INSURANCE CARD</div>
-      <div className="insurance-card-name">{patient.name?.[0]?.text || 'Patient Name'}</div>
-      <div className="insurance-card-details">
-        {[
-          { label: 'Member ID', value: coverage.subscriberId || 'N/A' },
-          { label: 'Group Number', value: groupClass?.value || 'N/A' },
-          { label: 'Plan Name', value: coverage.payor?.[0]?.display || 'Health Plan' },
-          { label: 'Date of Birth', value: patient.birthDate || 'N/A' },
-        ].map(f => (
-          <div key={f.label} className="insurance-card-field">
-            <div className="insurance-card-label">{f.label}</div>
-            <div className="insurance-card-value">{f.value}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const demo = useDemoRequest(dcqlQuery, {
@@ -84,15 +44,14 @@ export default function App() {
 
   useEffect(() => { maybeHandleReturn(); }, []);
 
-  let coverage: Coverage | null = null;
-  let patient: Patient | null = null;
-  const tasks = { insurance: false, clinical: false, intake: false };
+  const tasks = { insurance: false, plan: false, clinical: false, intake: false };
 
   if (demo.result?.credentials) {
     for (const items of Object.values(demo.result.credentials)) {
       for (const cred of items as Array<{ resourceType?: string }>) {
-        if (cred.resourceType === 'Coverage') { coverage = cred as Coverage; tasks.insurance = true; }
-        if (cred.resourceType === 'Patient') { patient = cred as Patient; tasks.clinical = true; }
+        if (cred.resourceType === 'Coverage') { tasks.insurance = true; }
+        if (cred.resourceType === 'InsurancePlan') { tasks.plan = true; }
+        if (cred.resourceType === 'Bundle' || cred.resourceType === 'Patient') { tasks.clinical = true; }
         if (cred.resourceType === 'QuestionnaireResponse') { tasks.intake = true; }
       }
     }
@@ -117,9 +76,10 @@ export default function App() {
 
           <div className="task-list">
             {[
-              { key: 'insurance', title: 'Insurance Information', desc: 'Digital insurance card with coverage details', done: tasks.insurance },
-              { key: 'clinical', title: 'Clinical History', desc: 'Health records, medications, and allergies', done: tasks.clinical },
-              { key: 'intake', title: 'Patient Intake Form', desc: 'Basic demographics and health concerns', done: tasks.intake },
+              { key: 'insurance', title: 'Insurance Information', desc: 'Digital insurance card with front/back card images', done: tasks.insurance },
+              { key: 'plan', title: 'Plan Benefits Summary', desc: 'Deductibles, out-of-pocket limits, and common visit costs', done: tasks.plan },
+              { key: 'clinical', title: 'Clinical History', desc: 'Patient details, allergies, and problem list', done: tasks.clinical },
+              { key: 'intake', title: 'Migraine Check-in', desc: 'Brief recurring migraine follow-up', done: tasks.intake },
             ].map(t => (
               <div key={t.key} className={`task-item ${t.done ? 'completed' : ''}`}>
                 <div className="task-status">{t.done ? '✓' : '⏳'}</div>
@@ -135,7 +95,6 @@ export default function App() {
           </div>
 
           {demo.complete && <div className="success-banner">✓ Registration information received successfully!</div>}
-          {coverage && patient && <InsuranceCard coverage={coverage} patient={patient} />}
           {demo.error && <div className="error-banner">Error: {demo.error}</div>}
 
           <button className={`checkin-button ${demo.complete ? 'complete' : ''}`} onClick={demo.start} disabled={demo.loading}>

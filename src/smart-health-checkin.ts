@@ -19,6 +19,7 @@ export interface CredentialQuery {
   require_cryptographic_holder_binding?: boolean;
   meta: {
     profile?: string;
+    profiles?: string[];
     questionnaire?: object;
     questionnaireUrl?: string;
     signingStrategy?: string[];
@@ -80,7 +81,7 @@ export interface RequestOptions {
   onRequestStart?: (info: RequestStartInfo) => void;
   /** If true (default), response includes rehydrated credentials object */
   rehydrate?: boolean;
-  /** Request timeout in milliseconds (default: 120000) */
+  /** Optional requester-side timeout in milliseconds. Omit to wait indefinitely. */
   timeout?: number;
 }
 
@@ -182,17 +183,19 @@ async function fetchResult(
  * The return page broadcasts on a channel named after the redirect_uri's origin+path,
  * which the shim knows because it set the redirect_uri.
  */
-function waitForResponseCode(channelName: string, timeout: number): Promise<string> {
+function waitForResponseCode(channelName: string, timeout?: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const bc = new BroadcastChannel(channelName);
-    const timer = setTimeout(() => {
-      bc.close();
-      reject(new Error('Timeout waiting for response_code'));
-    }, timeout);
+    const timer = timeout
+      ? setTimeout(() => {
+          bc.close();
+          reject(new Error('Timeout waiting for response_code'));
+        }, timeout)
+      : undefined;
 
     bc.onmessage = (event: MessageEvent) => {
       if (event.data?.response_code) {
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         bc.close();
         resolve(event.data.response_code);
       }
@@ -274,7 +277,7 @@ export async function request(
 
   const flow = opts.flow || 'same-device';
   const shouldRehydrate = opts.rehydrate !== false;
-  const timeout = opts.timeout ?? 2 * 60 * 1000;
+  const timeout = opts.timeout;
 
   // Generate ephemeral key pair for E2E encryption
   const { privateKey, publicJwk } = await generateEphemeralKeyPair();
@@ -333,9 +336,11 @@ export async function request(
     }
   } else {
     // Cross-device: caller renders launch_url as QR via onRequestStart
-    // Long-poll for result
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
+    // Long-poll for result. The relay can return "pending" after a single
+    // long-poll interval, but the requester app should not impose its own
+    // deadline unless the caller explicitly provided one.
+    const deadline = timeout ? Date.now() + timeout : undefined;
+    while (!deadline || Date.now() < deadline) {
       try {
         const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
@@ -347,7 +352,7 @@ export async function request(
         throw err;
       }
     }
-    throw new Error('Cross-device request timeout');
+    throw new Error('Request timed out');
   }
 }
 

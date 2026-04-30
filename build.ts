@@ -182,4 +182,4 @@ if (existsSync(externalHtml)) {
 
 console.log('\nBuild complete!');
 console.log(`\nStatic site ready at: build/smart-health-checkin-demo/`);
-console.log('Run ./start-static.sh to test locally');
+console.log('Run ./start-local.sh to test locally');

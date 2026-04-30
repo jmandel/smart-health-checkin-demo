@@ -16,39 +16,45 @@ This repository contains:
 
 ## 1. SMART Health Check-in Profile of OID4VP
 
-This section defines the **Protocol Profile**, specifying how OID4VP is used to transport the request and response. To ensure Protected Health Information (PHI) is never exposed to browser extensions, history logs, or intermediary servers, **all responses MUST be encrypted at the application layer and transported via a Verifier-controlled response endpoint that stores only opaque ciphertext.**
+This section defines the **Protocol Profile**, specifying how OID4VP is used to transport the request and response. To protect PHI in transit, **all responses SHALL be encrypted at the application layer and transported via a Verifier-controlled response endpoint.** A Verifier implementation can store opaque ciphertext for later retrieval, or it can deliver the encrypted response directly to a Verifier component that holds the decryption key.
 
 ### 1.1 Ephemeral Keys and Response Delivery
 
-Before initiating a request, the Verifier MUST:
-1. Generate a fresh Ephemeral Key Pair (e.g., ECDH-ES using P-256 or X25519). The private key remains securely in the Verifier's control (e.g., in browser memory).
+Before initiating a request, the Verifier SHALL:
+1. Generate a fresh Ephemeral Key Pair (e.g., ECDH-ES using P-256 or X25519). The private key remains securely in the Verifier's control.
 2. Produce a signed Request Object containing the ephemeral public key (see 1.4).
 
-The `response_uri` in the signed Request Object MUST be a request-specific, write-only Verifier-controlled endpoint. Because `direct_post.jwt` encrypts the entire Authorization Response (including `state`), the response endpoint cannot inspect the payload — it stores opaque JWE ciphertext and delivers it only through the Verifier's authenticated retrieval path.
+The `response_uri` in the signed Request Object SHALL be a request-specific, write-only Verifier-controlled endpoint. Because `direct_post.jwt` encrypts the entire Authorization Response, including `state`, any component that routes the POST before decryption SHALL identify the target transaction from the request-specific `response_uri` or another outer request handle, not from the encrypted payload.
 
 **Same-device vs. cross-device completion:**
 
-This profile supports two completion modes. The protocol itself does not prescribe how the Verifier manages completion internally; it only requires that:
+This profile supports two completion modes. The protocol does not prescribe the Verifier's internal storage or retrieval architecture; it requires these shared behaviors:
 
 *   The Wallet encrypts and POSTs the response to `response_uri`.
-*   The Verifier retrieves the stored ciphertext, decrypts it, and validates `state`.
+*   The Verifier obtains the encrypted response, decrypts it, and validates `state`.
+*   The Verifier performs the binding checks needed for the selected completion mode before using decrypted data.
 
-In **same-device** flows, the response endpoint MAY return a `redirect_uri` with a fresh `response_code` to signal the initiating browser tab that the response has arrived. In **cross-device** flows, the Verifier retrieves the response through its own backend read path without relying on a browser redirect.
+The signed Request Object SHALL tell the Wallet what to expect after it POSTs the encrypted response:
 
-How the Verifier binds transactions, validates return URIs, and authenticates result retrieval is an implementation concern, not a protocol requirement. The [reference relay implementation](demo/relay/README.md) provides one approach.
+*   `smart_health_checkin.completion = "redirect"` means the response endpoint will return a `redirect_uri` containing a fresh `response_code`. This is used when the check-in starts and finishes on one device.
+*   `smart_health_checkin.completion = "deferred"` means the response endpoint will return a simple acknowledgement. This is used when the check-in is completed from another device, such as a QR code at a front desk.
+
+How the Verifier validates return URIs, authenticates result retrieval, and binds transactions to application sessions is an implementation concern, not a protocol requirement. The [reference relay implementation](demo/relay/README.md) provides one approach.
+
+Before decrypted response data is revealed downstream, including display to a user, persistence as clinical data, or onward sharing to another system, the Verifier SHALL confirm that the response is being completed in the expected application context. For `completion = "redirect"`, the Verifier SHALL bind the `response_code` to the initiating transaction and application session. For `completion = "deferred"`, the Verifier SHALL bind response access to an authenticated Verifier session authorized for that transaction, such as a valid staff session in a kiosk workflow.
 
 ### 1.2 Authenticated Verifier Discovery (`well_known:`)
 
 This profile defines a custom Client Identifier Prefix:
 
-*   `client_id`: MUST use the `well_known` Client Identifier Prefix.
+*   `client_id`: SHALL use the `well_known` Client Identifier Prefix.
     *   Format: `well_known:<Verifier_Base_URL>`
     *   Example: `well_known:https://clinic.example.com`
-    *   The `Verifier_Base_URL` MUST be an `https` origin with no path, query, or fragment.
+    *   The `Verifier_Base_URL` SHALL be an `https` origin with no path, query, or fragment.
     *   The input to `well_known:` is the bare origin before `/.well-known/...`; the metadata document path is derived by convention and is not carried in the identifier.
     *   Bare `https:` client identifiers are not used by this profile.
 
-For a `well_known:` client, the Wallet MUST resolve Verifier metadata by fetching:
+For a `well_known:` client, the Wallet SHALL resolve Verifier metadata by fetching:
 
 ```text
 <Verifier_Base_URL>/.well-known/openid4vp-client
@@ -60,7 +66,7 @@ For the example above, the Wallet fetches:
 https://clinic.example.com/.well-known/openid4vp-client
 ```
 
-The metadata document MUST be JSON, MUST be served with the `application/json` Content-Type, and MUST contain the information needed to verify signed requests. A typical example is:
+The metadata document SHALL be JSON, SHALL be served with the `application/json` Content-Type, and SHALL contain the information needed to verify signed requests. A typical example is:
 
 ```json
 {
@@ -80,7 +86,7 @@ The metadata document MUST be JSON, MUST be served with the `application/json` C
 }
 ```
 
-The Wallet MUST treat the discovered `jwks_uri` as authoritative for verifying signed Request Objects for this `client_id`.
+The Wallet SHALL treat the discovered `jwks_uri` as authoritative for verifying signed Request Objects for this `client_id`.
 Because the `well_known:` identifier is restricted to a bare origin, successful retrieval of the metadata document plus successful signature verification on the Request Object establishes that the request is controlled by the party that controls that origin and its `.well-known` metadata.
 
 ### 1.3 Display and Trust Requirements
@@ -88,15 +94,15 @@ Because the `well_known:` identifier is restricted to a bare origin, successful 
 Successful resolution of the `well_known:` metadata document and verification of the Request Object signature proves that the request is controlled by the domain owning the Verifier origin. Accordingly:
 
 *   Wallets MAY display the bare origin from the `well_known:` identifier (for example, `https://clinic.example.com`) to users, even when the client is not part of a richer trust program.
-*   Wallets, pickers, source apps, and any other relying components MUST NOT blindly trust metadata-supplied presentation details such as `client_name`, `logo_uri`, badges, or other branding solely because the metadata document fetched successfully and the request signature verified.
-*   Any component that wants to use metadata-supplied names, logos, badges, or other semantics for upgraded user-facing trust or policy decisions MUST maintain a whitelist or trust-framework-backed list of trusted `well_known:` client identifiers or base origins. That list MUST be configured out of band and MUST NOT be learned from client-supplied metadata.
+*   Wallets, pickers, source apps, and any other relying components SHALL NOT blindly trust metadata-supplied presentation details such as `client_name`, `logo_uri`, badges, or other branding solely because the metadata document fetched successfully and the request signature verified.
+*   Any component that wants to use metadata-supplied names, logos, badges, or other semantics for upgraded user-facing trust or policy decisions SHALL maintain a whitelist or trust-framework-backed list of trusted `well_known:` client identifiers or base origins. That list SHALL be configured out of band and SHALL NOT be learned from client-supplied metadata.
 *   Trust decisions SHOULD be keyed by the exact `well_known:` client identifier and/or its configured bare origin, not by metadata-supplied display strings.
 *   If a `well_known:` client is not in such a whitelist or trust framework, the Wallet MAY still proceed, but SHOULD fall back to displaying only the bare origin from the identifier and/or the origin of the `response_uri`, rather than presenting metadata-supplied names/logos as trusted institutional identity.
-*   Verifiers and wallets MUST NOT assume that merely publishing metadata causes other parties to trust or privilege that metadata. Participation in a whitelist or trust framework is REQUIRED for those stronger UX outcomes.
+*   Verifiers and wallets SHALL NOT assume that merely publishing metadata causes other parties to trust or privilege that metadata. Participation in a whitelist or trust framework is required for those stronger UX outcomes.
 
 ### 1.4 Authorization Request
 
-The Authorization Request MUST follow the requirements of OpenID for Verifiable Presentations, with the following profile requirements.
+The Authorization Request SHALL follow the requirements of OpenID for Verifiable Presentations, with the following profile requirements.
 
 The bootstrap request shown in a browser popup or QR code SHOULD be minimal and SHOULD contain only:
 
@@ -110,21 +116,23 @@ https://wallet.example.com/authorize?
   request_uri=https://clinic.example.com/oid4vp/requests/123&
 ```
 
-The actual request parameters MUST be conveyed in a signed Request Object fetched from `request_uri`.
+The actual request parameters SHALL be conveyed in a signed Request Object fetched from `request_uri`.
 
 **Parameters inside the signed Request Object:**
 
-*   `client_id`: REQUIRED. MUST exactly match the bootstrap `client_id`.
-*   `response_type`: MUST be `vp_token`.
-*   `response_mode`: MUST be `direct_post.jwt`.
-*   `response_uri`: REQUIRED. MUST be a request-specific write endpoint. Because the Request Object is signed by the Verifier's key (verified via `jwks_uri`), the `response_uri` is authenticated by the signature itself and does not require separate metadata validation.
-*   `client_metadata`: REQUIRED. Must contain the Ephemeral public key used by the Wallet to encrypt the response for this specific transaction.
+*   `client_id`: Required. SHALL exactly match the bootstrap `client_id`.
+*   `response_type`: SHALL be `vp_token`.
+*   `response_mode`: SHALL be `direct_post.jwt`.
+*   `response_uri`: Required. SHALL be a request-specific write endpoint. Because the Request Object is signed by the Verifier's key (verified via `jwks_uri`), the `response_uri` is authenticated by the signature itself and does not require separate metadata validation.
+*   `client_metadata`: Required. SHALL contain the Ephemeral public key used by the Wallet to encrypt the response for this specific transaction.
     *   `jwks`: A JSON Web Key Set containing the Ephemeral public encryption key.
     *   `encrypted_response_enc_values_supported`: Array of supported encryption algorithms (e.g., `["A256GCM"]`).
-*   `aud`: REQUIRED. MUST be `https://self-issued.me/v2` to comply with the OpenID4VP static-discovery Request Object requirements.
-*   `nonce`: REQUIRED. A cryptographically random string.
-*   `state`: REQUIRED. MUST be an unguessable value with at least 128 bits of entropy.
-*   `dcql_query`: REQUIRED. A JSON-encoded DCQL query object (defined in Section 2).
+*   `aud`: Required. SHALL be `https://self-issued.me/v2` to comply with the OpenID4VP static-discovery Request Object requirements.
+*   `nonce`: Required. A cryptographically random string.
+*   `state`: Required. SHALL be an unguessable value with at least 128 bits of entropy.
+*   `dcql_query`: Required. A JSON-encoded DCQL query object (defined in Section 2).
+*   `smart_health_checkin`: Required. Object containing profile-specific completion hints.
+    *   `completion`: Required. SHALL be `"redirect"` or `"deferred"`.
 
 **Example Signed Request Object Payload:**
 ```json
@@ -137,6 +145,9 @@ The actual request parameters MUST be conveyed in a signed Request Object fetche
   "response_uri": "https://clinic.example.com/oid4vp/responses/req_abc123xyz",
   "nonce": "def456uvw",
   "state": "req_abc123xyz",
+  "smart_health_checkin": {
+    "completion": "redirect"
+  },
   "dcql_query": {...},
   "client_metadata": {
     "jwks": {
@@ -168,7 +179,7 @@ Wallet processing rules for this profile:
 
 The Wallet processes the request, gathers the user's data, and builds a standard JSON response object containing `vp_token` and `state`.
 
-Because `direct_post.jwt` is requested, the Wallet MUST encrypt this JSON payload into a JSON Web Encryption (JWE) string using the Ephemeral public key provided in the signed Request Object's `client_metadata.jwks`.
+Because `direct_post.jwt` is requested, the Wallet SHALL encrypt this JSON payload into a JSON Web Encryption (JWE) string using the Ephemeral public key provided in the signed Request Object's `client_metadata.jwks`.
 
 The Wallet makes an HTTP POST to the Verifier's `response_uri` with `Content-Type: application/x-www-form-urlencoded`, placing the opaque JWE string in the body:
 
@@ -180,11 +191,11 @@ Content-Type: application/x-www-form-urlencoded
 response=eyJhbGciOiJFQ0RILUVTIi... (Opaque JWE String)
 ```
 
-The response endpoint MUST identify the target transaction from the request-specific `response_uri` path or other opaque write handle that is visible before decryption. It MUST store the ciphertext and make it retrievable only through the Verifier's authenticated read path.
+The response endpoint SHALL identify the target transaction from the request-specific `response_uri` path or other outer request handle that is visible before decryption. The Verifier MAY store the ciphertext for later retrieval, or MAY process it immediately in a Verifier component that can decrypt it.
 
-The endpoint MUST NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response MUST validate that the decrypted `state` matches the expected request `state` value.
+The endpoint SHALL NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response SHALL validate that the decrypted `state` matches the expected request `state` value.
 
-For same-device flows, the response endpoint SHOULD return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That `redirect_uri` is not verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. Instead, it is a frontend continuation URI that MUST already have been validated and bound by the Verifier backend at transaction initialization time. The original browser tab MUST present its verifier-side redemption credentials together with the `response_code` in order to fetch the stored response.
+When `smart_health_checkin.completion` is `"redirect"`, the response endpoint SHALL return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That `redirect_uri` is not Verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. It is a continuation URI selected by the Verifier.
 
 For example, the response endpoint could reply:
 
@@ -198,10 +209,9 @@ Cache-Control: no-store
 }
 ```
 
-The `response_code` is a fresh, high-entropy, one-time value generated by the Verifier backend for that same-device completion step. It is not sufficient on its own to fetch the stored ciphertext; the Verifier frontend must still present the correct verifier-side redemption credentials on the authenticated read path. A deployment where the Verifier frontend and backend share one origin remains the default and simplest case, but this profile also permits the same-device return URI to be on a different frontend origin when the Verifier backend explicitly approves and binds that URI at initialization time.
+The `response_code` is a fresh, high-entropy, one-time value generated by the Verifier for that completion step. It is a signal to the Verifier frontend that a response has been posted; it is not Verifier identity evidence. The Verifier SHALL validate that the `response_code` is bound to the initiating transaction and application session before revealing decrypted data downstream.
 
-For cross-device flows, the Verifier frontend on the initiating device cannot rely on a same-browser redirect. In that case:
-*   The initiating Verifier frontend MUST retrieve the stored response through the Verifier's authenticated read path.
+When `smart_health_checkin.completion` is `"deferred"`, the response endpoint SHALL return a success acknowledgement and SHALL NOT require the Wallet to follow a `redirect_uri`. The Verifier retrieves or processes the response through its own application path. Before revealing decrypted data downstream, that path SHALL require an authenticated Verifier session authorized for the transaction.
 
 After retrieval, the frontend decrypts the JWE, validates `state`, resolves internal references, and continues application processing.
 
@@ -213,7 +223,7 @@ This section defines the **Data Profile**, specifying the structure of the DCQL 
 
 ### 2.1 Credential Format: `smart_artifact`
 
-This profile defines a single Credential Format Identifier: **`smart_artifact`**. Because health data without Cryptographic Holder Binding does not utilize standard cryptographic proofs, `require_cryptographic_holder_binding` MUST be `false`.
+This profile defines a single Credential Format Identifier: **`smart_artifact`**. Because health data without Cryptographic Holder Binding does not utilize standard cryptographic proofs, `require_cryptographic_holder_binding` SHALL be `false`.
 
 This profile authenticates the request and provides encrypted response transport, but it does not by itself prove the provenance or authenticity of returned artifacts. Unless a returned artifact carries its own verifiable proof and the Verifier validates it, the decrypted payload should be treated as a submission correlated to the request via `state`, not as a cryptographically authenticated credential.
 
@@ -222,17 +232,17 @@ The credential query object uses a standard DCQL structure. Properties specific 
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `id` | String | **Required by DCQL.** Unique ID for this request item. |
-| `format` | String | **Required by DCQL.** Must be `"smart_artifact"` for this profile. |
-| `require_cryptographic_holder_binding` | Boolean | **Required by this profile.** Must be `false`. |
-| `meta.profile` | String | **Optional.** Canonical URL of a FHIR StructureDefinition (e.g., for Patient, Coverage). |
+| `format` | String | **Required by DCQL.** SHALL be `"smart_artifact"` for this profile. |
+| `require_cryptographic_holder_binding` | Boolean | **Required by this profile.** SHALL be `false`. |
+| `meta.profile` | String | **Optional.** Canonical URL of a FHIR StructureDefinition (e.g., for Patient, Coverage, InsurancePlan). |
 | `meta.questionnaire` | Object | **Optional.** Full FHIR Questionnaire JSON to be rendered/completed by the user. |
 | `meta.questionnaireUrl` | String | **Optional.** Alternative to `questionnaire`: URL reference to a Questionnaire resource. |
-| `meta.signingStrategy` | Array | **Optional.** Array of acceptable signing strategies. Defined values: `"none"` (unsigned FHIR resource), `"shc_v1"`, `"shc_v2"`. If omitted, the Wallet MAY return any format. If present, the Wallet MUST use one of the listed strategies. Example: `["shc_v1", "none"]` accepts either signed or unsigned. |
+| `meta.signingStrategy` | Array | **Optional.** Array of acceptable signing strategies. Defined values: `"none"` (unsigned FHIR resource), `"shc_v1"`, `"shc_v2"`. If omitted, the Wallet MAY return any format. If present, the Wallet SHALL use one of the listed strategies. Example: `["shc_v1", "none"]` accepts either signed or unsigned. |
 
 #### Handling Optionality
-To mark a credential as optional while remaining strictly compliant with generic DCQL parsers, requests MUST wrap the targeted credential ID in a non-required `credential_sets` object.
+To mark a credential as optional while remaining strictly compliant with generic DCQL parsers, requests SHALL wrap the targeted credential ID in a non-required `credential_sets` object.
 
-**Example: Requesting Optional Insurance and Optional History:**
+**Example: Requesting Optional Insurance Card, Plan Summary, and Patient:**
 ```json
 {
   "credentials": [
@@ -243,6 +253,12 @@ To mark a credential as optional while remaining strictly compliant with generic
       "meta": { "profile": "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage" }
     },
     {
+      "id": "req_plan",
+      "format": "smart_artifact",
+      "require_cryptographic_holder_binding": false,
+      "meta": { "profile": "http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-insurance-plan" }
+    },
+    {
       "id": "req_history",
       "format": "smart_artifact",
       "require_cryptographic_holder_binding": false,
@@ -251,6 +267,7 @@ To mark a credential as optional while remaining strictly compliant with generic
   ],
   "credential_sets": [
     { "options": [["req_insurance"]], "required": false },
+    { "options": [["req_plan"]], "required": false },
     { "options": [["req_history"]], "required": false }
   ]
 }
@@ -260,7 +277,7 @@ To mark a credential as optional while remaining strictly compliant with generic
 
 To comply with OID4VP structure requirements while minimizing payload size and eliminating data duplication (e.g., when one FHIR Bundle satisfies multiple queries), this profile uses an **Inline Reference** pattern entirely contained within the `vp_token`.
 
-A Presentation object inside the `vp_token` array MUST take one of two shapes:
+A Presentation object inside the `vp_token` array SHALL take one of two shapes:
 
 1.  **Full Artifact:** Contains `type` (e.g., `"fhir_resource"`, `"shc"`, `"shl"`), `data` (the payload), and an optional `artifact_id` (used if referenced elsewhere).
 2.  **Reference Artifact:** Contains only `artifact_ref`, pointing to an `artifact_id` defined elsewhere in the `vp_token`.
@@ -300,7 +317,7 @@ Scenario: A single `Coverage` FHIR resource satisfies `req_insurance`, and is al
 
 ### 2.3 Error Response
 
-When the Wallet cannot or will not fulfill the request, it generates a standard OID4VP error response (`error`, `error_description`, `state`). Under `direct_post.jwt`, this error payload MUST also be encrypted as a JWE and POSTed to the Verifier-controlled response endpoint.
+When the Wallet cannot or will not fulfill the request, it generates a standard OID4VP error response (`error`, `error_description`, `state`). Under `direct_post.jwt`, this error payload SHALL also be encrypted as a JWE and POSTed to the Verifier-controlled response endpoint.
 
 When decrypted, the JWE payload will be a JSON object containing standard OAuth 2.0 / OpenID4VP error parameters, for example:
 
@@ -323,8 +340,8 @@ To enable this protocol in browser environments that do not yet support the W3C 
 2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for either a popup or QR code.
 3.  **Request Verification**: The Wallet resolves `/.well-known/openid4vp-client`, fetches the signed Request Object, verifies it using the Verifier's `jwks_uri`, and extracts the authoritative OID4VP parameters.
 4.  **Response Delivery**: The Wallet encrypts the payload and POSTs the `{JWE}` to the Verifier-controlled `response_uri`.
-5.  **Completion Signal**: In same-device flows, the response endpoint returns a `redirect_uri` containing a `response_code`; in cross-device flows, the initiating browser retrieves the stored ciphertext using its local `transaction_id` and `read_secret`.
-6.  **Decryption**: The Verifier frontend fetches the stored `{JWE}`, decrypts it locally, validates `state`, resolves internal references, and returns the unwrapped data to the application.
+5.  **Completion Signal**: If the Request Object says `completion: "redirect"`, the response endpoint returns a `redirect_uri` containing a `response_code`. If it says `completion: "deferred"`, the response endpoint returns an acknowledgement and the Verifier app obtains the encrypted response through its own application path.
+6.  **Decryption**: The Verifier frontend or backend component decrypts the `{JWE}`, validates `state`, resolves internal references, and returns the unwrapped data to the application.
 
 ### 3.2 The Shim API
 
@@ -354,8 +371,8 @@ This repository contains a fully functional reference implementation of the prot
 ### 4.1 Components
 
 *   **Demo Landing Page (`demo/index.html`)**: Entry page linking to both demo scenarios.
-*   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, opens the picker in a popup, and completes the flow through a return carrying `response_code`.
-*   **Front Desk Kiosk (`demo/kiosk`)**: Cross-device demo where staff starts the request, the page shows a QR code and copyable link, and the patient completes the flow on another device.
+*   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, opens the picker in a popup, and completes the flow through a return carrying `response_code`. The reference portal does not offer a cross-device QR mode.
+*   **Front Desk Kiosk (`demo/kiosk`)**: Staff-session-bound cross-device demo where staff starts the request, the page shows a QR code and copyable link, and the patient completes the flow on another device.
 *   **Picker (`demo/checkin`)**: A simple UI that helps users select their health app.
 *   **Health App (`demo/source-app`)**: A mock health app implementation that acts as an OID4VP Provider.
 *   **Verifier Backend / Response Endpoint (`demo/relay`)**: A backend that serves metadata and signed Request Objects, stores opaque encrypted responses, enforces same-device `response_code` redemption, and simulates authenticated staff sessions for cross-device use.
@@ -426,5 +443,3 @@ When `rehydrate` is `true` (default), the `credentials` object maps credential I
 const { credentials } = result;
 const coverageData = credentials['req_insurance'][0]; // Direct access to the decrypted FHIR resource
 ```
-
-

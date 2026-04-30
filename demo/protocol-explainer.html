@@ -202,16 +202,25 @@
       <h4>Same-Device (Patient Portal)</h4>
       <p>Patient is on their own device. They click a button, a popup opens, they pick
         their health app, review and share data. The popup returns to the portal page
-        with a <code>response_code</code> to close the loop.</p>
+        with a <code>response_code</code> to close the loop. The reference portal does
+        not offer a patient-initiated QR mode.</p>
     </div>
     <div class="mode-card cross">
       <h4>Cross-Device (Front Desk Kiosk)</h4>
-      <p>Staff starts a check-in at a workstation. A QR code appears. The patient scans it
-        on their phone, picks their health app, and shares data. The kiosk receives the
-        encrypted result via long-poll.</p>
+      <p>Authenticated clinic staff starts a check-in at a workstation. A QR code appears.
+        The patient scans it on their phone, picks their health app, and shares data.
+        The kiosk receives the encrypted result via long-poll.</p>
     </div>
   </div>
   <p>Both flows use the <strong>same protocol stack</strong>, the same shim library, the same picker, the same wallet/source app, and the same verifier backend.</p>
+  <div class="card" style="font-size:14px;margin-top:16px">
+    <h4 style="margin-top:0">What the source app needs to know</h4>
+    <p style="margin:0 0 8px;color:var(--slate)">After the source app posts the encrypted response, the request tells it which completion shape to expect:</p>
+    <ul style="margin:0;padding-left:20px;line-height:1.8">
+      <li><strong><code>completion: "redirect"</code>:</strong> expect a <code>redirect_uri</code> with <code>#response_code=...</code>, then navigate there.</li>
+      <li><strong><code>completion: "deferred"</code>:</strong> expect a simple success acknowledgement, then show completion in the source app.</li>
+    </ul>
+  </div>
 </section>
 
 <!-- ======================================== -->
@@ -242,22 +251,30 @@
 
   <div class="card" style="border-left:4px solid var(--blue)">
     <h3 id="fhir-resources" style="margin-top:0">FHIR Resources</h3>
-    <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
+    <p style="font-size:14px;color:var(--slate)">Structured clinical data — insurance cards, plan benefit summaries, patient demographics, lab results, medications. Requested by canonical StructureDefinition URL.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"</span>
+}</div>
+    <div class="expand-code" style="font-size:11px;margin-top:8px"><span class="key">"meta"</span>: {
+  <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-insurance-plan"</span>
 }</div>
   </div>
 
   <div class="card" style="border-left:4px solid var(--green)">
     <h3 id="questionnaires" style="margin-top:0">Questionnaires</h3>
-    <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — intake forms, symptom checklists. The health app can auto-fill answers from existing records. Returned as a FHIR QuestionnaireResponse.</p>
+    <p style="font-size:14px;color:var(--slate)">Forms the patient fills out — symptom checklists, disease-specific diaries, visit goals. The health app can auto-fill answers from patient-reported records and return a FHIR QuestionnaireResponse.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"questionnaire"</span>: {
     <span class="key">"resourceType"</span>: <span class="val">"Questionnaire"</span>,
-    <span class="key">"title"</span>: <span class="val">"Patient Intake Form"</span>,
+    <span class="key">"title"</span>: <span class="val">"Migraine Check-in"</span>,
     <span class="key">"item"</span>: [
-      { <span class="key">"linkId"</span>: <span class="val">"1"</span>, <span class="key">"text"</span>: <span class="val">"Full Name"</span>, <span class="key">"type"</span>: <span class="val">"string"</span> },
-      { <span class="key">"linkId"</span>: <span class="val">"2"</span>, <span class="key">"text"</span>: <span class="val">"Allergies"</span>, <span class="key">"type"</span>: <span class="val">"text"</span> }
+      { <span class="key">"linkId"</span>: <span class="val">"follow-up"</span>, <span class="key">"text"</span>: <span class="val">"Since your last migraine follow-up"</span>, <span class="key">"type"</span>: <span class="val">"group"</span>, <span class="key">"item"</span>: [
+        { <span class="key">"linkId"</span>: <span class="val">"migraine-days-90"</span>, <span class="key">"type"</span>: <span class="val">"integer"</span>, <span class="key">"required"</span>: true },
+        { <span class="key">"linkId"</span>: <span class="val">"overall-change"</span>, <span class="key">"type"</span>: <span class="val">"choice"</span>, <span class="key">"answerOption"</span>: [ ... ] },
+        { <span class="key">"linkId"</span>: <span class="val">"visit-priority"</span>, <span class="key">"type"</span>: <span class="val">"text"</span>, <span class="key">"required"</span>: true }
+      ] },
+      { <span class="key">"linkId"</span>: <span class="val">"medication-use-note"</span>, <span class="key">"type"</span>: <span class="val">"display"</span>,
+        <span class="key">"enableWhen"</span>: [{ <span class="key">"question"</span>: <span class="val">"acute-med-days-30"</span>, <span class="key">"operator"</span>: <span class="val">"&gt;"</span>, <span class="key">"answerInteger"</span>: 9 }] }
     ]
   }
 }</div>
@@ -266,7 +283,7 @@
   <div class="card" style="border-left:4px solid var(--purple)">
     <h3 id="shc" style="margin-top:0">SMART Health Cards</h3>
     <p style="font-size:14px;color:var(--slate)">Cryptographically signed credentials — vaccination records, lab results with issuer signatures. The verifier can independently verify the issuer's signature. Requested by combining a FHIR profile with a <code>signingStrategy</code>.</p>
-    <p style="font-size:13px;color:var(--slate)">If <code>signingStrategy</code> is omitted, the wallet may return any format. If present, it lists acceptable strategies: <code>["shc_v1", "none"]</code> = prefer signed, accept unsigned. <code>["shc_v1"]</code> = must be signed.</p>
+    <p style="font-size:13px;color:var(--slate)">If <code>signingStrategy</code> is omitted, the wallet may return any format. If present, it lists acceptable strategies: <code>["shc_v1", "none"]</code> = prefer signed, accept unsigned. <code>["shc_v1"]</code> = SHALL be signed.</p>
     <div class="expand-code" style="font-size:11px"><span class="key">"meta"</span>: {
   <span class="key">"profile"</span>: <span class="val">"http://hl7.org/fhir/StructureDefinition/Immunization"</span>,
   <span class="key">"signingStrategy"</span>: [<span class="val">"shc_v1"</span>, <span class="val">"none"</span>]  <span class="comment">// prefer signed, accept unsigned</span>
@@ -278,6 +295,8 @@
   <span class="key">"credentials"</span>: [
     { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
       <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/C4DIC-Coverage"</span> } },
+    { <span class="key">"id"</span>: <span class="val">"req_plan"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+      <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...StructureDefinition/sbc-insurance-plan"</span> } },
     { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
       <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } },
     { <span class="key">"id"</span>: <span class="val">"req_immunization"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
@@ -285,6 +304,7 @@
   ],
   <span class="key">"credential_sets"</span>: [
     { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+    { <span class="key">"options"</span>: [[<span class="val">"req_plan"</span>]], <span class="key">"required"</span>: false },
     { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false },
     { <span class="key">"options"</span>: [[<span class="val">"req_immunization"</span>]], <span class="key">"required"</span>: false }
   ]
@@ -324,21 +344,27 @@
         <div class="expand-code">{
   <span class="key">"iss"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,
   <span class="key">"aud"</span>: <span class="val">"https://self-issued.me/v2"</span>,
-  <span class="key">"client_id"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,  <span class="comment">// must match bootstrap</span>
+  <span class="key">"client_id"</span>: <span class="val">"well_known:https://clinic.example.com"</span>,  <span class="comment">// SHALL match bootstrap</span>
   <span class="key">"response_type"</span>: <span class="val">"vp_token"</span>,
   <span class="key">"response_mode"</span>: <span class="val">"direct_post.jwt"</span>,
   <span class="key">"response_uri"</span>: <span class="highlight">"https://clinic.example.com/oid4vp/responses/wt_7f3a..."</span>,
   <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,
   <span class="key">"nonce"</span>: <span class="val">"n-0S6_WzA2Mj"</span>,
+  <span class="key">"smart_health_checkin"</span>: {
+    <span class="key">"completion"</span>: <span class="val">"redirect"</span>  <span class="comment">// or "deferred"</span>
+  },
   <span class="key">"dcql_query"</span>: {               <span class="comment">// what credentials to request (see below)</span>
     <span class="key">"credentials"</span>: [
       { <span class="key">"id"</span>: <span class="val">"req_insurance"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
         <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...C4DIC-Coverage"</span> } },
+      { <span class="key">"id"</span>: <span class="val">"req_plan"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
+        <span class="key">"meta"</span>: { <span class="key">"profile"</span>: <span class="val">"...sbc-insurance-plan"</span> } },
       { <span class="key">"id"</span>: <span class="val">"req_intake"</span>, <span class="key">"format"</span>: <span class="val">"smart_artifact"</span>,
         <span class="key">"meta"</span>: { <span class="key">"questionnaire"</span>: { ... } } }
     ],
     <span class="key">"credential_sets"</span>: [
       { <span class="key">"options"</span>: [[<span class="val">"req_insurance"</span>]], <span class="key">"required"</span>: false },
+      { <span class="key">"options"</span>: [[<span class="val">"req_plan"</span>]], <span class="key">"required"</span>: false },
       { <span class="key">"options"</span>: [[<span class="val">"req_intake"</span>]], <span class="key">"required"</span>: false }
     ]
   },
@@ -362,7 +388,7 @@
   <div class="card expand-chain">
     <div class="expand-level l0">
       <div class="expand-header">Wallet encrypts and POSTs <span class="badge badge-green">direct_post.jwt</span></div>
-      <p class="expand-desc">The wallet builds <code>{ vp_token, state }</code>, encrypts it as a JWE using the ephemeral key from the Request Object, and POSTs the opaque ciphertext to <code>response_uri</code>. The server stores it without being able to read it.</p>
+      <p class="expand-desc">The wallet builds <code>{ vp_token, state }</code>, encrypts it as a JWE using the ephemeral key from the Request Object, and POSTs it to <code>response_uri</code>. In this demo, the relay stores only opaque ciphertext; another Verifier implementation could deliver the encrypted response directly to a component that can decrypt it.</p>
 
       <div class="note" style="margin:12px 0">
         <strong>First-write-wins:</strong> the first POST is authoritative. Retries with the same JWE are idempotent. A different payload is rejected with 409.
@@ -370,7 +396,7 @@
 
       <div class="expand-level l1">
         <div class="expand-header"><span class="arrow">&#9660;</span> Verifier decrypts the JWE</div>
-        <p class="expand-desc">Only the Verifier's browser (which holds the ephemeral private key) can decrypt. The result contains <code>vp_token</code> with inline references for deduplication:</p>
+        <p class="expand-desc">Only a Verifier component that holds the ephemeral private key can decrypt. In this demo, that key is held by the Verifier browser. The result contains <code>vp_token</code> with inline references for deduplication:</p>
         <div class="expand-code">{
   <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,         <span class="comment">// validated against expected value</span>
   <span class="key">"vp_token"</span>: {
@@ -378,6 +404,10 @@
       <span class="key">"artifact_id"</span>: <span class="val">"cov_1"</span>,
       <span class="key">"type"</span>: <span class="val">"fhir_resource"</span>,
       <span class="key">"data"</span>: { <span class="key">"resourceType"</span>: <span class="val">"Coverage"</span>, <span class="key">"subscriberId"</span>: <span class="val">"W123456789"</span>, ... }
+    }],
+    <span class="val">"req_plan"</span>: [{
+      <span class="key">"type"</span>: <span class="val">"fhir_resource"</span>,
+      <span class="key">"data"</span>: { <span class="key">"resourceType"</span>: <span class="val">"InsurancePlan"</span>, <span class="key">"name"</span>: <span class="val">"Aetna PPO Value Plan"</span>, ... }
     }],
     <span class="val">"req_patient"</span>: [{
       <span class="key">"artifact_ref"</span>: <span class="val">"cov_1"</span>    <span class="comment">// references the same artifact — no duplication</span>
@@ -420,7 +450,7 @@
       <span class="swim-lane-title">Deliver the Request</span>
     </div>
     <div class="swim-lane-detail">
-      The shim calls <code>POST /oid4vp/same-device/init</code> to start the transaction, receives <code>transaction_id</code>, <code>read_secret</code>, and <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code> and <code>request_uri</code>, then opens a popup to the picker. Starts listening for the return via BroadcastChannel.
+      The shim starts a same-device transaction and receives a <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code> and <code>request_uri</code>, then opens a popup to the picker.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -447,7 +477,7 @@
       <span class="swim-lane-title">Complete the Exchange</span>
     </div>
     <div class="swim-lane-detail">
-      The popup lands back on the Verifier's page. <code>maybeHandleReturn()</code> extracts <code>response_code</code> from the URL fragment and broadcasts it via BroadcastChannel. The shim receives it and POSTs <code>{ transaction_id, read_secret, response_code }</code> to <code>/oid4vp/same-device/results</code> to retrieve the encrypted JWE.
+      The popup lands back on the Verifier's page with <code>#response_code=...</code>. The Verifier app uses that completion signal to obtain the encrypted response through its own application path.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -476,7 +506,7 @@
       <span class="swim-lane-title">Generate the Request</span>
     </div>
     <div class="swim-lane-detail">
-      Same as same-device: transaction created, ephemeral key pair generated. The difference is <code>POST /oid4vp/cross-device/init</code> — which requires a staff session cookie. No <code>redirect_uri</code> is needed.
+      Same as same-device: transaction created, ephemeral key pair generated. The difference is that no <code>redirect_uri</code> is needed because the source app will not navigate back to the kiosk.
     </div>
   </div>
 
@@ -488,7 +518,7 @@
       <span class="swim-lane-title">Display QR Code</span>
     </div>
     <div class="swim-lane-detail">
-      No popup is opened. Instead, <code>onRequestStart</code> provides the <code>launch_url</code> to the app, which renders it as a QR code and copyable link. The shim begins long-polling <code>/oid4vp/cross-device/results</code> with <code>transaction_id</code> and <code>read_secret</code>.
+      No popup is opened. Instead, <code>onRequestStart</code> provides the <code>launch_url</code> to the app, which renders it as a QR code and copyable link. The Verifier app waits for the response through its own application path.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -513,7 +543,7 @@
       <span class="swim-lane-title">Long-Poll Resolves</span>
     </div>
     <div class="swim-lane-detail">
-      The long-poll returns <code>{ status: "complete", response: "JWE..." }</code>. No <code>response_code</code> needed — the staff session cookie authenticates result retrieval.
+      The Verifier app receives the encrypted response. No <code>response_code</code> is returned to the source app in this mode.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -531,7 +561,7 @@
   </div>
 
   <div class="note">
-    Cross-device init/results require an authenticated staff session. This prevents an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI. The standalone relay server disables cross-device by default.
+    The protocol-facing distinction is the completion shape: same-device uses <code>completion: "redirect"</code>; cross-device uses <code>completion: "deferred"</code>. Session binding and result retrieval are Verifier implementation details.
   </div>
 </section>
 
@@ -543,20 +573,19 @@
   <div class="card" style="font-size:14px">
     <ul style="margin:0;padding-left:20px;line-height:1.8">
       <li><strong>Verifier authentication:</strong> <code>well_known:</code> identity + signed Request Objects prove the request is controlled by the domain that owns the verifier origin.</li>
-      <li><strong>E2E encryption:</strong> Responses are encrypted with an ephemeral key generated by the verifier's browser. The response endpoint stores only opaque JWE ciphertext — it never possesses the decryption key.</li>
-      <li><strong>No blind trust of metadata:</strong> Display names and logos from <code>/.well-known/openid4vp-client</code> must NOT be shown as trusted identity without an out-of-band allowlist.</li>
+      <li><strong>Encrypted response transport:</strong> Responses are encrypted using the ephemeral key from the signed Request Object. The reference relay stores only opaque ciphertext, but the protocol also allows a Verifier endpoint that can decrypt directly.</li>
+      <li><strong>No blind trust of metadata:</strong> Display names and logos from <code>/.well-known/openid4vp-client</code> SHALL NOT be shown as trusted identity without an out-of-band allowlist.</li>
       <li><strong>Artifact authenticity is not guaranteed:</strong> The protocol authenticates the request and encrypts the transport, but does not prove who created the returned data. Unless an artifact carries its own verifiable proof (e.g., a SMART Health Card with an issuer signature), it should be treated as a transaction-bound submission.</li>
+      <li><strong>Downstream reveal requires binding checks:</strong> Before decrypted data is shown to a user, persisted as clinical data, or shared with another system, the Verifier SHALL check that the completion belongs to the expected transaction and application session. Redirect completion binds the <code>response_code</code> to the initiating session; deferred completion requires an authenticated Verifier session authorized for that transaction.</li>
     </ul>
   </div>
 
-  <h3 id="implementation-security">Reference Implementation Protections</h3>
-  <p style="font-size:14px;color:var(--slate)">These are properties of the <a href="https://github.com/jmandel/smart-health-checkin-demo/tree/main/demo/relay" style="color:var(--blue)">reference relay implementation</a>, not requirements of the protocol itself. Other implementations may use different mechanisms to achieve the same goals.</p>
+  <h3 id="implementation-security">Completion Behavior</h3>
+  <p style="font-size:14px;color:var(--slate)">The protocol tells the source app what to do immediately after posting the encrypted response. The Verifier decides how to store, retrieve, and bind that response inside its own application.</p>
   <div class="card" style="font-size:14px">
     <ul style="margin:0;padding-left:20px;line-height:1.8">
-      <li><strong>Write-once response endpoint:</strong> The first POST to <code>response_uri</code> is authoritative. Retries with the same JWE are idempotent. A different payload is rejected (409).</li>
-      <li><strong>Separate read and write capabilities:</strong> The <code>write_token</code> (in <code>response_uri</code>) lets the wallet submit a response. The <code>read_secret</code> lets the verifier retrieve it. Neither is sufficient alone.</li>
-      <li><strong>Same-device loop closure:</strong> A fresh <code>response_code</code> is generated when the wallet submits, and must be presented alongside <code>read_secret</code> to retrieve the result. This prevents an eavesdropper from racing to fetch the response.</li>
-      <li><strong>Cross-device session binding:</strong> Cross-device transactions are bound to an authenticated verifier session (e.g., staff login cookie). This prevents an attacker from creating a transaction, showing the QR to a victim, and stealing the decrypted PHI.</li>
+      <li><strong>Completion hint:</strong> The signed Request Object tells the source app whether to expect a redirect with <code>response_code</code> or a simple acknowledgement after it posts the encrypted response.</li>
+      <li><strong>Deployment controls:</strong> Session binding, result retrieval, subject matching, and other anti-phishing controls are handled by the Verifier implementation before decrypted data is revealed downstream. The protocol requires the completion hint so clients know how to finish the POST.</li>
     </ul>
   </div>
 </section>
@@ -574,7 +603,7 @@ const result = await request(dcqlQuery, {
   onRequestStart(info) {
     // info.bootstrap  — { client_id, request_uri }
     // info.launch_url — full URL for popup or QR
-    // info.transaction — { transaction_id, request_id, read_secret }
+    // info.transaction — implementation-specific request tracking details
   }
 });
 
@@ -590,8 +619,8 @@ const result = await request(dcqlQuery, {
   <h2 id="demo">Demo Architecture</h2>
   <div class="card" style="font-size:14px">
     <table style="width:100%;border-collapse:collapse">
-      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600;width:180px">Portal</td><td style="padding:8px">Same-device demo. Calls shim with <code>flow: 'same-device'</code>.</td></tr>
-      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Kiosk</td><td style="padding:8px">Cross-device demo. Staff login, QR code, long-poll. <code>flow: 'cross-device'</code>.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600;width:180px">Portal</td><td style="padding:8px">Same-device demo. Calls shim with <code>flow: 'same-device'</code>; no patient-portal QR mode.</td></tr>
+      <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Kiosk</td><td style="padding:8px">Staff-session-bound cross-device demo. Staff login, QR code, long-poll. <code>flow: 'cross-device'</code>.</td></tr>
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Picker</td><td style="padding:8px">Shared routing page. Receives bootstrap params, forwards to source app.</td></tr>
       <tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:600">Source (Sample Health App)</td><td style="padding:8px">Mock wallet. Fetches metadata, verifies signed Request Object, collects consent, encrypts and POSTs response.</td></tr>
       <tr><td style="padding:8px;font-weight:600">Relay / Verifier</td><td style="padding:8px">Backend. Serves <code>.well-known</code>, signs Request Objects, stores encrypted responses, enforces session binding for cross-device.</td></tr>

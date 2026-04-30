@@ -299,6 +299,9 @@ export async function createRelayHandler(config: RelayConfig) {
         response_type: 'vp_token', response_mode: 'direct_post.jwt',
         response_uri: `${wellKnownClientUrl}/oid4vp/responses/${txn.write_token}`,
         nonce: txn.nonce, state: txn.request_id,
+        smart_health_checkin: {
+          completion: txn.flow === 'same-device' ? 'redirect' : 'deferred',
+        },
         dcql_query: txn.dcql_query,
         client_metadata: {
           jwks: { keys: [txn.ephemeral_pub_jwk] },

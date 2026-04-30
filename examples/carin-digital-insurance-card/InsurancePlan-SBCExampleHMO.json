@@ -1,0 +1,496 @@
+{
+  "resourceType" : "InsurancePlan",
+  "id" : "SBCExampleHMO",
+  "meta" : {
+    "profile" : ["http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-insurance-plan"]
+  },
+  "text" : {
+    "status" : "extensions",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>Generated Narrative: InsurancePlan SBCExampleHMO</b></p><a name=\"SBCExampleHMO\"> </a><a name=\"hcSBCExampleHMO\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-sbc-insurance-plan.html\">SBC Insurance Plan Profile</a></p></div><blockquote><p><b>SBC Metadata Extension</b></p><ul><li>sbcVersionDate: 2021-01-01</li><li>minimumEssentialCoverage: true</li><li>minimumValue: true</li></ul></blockquote><blockquote><p><b>Excluded Services Extension</b></p><p><b>serviceType</b>: <span title=\"Codes:\">Cosmetic surgery</span></p><p><b>description</b>: Services for cosmetic purposes are not covered</p><blockquote><p><b>url</b></p>service</blockquote><p><b>serviceType</b>: <span title=\"Codes:\">Weight loss programs</span></p><p><b>description</b>: Weight loss programs except when medically necessary</p><blockquote><p><b>url</b></p>service</blockquote></blockquote><p><b>identifier</b>: <code>https://www.cms.gov/CCIIO/Resources/Data-Resources/hios</code>/12345CA0010001-01</p><p><b>status</b>: Active</p><p><b>name</b>: Sample Health HMO Gold Plan</p><p><b>period</b>: 2025-01-01 --&gt; 2025-12-31</p><p><b>ownedBy</b>: <a href=\"Organization-ExampleIssuerOrg.html\">Sample Health Insurance Company</a></p><p><b>administeredBy</b>: <a href=\"Organization-ExampleIssuerOrg.html\">Organization Sample Health Insurance Company</a></p><blockquote><p><b>contact</b></p><p><b>purpose</b>: <span title=\"Codes:\">General Questions</span></p><p><b>telecom</b>: ph: 1-800-123-4567, <a href=\"https://www.samplehealth.com\">https://www.samplehealth.com</a></p></blockquote><blockquote><p><b>contact</b></p><p><b>purpose</b>: <span title=\"Codes:\">Uniform Glossary</span></p><p><b>telecom</b>: <a href=\"https://www.healthcare.gov/sbc-glossary/\">https://www.healthcare.gov/sbc-glossary/</a></p></blockquote><blockquote><p><b>coverage</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ActCode HIP}\">health insurance plan policy</span></p><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category preventive-care}\">Preventive Care/Screening/Immunization</span></p><p><b>requirement</b>: No prior authorization required for in-network preventive services</p></blockquote><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category primary-care-visit}\">Primary Care Visit</span></p><p><b>requirement</b>: No referral required</p></blockquote><blockquote><p><b>benefit</b></p><p><b>Benefit Limitation Extension</b>: Limited to network specialists only; out-of-network not covered except in emergencies</p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category specialist-visit}\">Specialist Visit</span></p><p><b>requirement</b>: Referral required from primary care physician</p></blockquote><blockquote><p><b>benefit</b></p><p><b>Benefit Limitation Extension</b>: Copay waived if admitted to hospital</p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category emergency-room-care}\">Emergency Room Care</span></p></blockquote><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category hospital-inpatient}\">Hospital Inpatient Care</span></p><p><b>requirement</b>: Prior authorization required for non-emergency admissions</p></blockquote></blockquote><blockquote><p><b>plan</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-plan-type HMO}\">Health Maintenance Organization (HMO)</span></p><blockquote><p><b>generalCost</b></p><p><b>type</b>: <span title=\"Codes:\">Individual Deductible</span></p><h3>Costs</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Value</b></td><td><b>Currency</b></td></tr><tr><td style=\"display: none\">*</td><td>1500</td><td>United States dollar</td></tr></table><p><b>comment</b>: Individual in-network deductible</p></blockquote><blockquote><p><b>generalCost</b></p><p><b>type</b>: <span title=\"Codes:\">Family Deductible</span></p><h3>Costs</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Value</b></td><td><b>Currency</b></td></tr><tr><td style=\"display: none\">*</td><td>3000</td><td>United States dollar</td></tr></table></blockquote><blockquote><p><b>generalCost</b></p><p><b>type</b>: <span title=\"Codes:\">Individual Out-of-Pocket Maximum</span></p><h3>Costs</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Value</b></td><td><b>Currency</b></td></tr><tr><td style=\"display: none\">*</td><td>6000</td><td>United States dollar</td></tr></table></blockquote><blockquote><p><b>generalCost</b></p><p><b>type</b>: <span title=\"Codes:\">Family Out-of-Pocket Maximum</span></p><h3>Costs</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Value</b></td><td><b>Currency</b></td></tr><tr><td style=\"display: none\">*</td><td>12000</td><td>United States dollar</td></tr></table></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category preventive-care}\">Preventive Care/Screening/Immunization</span></p><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category preventive-care}\">Preventive Care/Screening/Immunization</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">No charge</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 0 USD</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Not covered</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 0 USD</p></blockquote></blockquote></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category primary-care-visit}\">Primary Care Visit</span></p><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category primary-care-visit}\">Primary Care Visit</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Copayment</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 25 USD</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Not covered</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 0 USD</p></blockquote></blockquote></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category specialist-visit}\">Specialist Visit</span></p><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category specialist-visit}\">Specialist Visit</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Copayment</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 50 USD</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Not covered</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 0 USD</p></blockquote></blockquote></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category emergency-room-care}\">Emergency Room Care</span></p><blockquote><p><b>benefit</b></p><p><b>Benefit Limitation Extension</b>: Copay waived if admitted</p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category emergency-room-care}\">Emergency Room Care</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Copayment</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 350 USD</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Copayment</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 350 USD</p></blockquote></blockquote></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category generic-drugs}\">Generic Drugs</span></p><blockquote><p><b>benefit</b></p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category generic-drugs}\">Generic Drugs</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Copayment</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 10 USD</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Not covered</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 0 USD</p></blockquote></blockquote></blockquote><blockquote><p><b>specificCost</b></p><p><b>category</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category hospital-inpatient}\">Hospital Inpatient Care</span></p><blockquote><p><b>benefit</b></p><p><b>Benefit Limitation Extension</b>: Prior authorization required</p><p><b>type</b>: <span title=\"Codes:{http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category hospital-inpatient}\">Hospital Inpatient Care</span></p><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Coinsurance</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability in-network}\">In Network</span></p><p><b>value</b>: 20 %</p></blockquote><blockquote><p><b>cost</b></p><p><b>type</b>: <span title=\"Codes:\">Not covered</span></p><p><b>applicability</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/applicability out-of-network}\">Out of Network</span></p><p><b>value</b>: 0 %</p></blockquote></blockquote></blockquote></blockquote></div>"
+  },
+  "extension" : [{
+    "extension" : [{
+      "url" : "sbcVersionDate",
+      "valueDate" : "2021-01-01"
+    },
+    {
+      "url" : "minimumEssentialCoverage",
+      "valueBoolean" : true
+    },
+    {
+      "url" : "minimumValue",
+      "valueBoolean" : true
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-metadata"
+  },
+  {
+    "extension" : [{
+      "extension" : [{
+        "url" : "serviceType",
+        "valueCodeableConcept" : {
+          "text" : "Cosmetic surgery"
+        }
+      },
+      {
+        "url" : "description",
+        "valueString" : "Services for cosmetic purposes are not covered"
+      }],
+      "url" : "service"
+    },
+    {
+      "extension" : [{
+        "url" : "serviceType",
+        "valueCodeableConcept" : {
+          "text" : "Weight loss programs"
+        }
+      },
+      {
+        "url" : "description",
+        "valueString" : "Weight loss programs except when medically necessary"
+      }],
+      "url" : "service"
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/excluded-services"
+  }],
+  "identifier" : [{
+    "system" : "https://www.cms.gov/CCIIO/Resources/Data-Resources/hios",
+    "value" : "12345CA0010001-01"
+  }],
+  "status" : "active",
+  "name" : "Sample Health HMO Gold Plan",
+  "period" : {
+    "start" : "2025-01-01",
+    "end" : "2025-12-31"
+  },
+  "ownedBy" : {
+    "reference" : "Organization/ExampleIssuerOrg",
+    "display" : "Sample Health Insurance Company"
+  },
+  "administeredBy" : {
+    "reference" : "Organization/ExampleIssuerOrg"
+  },
+  "contact" : [{
+    "purpose" : {
+      "text" : "General Questions"
+    },
+    "telecom" : [{
+      "system" : "phone",
+      "value" : "1-800-123-4567"
+    },
+    {
+      "system" : "url",
+      "value" : "https://www.samplehealth.com"
+    }]
+  },
+  {
+    "purpose" : {
+      "text" : "Uniform Glossary"
+    },
+    "telecom" : [{
+      "system" : "url",
+      "value" : "https://www.healthcare.gov/sbc-glossary/"
+    }]
+  }],
+  "coverage" : [{
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "code" : "HIP",
+        "display" : "health insurance plan policy"
+      }]
+    },
+    "benefit" : [{
+      "type" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "preventive-care"
+        }]
+      },
+      "requirement" : "No prior authorization required for in-network preventive services"
+    },
+    {
+      "type" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "primary-care-visit"
+        }]
+      },
+      "requirement" : "No referral required"
+    },
+    {
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/benefit-limitation",
+        "valueString" : "Limited to network specialists only; out-of-network not covered except in emergencies"
+      }],
+      "type" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "specialist-visit"
+        }]
+      },
+      "requirement" : "Referral required from primary care physician"
+    },
+    {
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/benefit-limitation",
+        "valueString" : "Copay waived if admitted to hospital"
+      }],
+      "type" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "emergency-room-care"
+        }]
+      }
+    },
+    {
+      "type" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "hospital-inpatient"
+        }]
+      },
+      "requirement" : "Prior authorization required for non-emergency admissions"
+    }]
+  }],
+  "plan" : [{
+    "type" : {
+      "coding" : [{
+        "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-plan-type",
+        "code" : "HMO"
+      }]
+    },
+    "generalCost" : [{
+      "type" : {
+        "text" : "Individual Deductible"
+      },
+      "cost" : {
+        "value" : 1500,
+        "currency" : "USD"
+      },
+      "comment" : "Individual in-network deductible"
+    },
+    {
+      "type" : {
+        "text" : "Family Deductible"
+      },
+      "cost" : {
+        "value" : 3000,
+        "currency" : "USD"
+      }
+    },
+    {
+      "type" : {
+        "text" : "Individual Out-of-Pocket Maximum"
+      },
+      "cost" : {
+        "value" : 6000,
+        "currency" : "USD"
+      }
+    },
+    {
+      "type" : {
+        "text" : "Family Out-of-Pocket Maximum"
+      },
+      "cost" : {
+        "value" : 12000,
+        "currency" : "USD"
+      }
+    }],
+    "specificCost" : [{
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "preventive-care"
+        }]
+      },
+      "benefit" : [{
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "preventive-care"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "No charge"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "USD"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Not covered"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "USD"
+          }
+        }]
+      }]
+    },
+    {
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "primary-care-visit"
+        }]
+      },
+      "benefit" : [{
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "primary-care-visit"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "Copayment"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 25,
+            "unit" : "USD"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Not covered"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "USD"
+          }
+        }]
+      }]
+    },
+    {
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "specialist-visit"
+        }]
+      },
+      "benefit" : [{
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "specialist-visit"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "Copayment"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 50,
+            "unit" : "USD"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Not covered"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "USD"
+          }
+        }]
+      }]
+    },
+    {
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "emergency-room-care"
+        }]
+      },
+      "benefit" : [{
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/benefit-limitation",
+          "valueString" : "Copay waived if admitted"
+        }],
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "emergency-room-care"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "Copayment"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 350,
+            "unit" : "USD"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Copayment"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 350,
+            "unit" : "USD"
+          }
+        }]
+      }]
+    },
+    {
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "generic-drugs"
+        }]
+      },
+      "benefit" : [{
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "generic-drugs"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "Copayment"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 10,
+            "unit" : "USD"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Not covered"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "USD"
+          }
+        }]
+      }]
+    },
+    {
+      "category" : {
+        "coding" : [{
+          "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+          "code" : "hospital-inpatient"
+        }]
+      },
+      "benefit" : [{
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/benefit-limitation",
+          "valueString" : "Prior authorization required"
+        }],
+        "type" : {
+          "coding" : [{
+            "system" : "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+            "code" : "hospital-inpatient"
+          }]
+        },
+        "cost" : [{
+          "type" : {
+            "text" : "Coinsurance"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "in-network",
+              "display" : "In Network"
+            }]
+          },
+          "value" : {
+            "value" : 20,
+            "unit" : "%"
+          }
+        },
+        {
+          "type" : {
+            "text" : "Not covered"
+          },
+          "applicability" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/applicability",
+              "code" : "out-of-network",
+              "display" : "Out of Network"
+            }]
+          },
+          "value" : {
+            "value" : 0,
+            "unit" : "%"
+          }
+        }]
+      }]
+    }]
+  }]
+}

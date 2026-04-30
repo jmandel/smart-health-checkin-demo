@@ -1,0 +1,415 @@
+{
+  "resourceType" : "Coverage",
+  "id" : "Example-Coverage-FSH",
+  "meta" : {
+    "versionId" : "1",
+    "lastUpdated" : "2021-04-06T10:49:02.473+00:00",
+    "profile" : ["http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"]
+  },
+  "text" : {
+    "status" : "extensions",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>Generated Narrative: Coverage Example-Coverage-FSH</b></p><a name=\"Example-Coverage-FSH\"> </a><a name=\"hcExample-Coverage-FSH\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\">version: 1; Last updated: 2021-04-06 10:49:02+0000</p><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-C4DIC-Coverage.html\">C4DIC Coverage</a></p></div><blockquote><p><b>Plan Beneficiaries</b></p><ul><li>memberId: 102345672-01</li><li>name: John Doe </li></ul></blockquote><blockquote><p><b>Plan Beneficiaries</b></p><ul><li>memberId: 102345672-02</li><li>name: jane Doe </li></ul></blockquote><blockquote><p><b>Plan Beneficiaries</b></p><ul><li>memberId: 102345672-03</li><li>name: Jimmy Doe </li></ul></blockquote><blockquote><p><b>Plan Beneficiaries</b></p><ul><li>memberId: 102345672-04</li><li>name: Ginny Doe </li></ul></blockquote><p><b>Additional Insurance Card Information</b>: </p><blockquote><div><p>If you use a TTY, call 711.\nYou may be asked to present this card when you receive care or fill a perscription. This card does not gaurentee coverage. Intentionally misusing this card may be considered fraud or a violation of the law.\nWe encourage you to use a primary care physician as a valuable resource and personal health advocate.</p>\n</div></blockquote><p><b>Additional Insurance Card Information</b>: <a href=\"InsurancePlan-SBCExampleHMO.html\">Summary of Benefits and Coverage - Acme Gold Plus HMO</a></p><p><b>Card Issue Date</b>: 2020-12-15</p><blockquote><p><b>Color Palette</b></p><ul><li>http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-BackgroundColor-extension: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/IECColourManagement #00bfff}\">#00bfff</span></li><li>http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-ForegroundColor-extension: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/IECColourManagement #000000}\">#000000</span></li><li>http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-HighlightColor-extension: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/IECColourManagement #ceebf5}\">#ceebf5</span></li></ul></blockquote><blockquote><p><b>Logo</b></p><ul><li>description: Company logo</li><li>image: image/png: iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC</li><li>label: ACME Inc.</li></ul></blockquote><blockquote><p><b>QR Code</b></p><ul><li>description: Usage text for this QR code for the end user</li><li>image: image/png: iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC</li><li>label: Some label for this QR code</li></ul></blockquote><blockquote><p><b>Barcode</b></p><ul><li>description: Usage text for this Barcode for the end user</li><li>image: image/png: iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC</li><li>label: Some label for this Barcode</li></ul></blockquote><blockquote><p><b>Supporting image</b></p><ul><li>description: Image of the front of the member's physical insurance card showing plan name, member ID, and group number</li><li>image: image/jpeg: /9j/4AAQSkZJRgABAQEAYABgAAD/4QBoRXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAAExAAIAAAARAAAATgAAAAAAAABgAAAAAQAAAGAAAAABcGFpbnQubmV0IDQuMy4xMgAA/9sAQwAkGRsgGxckIB4gKSckKzZbOzYyMjZvT1RCW4R0ioiBdH99kaPRsZGaxZ19f7b3uMXY3urs6o2v///+4//R5erh/9sAQwEnKSk2MDZrOztr4ZZ/luHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh/8AAEQgAGAA0AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A3KKp6kxWKLBcAyqCEJBI9OKhnIVbdVW4CNIdy7m3H5T75oA0qKzI5JHt4k81ws0xUMT8wUZ4J9eKmKm2u40jdykqNlWYtgjHIzQBdorGjnlTTxG8jFmVJEcnkgkZGfb+Rq1PAv2+Fd8oWQOzASsORj396AL9FAGAB6UUARzQrNs3EjY4cY9RRJCskkbknMZJGPpj+tFFAEbWcbBxlhufzBg/db1FLHahHMjyPI5G3c5HA9scUUUAMewhkt4oWLYixtOeeKmaFWmjlJO5AQPTnH+FFFAElFFFAH//2Q==</li><li>label: Front of insurance card</li></ul></blockquote><blockquote><p><b>Supporting image</b></p><ul><li>description: Image of the back of the member's physical insurance card showing claims address, customer service numbers, and pharmacy information</li><li>image: image/jpeg: /9j/4AAQSkZJRgABAQEAYABgAAD/4QBoRXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAAExAAIAAAARAAAATgAAAAAAAABgAAAAAQAAAGAAAAABcGFpbnQubmV0IDQuMy4xMgAA/9sAQwAkGRsgGxckIB4gKSckKzZbOzYyMjZvT1RCW4R0ioiBdH99kaPRsZGaxZ19f7b3uMXY3urs6o2v///+4//R5erh/9sAQwEnKSk2MDZrOztr4ZZ/luHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh/8AAEQgAGAA0AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8AxoYXnYrGBkAsckAAfjRNDJAwEgA3DIIIII9iKtaWC00wCbyYW+X19qsNEzSWyhfJdY2/dYDEAc8A9zk9aAMqnpCzwySAjEeMjvzWm8Y86M+X++NuSoZQCXyR09cUlrwJxfLtyEzkY78ZFAGVRUt0JBcyecAJM846fh7VFQAUUUUAFFFFABRRRQAUUUUAFFFFAH//2Q==</li><li>label: Back of insurance card</li></ul></blockquote><p><b>identifier</b>: Member Number/102345672-02</p><p><b>status</b>: Active</p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ActCode HIP}\">health insurance plan policy</span></p><p><b>subscriber</b>: <a href=\"Patient-Example-Patient1.html\">John Doe</a></p><p><b>subscriberId</b>: 102345672-01</p><p><b>beneficiary</b>: <a href=\"Patient-Example-Patient2.html\">Jane Doe</a></p><p><b>dependent</b>: 02</p><p><b>relationship</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/subscriber-relationship spouse}\">Spouse</span></p><p><b>period</b>: 2021-01-01 --&gt; (ongoing)</p><p><b>payor</b>: <a href=\"Organization-Example-PayerOrganization1.html\">Acme Insurance Co</a></p><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/coverage-class group}\">Group</span></p><p><b>value</b>: 993355</p><p><b>name</b>: Stars Inc</p></blockquote><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/coverage-class plan}\">Plan</span></p><p><b>value</b>: 11461128</p><p><b>name</b>: Acme Gold Plus</p></blockquote><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCoverageClassCS division}\">Division</span></p><p><b>value</b>: 11</p></blockquote><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCoverageClassCS network}\">Network</span></p><p><b>value</b>: 561490</p><p><b>name</b>: Acme Gold Plus South</p></blockquote><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/coverage-class rxbin}\">RX BIN</span></p><p><b>value</b>: 100045</p></blockquote><blockquote><p><b>class</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/coverage-class rxpcn}\">RX PCN</span></p><p><b>value</b>: 1234000</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamOutDed}\">Family Out of Network Deductible</span></p><p><b>value</b>: <span title=\"US Dollar\">$10,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamInDed}\">Family In Network Deductible</span></p><p><b>value</b>: <span title=\"US Dollar\">$8,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamRxOutDed}\">Family Pharmacy Out of Network Deductible</span></p><p><b>value</b>: <span title=\"US Dollar\">$2,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamRxInDed}\">Family Pharmacy In Network Deductible</span></p><p><b>value</b>: <span title=\"US Dollar\">$1,500.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamOutMax}\">Family Out of Network Out of Pocket Maximum</span></p><p><b>value</b>: <span title=\"US Dollar\">$12,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamInMax}\">Family In Network Out of Pocket Maximum</span></p><p><b>value</b>: <span title=\"US Dollar\">$10,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamRxOutMax}\">Family Pharmacy Out of Network Out of Pocket Maximum</span></p><p><b>value</b>: <span title=\"US Dollar\">$3,000.00</span> (USD)</p></blockquote><blockquote><p><b>costToBeneficiary</b></p><p><b>type</b>: <span title=\"Codes:{http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS FamRxInMax}\">Family Pharmacy In Network Out of Pocket Maximum</span></p><p><b>value</b>: <span title=\"US Dollar\">$2,000.00</span> (USD)</p></blockquote></div>"
+  },
+  "extension" : [{
+    "extension" : [{
+      "url" : "memberId",
+      "valueString" : "102345672-01"
+    },
+    {
+      "url" : "name",
+      "valueHumanName" : {
+        "family" : "Doe",
+        "given" : ["John"]
+      }
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-PlanBeneficiaries-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "memberId",
+      "valueString" : "102345672-02"
+    },
+    {
+      "url" : "name",
+      "valueHumanName" : {
+        "family" : "Doe",
+        "given" : ["jane"]
+      }
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-PlanBeneficiaries-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "memberId",
+      "valueString" : "102345672-03"
+    },
+    {
+      "url" : "name",
+      "valueHumanName" : {
+        "family" : "Doe",
+        "given" : ["Jimmy"]
+      }
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-PlanBeneficiaries-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "memberId",
+      "valueString" : "102345672-04"
+    },
+    {
+      "url" : "name",
+      "valueHumanName" : {
+        "family" : "Doe",
+        "given" : ["Ginny"]
+      }
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-PlanBeneficiaries-extension"
+  },
+  {
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-AdditionalCardInformation-extension",
+    "valueAnnotation" : {
+      "text" : "If you use a TTY, call 711.\nYou may be asked to present this card when you receive care or fill a perscription. This card does not gaurentee coverage. Intentionally misusing this card may be considered fraud or a violation of the law.\nWe encourage you to use a primary care physician as a valuable resource and personal health advocate."
+    }
+  },
+  {
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-AdditionalCardInformation-extension",
+    "valueReference" : {
+      "reference" : "InsurancePlan/SBCExampleHMO",
+      "display" : "Summary of Benefits and Coverage - Acme Gold Plus HMO"
+    }
+  },
+  {
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-CardIssueDate-extension",
+    "valueDate" : "2020-12-15"
+  },
+  {
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-BackgroundColor-extension",
+      "valueCodeableConcept" : {
+        "coding" : [{
+          "system" : "http://terminology.hl7.org/CodeSystem/IECColourManagement",
+          "code" : "#00bfff"
+        }]
+      }
+    },
+    {
+      "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-ForegroundColor-extension",
+      "valueCodeableConcept" : {
+        "coding" : [{
+          "system" : "http://terminology.hl7.org/CodeSystem/IECColourManagement",
+          "code" : "#000000"
+        }]
+      }
+    },
+    {
+      "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-HighlightColor-extension",
+      "valueCodeableConcept" : {
+        "coding" : [{
+          "system" : "http://terminology.hl7.org/CodeSystem/IECColourManagement",
+          "code" : "#ceebf5"
+        }]
+      }
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-ColorPalette-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "description",
+      "valueString" : "Company logo"
+    },
+    {
+      "url" : "image",
+      "valueAttachment" : {
+        "contentType" : "image/png",
+        "data" : "iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC"
+      }
+    },
+    {
+      "url" : "label",
+      "valueString" : "ACME Inc."
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Logo-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "description",
+      "valueString" : "Usage text for this QR code for the end user"
+    },
+    {
+      "url" : "image",
+      "valueAttachment" : {
+        "contentType" : "image/png",
+        "data" : "iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC"
+      }
+    },
+    {
+      "url" : "label",
+      "valueString" : "Some label for this QR code"
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-QRCode-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "description",
+      "valueString" : "Usage text for this Barcode for the end user"
+    },
+    {
+      "url" : "image",
+      "valueAttachment" : {
+        "contentType" : "image/png",
+        "data" : "iVBORw0KGgoAAAANSUhEUgAAABAAAAAkCAQAAAAqEXJRAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQflCBoOCChye9NTAAAAsklEQVQ4y+WSsQrCMBCGv9ZCUdwUBEcfR+c+kVPewHdxdxEcBQW1FBTpkFoQ6iJxiSHaRCdB9L/l5+6/kP/uAHpMOKCeYoegDdBlUyveY06zwZghPvQpYe3tVyhmARdi/DhGVvnEVLMRLc1irOcWRpqanAx5g98QRI6WhI6dsAcVkrB82IW0BTmr2rJkgHr5heIzNgsqv+CMYEDutlkh9ARSt81/PpjvONqt4XvDMq6alTdjhHqxFxxRQAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMS0wOC0yNlQxNDowODo0MCswMDowMF+TI3oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjEtMDgtMjZUMTQ6MDg6NDArMDA6MDAuzpvGAAAAAElFTkSuQmCC"
+      }
+    },
+    {
+      "url" : "label",
+      "valueString" : "Some label for this Barcode"
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Barcode-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "description",
+      "valueString" : "Image of the front of the member's physical insurance card showing plan name, member ID, and group number"
+    },
+    {
+      "url" : "image",
+      "valueAttachment" : {
+        "contentType" : "image/jpeg",
+        "data" : "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBoRXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAAExAAIAAAARAAAATgAAAAAAAABgAAAAAQAAAGAAAAABcGFpbnQubmV0IDQuMy4xMgAA/9sAQwAkGRsgGxckIB4gKSckKzZbOzYyMjZvT1RCW4R0ioiBdH99kaPRsZGaxZ19f7b3uMXY3urs6o2v///+4//R5erh/9sAQwEnKSk2MDZrOztr4ZZ/luHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh/8AAEQgAGAA0AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A3KKp6kxWKLBcAyqCEJBI9OKhnIVbdVW4CNIdy7m3H5T75oA0qKzI5JHt4k81ws0xUMT8wUZ4J9eKmKm2u40jdykqNlWYtgjHIzQBdorGjnlTTxG8jFmVJEcnkgkZGfb+Rq1PAv2+Fd8oWQOzASsORj396AL9FAGAB6UUARzQrNs3EjY4cY9RRJCskkbknMZJGPpj+tFFAEbWcbBxlhufzBg/db1FLHahHMjyPI5G3c5HA9scUUUAMewhkt4oWLYixtOeeKmaFWmjlJO5AQPTnH+FFFAElFFFAH//2Q=="
+      }
+    },
+    {
+      "url" : "label",
+      "valueString" : "Front of insurance card"
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-SupportingImage-extension"
+  },
+  {
+    "extension" : [{
+      "url" : "description",
+      "valueString" : "Image of the back of the member's physical insurance card showing claims address, customer service numbers, and pharmacy information"
+    },
+    {
+      "url" : "image",
+      "valueAttachment" : {
+        "contentType" : "image/jpeg",
+        "data" : "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBoRXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAAExAAIAAAARAAAATgAAAAAAAABgAAAAAQAAAGAAAAABcGFpbnQubmV0IDQuMy4xMgAA/9sAQwAkGRsgGxckIB4gKSckKzZbOzYyMjZvT1RCW4R0ioiBdH99kaPRsZGaxZ19f7b3uMXY3urs6o2v///+4//R5erh/9sAQwEnKSk2MDZrOztr4ZZ/luHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh/8AAEQgAGAA0AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8AxoYXnYrGBkAsckAAfjRNDJAwEgA3DIIIII9iKtaWC00wCbyYW+X19qsNEzSWyhfJdY2/dYDEAc8A9zk9aAMqnpCzwySAjEeMjvzWm8Y86M+X++NuSoZQCXyR09cUlrwJxfLtyEzkY78ZFAGVRUt0JBcyecAJM846fh7VFQAUUUUAFFFFABRRRQAUUUUAFFFFAH//2Q=="
+      }
+    },
+    {
+      "url" : "label",
+      "valueString" : "Back of insurance card"
+    }],
+    "url" : "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-SupportingImage-extension"
+  }],
+  "identifier" : [{
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code" : "MB",
+        "display" : "Member Number"
+      }]
+    },
+    "system" : "https://www.acmeinsurance.com/glossary/memberid",
+    "value" : "102345672-02",
+    "assigner" : {
+      "display" : "Acme Insurance Co"
+    }
+  }],
+  "status" : "active",
+  "type" : {
+    "coding" : [{
+      "system" : "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+      "code" : "HIP",
+      "display" : "health insurance plan policy"
+    }],
+    "text" : "health insurance plan policy"
+  },
+  "subscriber" : {
+    "reference" : "Patient/Example-Patient1",
+    "display" : "John Doe"
+  },
+  "subscriberId" : "102345672-01",
+  "beneficiary" : {
+    "reference" : "Patient/Example-Patient2",
+    "display" : "Jane Doe"
+  },
+  "dependent" : "02",
+  "relationship" : {
+    "coding" : [{
+      "system" : "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+      "code" : "spouse",
+      "display" : "Spouse"
+    }],
+    "text" : "Spouse"
+  },
+  "period" : {
+    "start" : "2021-01-01"
+  },
+  "payor" : [{
+    "reference" : "Organization/Example-PayerOrganization1",
+    "display" : "Acme Insurance Co"
+  }],
+  "class" : [{
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code" : "group"
+      }]
+    },
+    "value" : "993355",
+    "name" : "Stars Inc"
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code" : "plan"
+      }]
+    },
+    "value" : "11461128",
+    "name" : "Acme Gold Plus"
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCoverageClassCS",
+        "code" : "division"
+      }]
+    },
+    "value" : "11"
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCoverageClassCS",
+        "code" : "network"
+      }]
+    },
+    "value" : "561490",
+    "name" : "Acme Gold Plus South"
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code" : "rxbin"
+      }]
+    },
+    "value" : "100045"
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code" : "rxpcn"
+      }]
+    },
+    "value" : "1234000"
+  }],
+  "costToBeneficiary" : [{
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamOutDed",
+        "display" : "Family Out of Network Deductible"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 10000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamInDed",
+        "display" : "Family In Network Deductible"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 8000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamRxOutDed",
+        "display" : "Family Pharmacy Out of Network Deductible"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 2000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamRxInDed",
+        "display" : "Family Pharmacy In Network Deductible"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 1500,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamOutMax",
+        "display" : "Family Out of Network Out of Pocket Maximum"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 12000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamInMax",
+        "display" : "Family In Network Out of Pocket Maximum"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 10000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamRxOutMax",
+        "display" : "Family Pharmacy Out of Network Out of Pocket Maximum"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 3000,
+      "currency" : "USD"
+    }
+  },
+  {
+    "type" : {
+      "coding" : [{
+        "system" : "http://terminology.hl7.org/CodeSystem/C4DICExtendedCopayTypeCS",
+        "code" : "FamRxInMax",
+        "display" : "Family Pharmacy In Network Out of Pocket Maximum"
+      }]
+    },
+    "valueMoney" : {
+      "value" : 2000,
+      "currency" : "USD"
+    }
+  }]
+}

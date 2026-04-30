@@ -4,39 +4,35 @@ import { type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
 import { useDemoRequest } from '../../shared/useDemoRequest';
 import { TransactionBrowser } from '../../shared/TransactionBrowser';
+import { migraineQuestionnaire } from '../../shared/migraineQuestionnaire';
+import { C4DIC_COVERAGE_PROFILE, SBC_INSURANCE_PLAN_PROFILE } from '../../shared/carinInsuranceExamples';
+import { CLINICAL_HISTORY_PROFILES } from '../../shared/clinicalHistoryExamples';
 import './styles.css';
 
 const dcqlQuery: DCQLQuery = {
   credentials: [
     {
       id: 'coverage-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage' }
+      meta: { profile: C4DIC_COVERAGE_PROFILE }
     },
     {
-      id: 'patient-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient' }
+      id: 'sbc-insurance-plan-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { profile: SBC_INSURANCE_PLAN_PROFILE }
     },
     {
-      id: 'intake-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: {
-        questionnaire: {
-          resourceType: 'Questionnaire', id: 'patient-intake',
-          title: "Patient Intake Form - Dr. Mandel's Clinic", status: 'active',
-          item: [
-            { linkId: '1', text: 'Full Name', type: 'string', required: true },
-            { linkId: '2', text: 'Date of Birth', type: 'date', required: true },
-            { linkId: '3', text: 'Primary Health Concerns', type: 'text', required: false },
-            { linkId: '4', text: 'Current Medications', type: 'text', required: false },
-            { linkId: '5', text: 'Known Allergies', type: 'string', required: false }
-          ]
-        }
-      }
+      id: 'clinical-history-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { profiles: [...CLINICAL_HISTORY_PROFILES] }
+    },
+    {
+      id: 'migraine-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
+      meta: { questionnaire: migraineQuestionnaire }
     }
   ],
   credential_sets: [
     { options: [['coverage-1']], required: false },
-    { options: [['patient-1']], required: false },
-    { options: [['intake-questionnaire-1']], required: false }
+    { options: [['sbc-insurance-plan-1']], required: false },
+    { options: [['clinical-history-1']], required: false },
+    { options: [['migraine-questionnaire-1']], required: false }
   ]
 };
 

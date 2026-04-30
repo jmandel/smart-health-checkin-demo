@@ -9,6 +9,7 @@ import { createRelayHandler } from './relay/handler.ts';
 const PORT = parseInt(process.env.PORT || '3003', 10);
 const VERIFIER_BASE = process.env.VERIFIER_BASE || `http://localhost:${PORT}`;
 const STATIC_DIR = process.env.STATIC_DIR || '';
+const CANONICAL_ORIGIN = process.env.CANONICAL_ORIGIN || '';
 
 // --- Staff session management (demo only) ---
 
@@ -43,11 +44,19 @@ const { handler: relay } = await createRelayHandler({
   },
 });
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
   idleTimeout: 255,
   async fetch(req) {
     const url = new URL(req.url);
+
+    if (CANONICAL_ORIGIN) {
+      const canonical = new URL(CANONICAL_ORIGIN);
+      if (url.hostname.endsWith('.localhost') && url.host !== canonical.host) {
+        const redirectUrl = new URL(url.pathname + url.search, canonical.origin);
+        return Response.redirect(redirectUrl, 302);
+      }
+    }
 
     // --- Demo login endpoint ---
 
@@ -126,6 +135,14 @@ Bun.serve({
   },
 });
 
-console.log(`Demo server listening on http://localhost:${PORT}`);
+console.log(`Demo server listening on ${server.url}`);
 console.log(`  VERIFIER_BASE: ${VERIFIER_BASE}`);
 if (STATIC_DIR) console.log(`  Static files: ${STATIC_DIR}`);
+
+function shutdown() {
+  server.stop(true);
+  process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
