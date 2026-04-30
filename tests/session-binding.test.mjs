@@ -1,5 +1,3 @@
-import { chromium } from 'playwright';
-
 const VERIFIER = 'http://requester.localhost:3000';
 
 async function main() {
@@ -15,6 +13,8 @@ async function main() {
   };
 
   startServer('bun', ['demo/serve-demo.ts'], {
+    DEMO_CONFIG: 'local',
+    LOCAL_DEMO_ORIGIN: VERIFIER,
     VERIFIER_BASE: VERIFIER,
     STATIC_DIR: 'build/smart-health-checkin-demo',
     PORT: '3000',
@@ -82,7 +82,7 @@ async function main() {
       txn = await resp.json();
       test('transaction_id returned', !!txn.transaction_id);
       test('request_id returned', !!txn.request_id);
-      test('read_secret returned', !!txn.read_secret);
+      test('legacy read secret not returned', !('read_secret' in txn));
     }
 
     // ================================================================
@@ -94,7 +94,6 @@ async function main() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transaction_id: txn.transaction_id,
-          read_secret: txn.read_secret,
         }),
       });
       test('cross-device results rejected without cookie', resp.status === 403);
@@ -120,7 +119,6 @@ async function main() {
         },
         body: JSON.stringify({
           transaction_id: txn.transaction_id,
-          read_secret: txn.read_secret,
         }),
       });
       test('cross-device results rejected with wrong session', resp.status === 403);
@@ -168,7 +166,6 @@ async function main() {
         },
         body: JSON.stringify({
           transaction_id: txn.transaction_id,
-          read_secret: txn.read_secret,
         }),
       });
       test('cross-device results succeed with correct session', resp.status === 200);
@@ -206,7 +203,6 @@ async function main() {
         },
         body: JSON.stringify({
           transaction_id: txn.request_id, // WRONG: using public request_id
-          read_secret: txn.read_secret,
         }),
       });
       test('request_id cannot be used as transaction_id', resp.status === 404);

@@ -133,7 +133,6 @@ Response:
 {
   "transaction_id": "...",
   "request_id": "...",
-  "read_secret": "...",
   "request_uri": "https://clinic.example.com/oid4vp/requests/..."
 }
 ```
@@ -147,12 +146,11 @@ POST /oid4vp/same-device/results
 ```json
 {
   "transaction_id": "...",
-  "read_secret": "...",
   "response_code": "..."
 }
 ```
 
-All three fields are required. Returns `{ "status": "complete", "response": "<JWE>" }` or `{ "status": "pending" }`.
+Both fields are required. Returns `{ "status": "complete", "response": "<JWE>" }` or `{ "status": "pending" }`.
 
 ### Cross-device init
 
@@ -179,8 +177,7 @@ POST /oid4vp/cross-device/results
 
 ```json
 {
-  "transaction_id": "...",
-  "read_secret": "..."
+  "transaction_id": "..."
 }
 ```
 
@@ -221,7 +218,6 @@ Conflict (different payload after first submission):
 | Secret | Known by | Purpose |
 |--------|----------|---------|
 | `transaction_id` | Requester only | Identifies the transaction for result retrieval |
-| `read_secret` | Requester only | Authenticates result retrieval |
 | `write_token` | Any party that fetches the signed Request Object | One-time write capability for submitting the response |
 | `response_code` | Requester (via redirect) | Same-device loop-closure; proves the popup completed |
 | `request_id` | Public (in URLs, as OID4VP `state`) | Correlation handle; not sufficient to read data |
@@ -232,13 +228,13 @@ Conflict (different payload after first submission):
 
 ### Same-device uses loop closure
 
-The phishing case to avoid is an attacker starting a real transaction, sending the launch URL to a victim, and then redeeming the victim's response. In the same-device flow, the launch URL is opened by the requesting browser as a popup. The requesting tab keeps `transaction_id`, `read_secret`, and the ephemeral private key. When the wallet posts the encrypted response, the relay returns only a fresh `response_code` in the validated `redirect_uri`.
+The phishing case to avoid is an attacker starting a real transaction, sending the launch URL to a victim, and then redeeming the victim's response. In the same-device flow, the launch URL is opened by the requesting browser as a popup. The requesting tab keeps `transaction_id` and the ephemeral private key. When the wallet posts the encrypted response, the relay returns a fresh `response_code` through the validated `redirect_uri`.
 
-The `response_code` is not enough to fetch or decrypt the response. The same-device results endpoint also requires the `transaction_id` and `read_secret` held by the initiating tab, and the returned ciphertext still requires the initiating tab's private key. This is browser loop closure; it is not a patient identity proof.
+The `response_code` is not enough to decrypt the response. The same-device results endpoint also requires the `transaction_id` held by the initiating tab, and the returned ciphertext still requires the initiating tab's private key. This is browser loop closure; it is not a patient identity proof.
 
 ### Cross-device requires session binding
 
-Without session binding, an attacker can create a cross-device transaction with their own ephemeral key, show the QR to a victim, then redeem and decrypt the PHI. The `transaction_id` and `read_secret` are not stolen — the attacker *created* them.
+Without session binding, an attacker can create a cross-device transaction with their own ephemeral key, show the QR to a victim, then redeem and decrypt the PHI. The `transaction_id` is not stolen — the attacker *created* it.
 
 The standalone `server.ts` sets `requireVerifierSessionForCrossDevice: true` by default, which disables cross-device endpoints unless a `getVerifierSessionId` callback is provided. To enable cross-device, mount the handler in your own server with your auth layer.
 

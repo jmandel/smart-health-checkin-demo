@@ -42,11 +42,14 @@ export function loadDeploymentConfig(root: string, options: LoadDeploymentConfig
 }
 
 function appendExtraApps(config: DeploymentConfig, configPath: string): void {
-  if (!config.extraApps) return;
-  if (!Array.isArray(config.extraApps)) {
+  const extraApps = config.extraApps;
+  delete config.extraApps;
+
+  if (!extraApps) return;
+  if (!Array.isArray(extraApps)) {
     throw new Error(`Deployment config extraApps must be an array: ${configPath}`);
   }
-  if (config.extraApps.length === 0) return;
+  if (extraApps.length === 0) return;
 
   const clientConfig = config.clientConfig as { checkin?: { apps?: unknown[] } };
   const apps = clientConfig.checkin?.apps;
@@ -55,7 +58,7 @@ function appendExtraApps(config: DeploymentConfig, configPath: string): void {
   }
 
   const existingIds = new Set(apps.map((app) => appId(app)).filter(Boolean));
-  const newApps = config.extraApps.filter((app) => {
+  const newApps = extraApps.filter((app) => {
     const id = appId(app);
     return !id || !existingIds.has(id);
   });

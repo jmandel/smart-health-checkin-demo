@@ -68,7 +68,6 @@ interface Transaction {
   transaction_id: string;
   request_id: string;
   write_token: string;
-  read_secret: string;
   flow: 'same-device' | 'cross-device';
   verifier_session_id?: string;
   redirect_uri?: string;
@@ -207,7 +206,6 @@ export async function createRelayHandler(config: RelayConfig) {
       transaction_id: generateId(),
       request_id: generateId(),
       write_token: generateId(),
-      read_secret: generateId(),
       flow,
       verifier_session_id: verifierSessionId || undefined,
       redirect_uri: body.redirect_uri,
@@ -225,23 +223,11 @@ export async function createRelayHandler(config: RelayConfig) {
     return Response.json({
       transaction_id: txn.transaction_id,
       request_id: txn.request_id,
-      read_secret: txn.read_secret,
       request_uri: `${wellKnownClientUrl}/oid4vp/requests/${txn.request_id}`,
     }, { headers: PUBLIC_CORS });
   }
 
-  function fetchResultForTxn(txn: Transaction, body: { read_secret: string; response_code?: string }) {
-    if (txn.read_secret !== body.read_secret) {
-      return Response.json({ error: 'unauthorized' }, { status: 403, headers: PUBLIC_CORS });
-    }
-
-    if (txn.flow === 'same-device') {
-      if (!body.response_code || body.response_code !== txn.response_code) {
-        if (!txn.jwe) return Response.json({ status: 'pending' }, { headers: PUBLIC_CORS });
-        return Response.json({ error: 'invalid_response_code' }, { status: 403, headers: PUBLIC_CORS });
-      }
-    }
-
+  function fetchResultForTxn(txn: Transaction) {
     if (txn.jwe) {
       const jwe = txn.jwe;
       deleteTxn(txn);
@@ -386,13 +372,16 @@ export async function createRelayHandler(config: RelayConfig) {
     if (req.method === 'POST' && url.pathname === '/oid4vp/same-device/results') {
       const body = await req.json() as {
         transaction_id: string;
-        read_secret: string;
         response_code: string;
       };
       const txn = byTransactionId.get(body.transaction_id);
       if (!txn) return Response.json({ error: 'not_found' }, { status: 404, headers: PUBLIC_CORS });
       if (txn.flow !== 'same-device') return Response.json({ error: 'wrong_flow' }, { status: 400, headers: PUBLIC_CORS });
-      return fetchResultForTxn(txn, body);
+      if (!body.response_code || body.response_code !== txn.response_code) {
+        if (!txn.jwe) return Response.json({ status: 'pending' }, { headers: PUBLIC_CORS });
+        return Response.json({ error: 'invalid_response_code' }, { status: 403, headers: PUBLIC_CORS });
+      }
+      return fetchResultForTxn(txn);
     }
 
     // POST /oid4vp/cross-device/init
@@ -414,30 +403,24 @@ export async function createRelayHandler(config: RelayConfig) {
 
     // POST /oid4vp/cross-device/results
     if (req.method === 'POST' && url.pathname === '/oid4vp/cross-device/results') {
-      if (requireVerifierSessionForCrossDevice) {
-        const sessionId = await resolveVerifierSession(req);
-        if (!sessionId) {
-          return Response.json({ error: 'verifier_session_required' }, { status: 403, headers: PUBLIC_CORS });
-        }
-        // Session ownership check happens after finding the txn below
-      }
-
       const body = await req.json() as {
         transaction_id: string;
-        read_secret: string;
       };
       const txn = byTransactionId.get(body.transaction_id);
       if (!txn) return Response.json({ error: 'not_found' }, { status: 404, headers: PUBLIC_CORS });
       if (txn.flow !== 'cross-device') return Response.json({ error: 'wrong_flow' }, { status: 400, headers: PUBLIC_CORS });
 
-      if (requireVerifierSessionForCrossDevice && txn.verifier_session_id) {
+      if (requireVerifierSessionForCrossDevice) {
         const sessionId = await resolveVerifierSession(req);
+        if (!sessionId) {
+          return Response.json({ error: 'verifier_session_required' }, { status: 403, headers: PUBLIC_CORS });
+        }
         if (sessionId !== txn.verifier_session_id) {
           return Response.json({ error: 'session_mismatch' }, { status: 403, headers: PUBLIC_CORS });
         }
       }
 
-      return fetchResultForTxn(txn, body);
+      return fetchResultForTxn(txn);
     }
 
     return null;

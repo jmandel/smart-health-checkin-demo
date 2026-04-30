@@ -19,7 +19,7 @@ It focuses on the changes needed in the relay itself, not the broader shim or de
 The current relay in [handler.ts](/home/jmandel/hobby/SHCWalletApp/shl-share-picker/demo/relay/handler.ts) is still a bearer-token demo:
 
 - `POST /oid4vp/init` is public.
-- `POST /oid4vp/result` is public apart from `transaction_id` and `read_secret`.
+- `POST /oid4vp/result` is public apart from transaction handles.
 - `POST /oid4vp/post/:request_id` is named after the HTTP transport rather than the operation.
 - `same-device` and `cross-device` are encoded only as transaction state, not as distinct verifier-facing API profiles.
 - the same-device redirect currently leaks `transaction_id` back through the wallet redirect fragment even though the requester already knows it.
@@ -48,7 +48,7 @@ These are the API surfaces the requester or clinic app calls directly:
 | Method | Path | Called by | Auth / Binding |
 |---|---|---|---|
 | `POST` | `/oid4vp/same-device/init` | Requester browser | no clinician session required |
-| `POST` | `/oid4vp/same-device/results` | Requester browser | `transaction_id + read_secret + response_code` |
+| `POST` | `/oid4vp/same-device/results` | Requester browser | `transaction_id + response_code` |
 | `POST` | `/oid4vp/cross-device/init` | Requester / clinic app | authenticated verifier session required |
 | `POST` | `/oid4vp/cross-device/results` | Requester / clinic app | authenticated verifier session required, plus transaction binding |
 
@@ -72,9 +72,9 @@ This proves the request was produced by the verifier origin.
 
 - `request_id`
 - `write_token`
-- `read_secret`
+- `transaction_id`
 
-This ties the wallet submission and verifier retrieval to the same transaction.
+These tie the wallet submission and verifier retrieval to the same transaction.
 
 ### Same-device redirect binding
 
@@ -99,7 +99,6 @@ interface Transaction {
   transaction_id: string;
   request_id: string;
   write_token: string;
-  read_secret: string;
   flow: 'same-device' | 'cross-device';
   verifier_session_id?: string;
   redirect_uri?: string;
@@ -147,7 +146,6 @@ Output:
 {
   "transaction_id": "...",
   "request_id": "...",
-  "read_secret": "...",
   "request_uri": "https://verifier.example/oid4vp/requests/...",
   "launch_url": "https://picker.example?...client_id=well_known:https://verifier.example&request_uri=..."
 }
@@ -169,7 +167,6 @@ Input:
 ```json
 {
   "transaction_id": "...",
-  "read_secret": "...",
   "response_code": "..."
 }
 ```
@@ -178,7 +175,6 @@ Checks:
 
 - transaction exists
 - `flow === 'same-device'`
-- `read_secret` matches
 - `response_code` matches
 
 Output:
@@ -219,7 +215,6 @@ Output:
 {
   "transaction_id": "...",
   "request_id": "...",
-  "read_secret": "...",
   "request_uri": "https://verifier.example/oid4vp/requests/...",
   "launch_url": "https://picker.example?...client_id=well_known:https://verifier.example&request_uri=..."
 }
@@ -234,8 +229,7 @@ Input:
 
 ```json
 {
-  "transaction_id": "...",
-  "read_secret": "..."
+  "transaction_id": "..."
 }
 ```
 
@@ -244,7 +238,6 @@ Checks:
 - caller has valid verifier session
 - `flow === 'cross-device'`
 - verifier session matches the initiator session recorded at init time
-- `read_secret` matches
 
 Output:
 
@@ -387,8 +380,8 @@ Same-device completion should return only:
 
 ### 6. Keep long-polling behavior, but split ownership checks
 
-- same-device long-poll: gated by `transaction_id + read_secret + response_code`
-- cross-device long-poll: gated by verifier session ownership plus `transaction_id + read_secret`
+- same-device long-poll: gated by `transaction_id + response_code`
+- cross-device long-poll: gated by verifier session ownership plus `transaction_id`
 
 ## Server Integration Changes
 

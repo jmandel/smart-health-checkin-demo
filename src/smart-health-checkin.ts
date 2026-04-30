@@ -98,7 +98,6 @@ export interface RequestStartInfo {
   transaction: {
     transaction_id: string;
     request_id: string;
-    read_secret: string;
   };
 }
 
@@ -137,7 +136,6 @@ async function decryptJwe(jwe: string, privateKey: KeyLike): Promise<unknown> {
 interface TransactionInit {
   transaction_id: string;
   request_id: string;
-  read_secret: string;
   request_uri: string;
 }
 
@@ -163,7 +161,7 @@ async function initTransaction(
 async function fetchResult(
   wellKnownClientUrl: string,
   flow: 'same-device' | 'cross-device',
-  params: { transaction_id: string; read_secret: string; response_code?: string }
+  params: { transaction_id: string; response_code?: string }
 ): Promise<string> {
   const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/results`, {
     method: 'POST',
@@ -313,7 +311,6 @@ export async function request(
       transaction: {
         transaction_id: txn.transaction_id,
         request_id: txn.request_id,
-        read_secret: txn.read_secret,
       },
     });
   }
@@ -327,7 +324,6 @@ export async function request(
       const response_code = await waitForResponseCode(channelName, timeout);
       const jweString = await fetchResult(wellKnownClientUrl, flow, {
         transaction_id: txn.transaction_id,
-        read_secret: txn.read_secret,
         response_code,
       });
       return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
@@ -344,7 +340,6 @@ export async function request(
       try {
         const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
-          read_secret: txn.read_secret,
         });
         return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
       } catch (err) {

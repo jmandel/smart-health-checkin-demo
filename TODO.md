@@ -54,9 +54,8 @@ Primary file: [demo/relay/server.ts](/home/jmandel/hobby/SHCWalletApp/shl-share-
   - require the requester to declare `flow = same-device | cross-device`
   - create `transaction_id`
   - create `request_id`
-  - create `read_secret`
   - persist the declared flow mode in transaction state
-  - return `request_uri` and any requester-local secrets
+  - return `request_uri` and requester-local transaction handles
 - Add `GET /.well-known/openid4vp-client`:
   - emit metadata for `well_known:${wellKnownClientUrl}`
   - include `jwks_uri`
@@ -78,7 +77,7 @@ Primary file: [demo/relay/server.ts](/home/jmandel/hobby/SHCWalletApp/shl-share-
   - validate `state` only after the ciphertext has been retrieved and decrypted by the Verifier side
 - Add authenticated read path:
   - preferred: `POST /oid4vp/result`
-  - input: `transaction_id`, `read_secret`, and optionally `response_code`
+  - input: `transaction_id` and optionally `response_code`
   - output: stored ciphertext or timeout/pending state
 - Add same-device completion response:
   - when flow is `same-device`, the request-specific `POST /oid4vp/post/:request_id` or `POST /oid4vp/post/:write_token` endpoint returns JSON containing `redirect_uri`
@@ -121,11 +120,11 @@ Primary file: [src/smart-health-checkin.ts](/home/jmandel/hobby/SHCWalletApp/shl
 - Add same-device launch behavior:
   - open popup
   - wait for popup return to `#response_code`
-  - exchange `transaction_id + read_secret + response_code` for ciphertext
+  - exchange `transaction_id + response_code` for ciphertext
 - Add cross-device behavior:
   - do not assume popup completion
   - surface `launch_url` to the caller for QR rendering
-  - poll or subscribe using `transaction_id + read_secret`
+  - poll or subscribe using `transaction_id` and verifier session binding
 - Keep `rehydrateResponse()` unchanged except for any new envelope fields.
 - Preserve `maybeHandleReturn()`, but redefine it around `response_code` instead of a generic popup close.
 
@@ -143,7 +142,7 @@ Primary files:
 - Update the main requester app to:
   - start a same-device request
   - listen for the return signal
-  - complete the result fetch with `transaction_id + read_secret + response_code`
+  - complete the result fetch with `transaction_id + response_code`
 - Show in the demo UI that same-device is bound to the original tab/session.
 
 ## Phase 5: Cross-Device QR Flow
@@ -225,7 +224,7 @@ Primary file: [test-flow.spec.js](/home/jmandel/hobby/SHCWalletApp/shl-share-pic
   - verifier initializes transaction
   - source app posts response
   - response endpoint returns `redirect_uri#response_code=...`
-  - requester fetch requires `transaction_id + read_secret + response_code`
+  - requester fetch requires `transaction_id + response_code`
 - Add a cross-device test:
   - verifier initializes transaction
   - requester renders QR/bootstrap link
@@ -241,7 +240,6 @@ Primary file: [test-flow.spec.js](/home/jmandel/hobby/SHCWalletApp/shl-share-pic
   - untrusted verifier falls back to bare origin
 - Add negative read-path tests:
   - `request_id` alone cannot fetch result
-  - wrong `read_secret` fails
   - same-device fetch without `response_code` fails
 
 ## Phase 10: Cleanup and Migration

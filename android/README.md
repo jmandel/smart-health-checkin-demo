@@ -19,6 +19,10 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 The Gradle build copies canonical demo JSON from `../demo/shared-data` into generated Android assets. Do not maintain a separate copy under `app/src/main/assets`.
 
+## GitHub Release APKs
+
+`.github/workflows/android-apk.yml` builds the debug APK when Android sources or shared demo data change. Pull requests get an APK artifact. Pushes to `main` also publish `sample-health-android-demo-debug.apk` to a GitHub Release, which keeps the demo install link pointing at the latest APK.
+
 ## Install
 
 ```bash

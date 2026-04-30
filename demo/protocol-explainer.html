@@ -431,6 +431,7 @@
 <section>
   <h2 id="same-device">Same-Device Flow</h2>
   <p style="color:var(--slate);font-size:15px;margin-bottom:8px">Patient is on their own device — portal, patient app, or third-party site.</p>
+  <p style="color:var(--slate);font-size:14px;margin-top:0">Same-device completion exists to bind the encrypted response to the verifier tab that initiated the request. The W3C Digital Credentials API will eventually route the wallet response back to that originating frame natively. Until then, this demo uses a server-mediated stand-in: the relay returns a <code>response_code</code> through a verifier-controlled redirect, and the originating tab exchanges that code for the encrypted payload.</p>
 
   <div class="swim-lane lane-verifier">
     <div class="swim-lane-header">

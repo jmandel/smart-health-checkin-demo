@@ -1,0 +1,67 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'demo/shared-data/**'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'demo/shared-data/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish the built debug APK to a GitHub Release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Stage APK
+        run: |
+          mkdir -p build/android-release
+          cp android/app/build/outputs/apk/debug/app-debug.apk build/android-release/sample-health-android-demo-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-health-android-demo-debug
+          path: build/android-release/sample-health-android-demo-debug.apk
+          if-no-files-found: error
+
+      - name: Publish APK release
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: android-demo-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Sample Health Android Demo ${{ github.run_number }}
+          body: |
+            Debug APK for Sample Health Android Demo.
+
+            Commit: ${{ github.sha }}
+          files: build/android-release/sample-health-android-demo-debug.apk
+          make_latest: true
