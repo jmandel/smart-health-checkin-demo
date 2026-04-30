@@ -58,6 +58,35 @@ header {
   margin-bottom: 24px;
 }
 
+.return-card {
+  text-align: center;
+}
+
+.return-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #d1fae5;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.return-actions {
+  max-width: 280px;
+  margin: 8px auto 0;
+}
+
+.return-note {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
 h1 {
   margin: 0 0 8px 0;
   font-size: 28px;

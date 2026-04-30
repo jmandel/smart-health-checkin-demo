@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { maybeHandleReturn, type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
 import { useDemoRequest } from '../../shared/useDemoRequest';
@@ -7,6 +7,42 @@ import { migraineQuestionnaire } from '../../shared/migraineQuestionnaire';
 import { C4DIC_COVERAGE_PROFILE, SBC_INSURANCE_PLAN_PROFILE } from '../../shared/carinInsuranceExamples';
 import { CLINICAL_HISTORY_PROFILES } from '../../shared/clinicalHistoryExamples';
 import './styles.css';
+
+function hasResponseCodeHash(): boolean {
+  return new URLSearchParams(location.hash.substring(1)).has('response_code');
+}
+
+function ReturnCompleteScreen() {
+  return (
+    <>
+      <header>
+        <div className="header-content">
+          <div className="logo">DM</div>
+          <h2 className="clinic-name">Dr. Mandel's Family Medicine</h2>
+        </div>
+      </header>
+
+      <div className="container">
+        <div className="card return-card">
+          <div className="return-icon">✓</div>
+          <h1>Check-in shared</h1>
+          <p className="subtitle">
+            This tab delivered the completion code to your original patient portal tab.
+            You can return there to continue.
+          </p>
+          <div className="return-actions">
+            <button className="checkin-button complete" onClick={() => window.close()}>
+              Close this tab
+            </button>
+          </div>
+          <p className="return-note">
+            Some mobile browsers keep this handoff tab open after launching another app.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
 
 const dcqlQuery: DCQLQuery = {
   credentials: [
@@ -36,13 +72,29 @@ const dcqlQuery: DCQLQuery = {
 };
 
 export default function App() {
+  const [returnHandled, setReturnHandled] = useState(
+    () => hasResponseCodeHash() || sessionStorage.getItem('shc-return-tab') === '1'
+  );
+
   const demo = useDemoRequest(dcqlQuery, {
     walletUrl: config.portal.walletUrl,
     wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'same-device',
   });
 
-  useEffect(() => { maybeHandleReturn(); }, []);
+  useEffect(() => {
+    let mounted = true;
+    maybeHandleReturn().then((handled) => {
+      if (!handled || !mounted) return;
+      sessionStorage.setItem('shc-return-tab', '1');
+      setReturnHandled(true);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  if (returnHandled) {
+    return <ReturnCompleteScreen />;
+  }
 
   const tasks = { insurance: false, plan: false, clinical: false, intake: false };
 
