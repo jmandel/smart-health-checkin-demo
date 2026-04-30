@@ -367,12 +367,12 @@ When decrypted, the JWE payload will be a JSON object containing standard OAuth 
 
 ## 3. Browser-Based Implementation (The "Shim")
 
-To enable this protocol in browser environments that do not yet support the W3C Digital Credentials API natively, the reference implementation provides a shim library (`smart-health-checkin`) that orchestrates the OID4VP flow using popups, BroadcastChannel, and a Verifier-controlled response endpoint.
+To enable this protocol in browser environments that do not yet support the W3C Digital Credentials API natively, the reference implementation provides a shim library (`smart-health-checkin`) that orchestrates the OID4VP flow using popup or same-tab handoffs, BroadcastChannel where needed, and a Verifier-controlled response endpoint.
 
 ### 3.1 Transport Mechanism
 
 1.  **Initialization**: The shim generates an Ephemeral Key Pair via the Web Crypto API and initiates a transaction with the Verifier backend, choosing `same-device` or `cross-device`.
-2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for either a popup or QR code.
+2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for a same-tab launch, popup, or QR code.
 3.  **Request Verification**: The Wallet resolves `/.well-known/openid4vp-client`, fetches the signed Request Object, verifies it using the Verifier's `jwks_uri`, and extracts the authoritative OID4VP parameters.
 4.  **Response Delivery**: The Wallet encrypts the payload and POSTs the `{JWE}` to the Verifier-controlled `response_uri`.
 5.  **Completion Signal**: If the Request Object says `completion: "redirect"`, the response endpoint returns a `redirect_uri` containing a `response_code`. If it says `completion: "deferred"`, the response endpoint returns an acknowledgement and the Verifier app obtains the encrypted response through its own application path.
@@ -384,17 +384,26 @@ The target shim API for this protocol profile is:
 
 ```javascript
 // ES Module
-import { request, maybeHandleReturn } from 'smart-health-checkin';
+import { request, completeSameDeviceRedirect, maybeHandleReturn } from 'smart-health-checkin';
 
-// Make a request
-const result = await request(dcqlQuery, {
-  walletUrl: 'https://picker.example.com',
-  wellKnownClientUrl: 'https://clinic.example.com',
-  flow: 'same-device'
-});
+// If this page was reached by a same-tab redirect return, resume it first;
+// popup returns can still use maybeHandleReturn().
+const completion = await completeSameDeviceRedirect();
+if (completion) {
+  renderResult(completion.response);
+} else {
+  await maybeHandleReturn();
+}
 
-// The result.credentials object is decrypted and automatically rehydrated
-const coverageData = result.credentials['req_insurance'][0];
+function startCheckin() {
+  // In replace mode, this navigates away; the redirect return above receives the result.
+  void request(dcqlQuery, {
+    walletUrl: 'https://picker.example.com',
+    wellKnownClientUrl: 'https://clinic.example.com',
+    flow: 'same-device',
+    sameDeviceLaunch: 'replace' // or omit for popup compatibility
+  });
+}
 ```
 
 ---
@@ -406,7 +415,7 @@ This repository contains a fully functional reference implementation of the prot
 ### 4.1 Components
 
 *   **Demo Landing Page (`demo/index.html`)**: Entry page linking to both demo scenarios.
-*   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, opens the picker in a popup, and completes the flow through a return carrying `response_code`. The reference portal does not offer a cross-device QR mode.
+*   **Patient Portal (`demo/portal`)**: Same-device demo where the patient starts from a portal page, the page navigates into the picker, and the redirect return resumes the portal session with `response_code`. The reference portal does not offer a cross-device QR mode.
 *   **Front Desk Kiosk (`demo/kiosk`)**: Staff-session-bound cross-device demo where staff starts the request, the page shows a QR code and copyable link, and the patient completes the flow on another device.
 *   **Picker (`demo/checkin`)**: A simple UI that helps users select their health app.
 *   **Health App (`demo/source-app`)**: A mock health app implementation that acts as an OID4VP Provider.

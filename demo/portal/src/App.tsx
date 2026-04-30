@@ -12,7 +12,17 @@ function hasResponseCodeHash(): boolean {
   return new URLSearchParams(location.hash.substring(1)).has('response_code');
 }
 
+function hasSameDeviceHandoff(): boolean {
+  return new URLSearchParams(location.search).has('shc_handoff');
+}
+
 function ReturnCompleteScreen() {
+  const [closeBlocked, setCloseBlocked] = useState(false);
+  const closeTab = () => {
+    window.close();
+    setTimeout(() => setCloseBlocked(true), 250);
+  };
+
   return (
     <>
       <header>
@@ -31,10 +41,15 @@ function ReturnCompleteScreen() {
             You can return there to continue.
           </p>
           <div className="return-actions">
-            <button className="checkin-button complete" onClick={() => window.close()}>
+            <button className="checkin-button complete" onClick={closeTab}>
               Close this tab
             </button>
           </div>
+          {closeBlocked && (
+            <p className="return-warning">
+              Chrome blocked automatic closing. Use the tab switcher to close this handoff tab.
+            </p>
+          )}
           <p className="return-note">
             Some mobile browsers keep this handoff tab open after launching another app.
           </p>
@@ -73,16 +88,18 @@ const dcqlQuery: DCQLQuery = {
 
 export default function App() {
   const [returnHandled, setReturnHandled] = useState(
-    () => hasResponseCodeHash() || sessionStorage.getItem('shc-return-tab') === '1'
+    () => !hasSameDeviceHandoff() && (hasResponseCodeHash() || sessionStorage.getItem('shc-return-tab') === '1')
   );
 
   const demo = useDemoRequest(dcqlQuery, {
     walletUrl: config.portal.walletUrl,
     wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'same-device',
+    sameDeviceLaunch: 'replace',
   });
 
   useEffect(() => {
+    if (hasSameDeviceHandoff()) return;
     let mounted = true;
     maybeHandleReturn().then((handled) => {
       if (!handled || !mounted) return;

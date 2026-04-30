@@ -1051,7 +1051,7 @@ export default function App() {
       const postResult = await encryptAndPost(payload, clientMetadata, responseUri);
       if (completion === 'redirect') {
         if (!postResult.redirect_uri) throw new Error('Expected redirect_uri for redirect completion');
-        window.location.href = postResult.redirect_uri;
+        window.location.replace(postResult.redirect_uri);
         return;
       }
       if (postResult.redirect_uri) throw new Error('Unexpected redirect_uri for deferred completion');
@@ -1147,7 +1147,7 @@ export default function App() {
 
       if (completion === 'redirect') {
         if (!postResult.redirect_uri) throw new Error('Expected redirect_uri for redirect completion');
-        window.location.href = postResult.redirect_uri;
+        window.location.replace(postResult.redirect_uri);
         return;
       }
       if (postResult.redirect_uri) throw new Error('Unexpected redirect_uri for deferred completion');

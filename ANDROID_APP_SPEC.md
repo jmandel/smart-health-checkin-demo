@@ -148,7 +148,7 @@ Recommended demo fallback:
 smart-health-checkin-sample://authorize?client_id=...&request_uri=...
 ```
 
-The existing picker currently treats every app as a web `launchBase` and opens a popup. To support the Android app cleanly, extend `demo/config.ts` and `demo/checkin/src/App.tsx` with an app type:
+The picker supports web apps, Android App Links, and custom-scheme demo fallbacks through an app launch type:
 
 ```ts
 type LaunchKind = 'web' | 'android-app-link' | 'custom-scheme';
@@ -163,7 +163,7 @@ interface AppConfig {
 }
 ```
 
-For native launches, the picker should navigate the current top-level window to the App Link URL instead of opening a popup. If the app is not installed, show a fallback page with an install link to the GitHub Release APK and a link to the web source app.
+For native launches, the picker navigates the current top-level window to the App Link URL instead of opening a popup. If the app is not installed, the browser fallback page includes an install link to the GitHub Release APK and a link to the web source app.
 
 ### Android App Link Verification
 
@@ -316,7 +316,7 @@ If `smart_health_checkin.completion === "redirect"`:
 - Expect response JSON with `redirect_uri`.
 - Open `redirect_uri` using `Intent.ACTION_VIEW`.
 - Treat missing `redirect_uri` as protocol error.
-- Test that Android opens the same browser profile that initiated the portal flow. The existing web shim relies on the browser return page and `BroadcastChannel` to deliver `response_code` back to the waiting portal tab. If Android opens a different browser, same-device completion may not reach the original tab.
+- Test that Android opens the same browser profile that initiated the portal flow. In same-tab handoff mode, the browser return page uses the stored handoff state to redeem `response_code` and resume the requester UI. If Android opens a different browser profile, that handoff state will not be available.
 
 If `completion === "deferred"`:
 

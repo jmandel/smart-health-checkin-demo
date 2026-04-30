@@ -145,6 +145,22 @@ main {
   justify-content: center;
 }
 
+.centered-actions {
+  margin-top: 18px;
+}
+
+.empty-state {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  text-align: center;
+  color: #475569;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
 .card-action {
   min-height: 36px;
   padding: 8px 12px;

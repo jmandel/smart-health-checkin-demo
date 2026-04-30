@@ -200,9 +200,9 @@
   <div class="split">
     <div class="mode-card">
       <h4>Same-Device (Patient Portal)</h4>
-      <p>Patient is on their own device. They click a button, a popup opens, they pick
-        their health app, review and share data. The popup returns to the portal page
-        with a <code>response_code</code> to close the loop. The reference portal does
+      <p>Patient is on their own device. They click a button, the page opens the picker,
+        they pick their health app, review and share data. The redirect return lands on the
+        portal page with a <code>response_code</code> to close the loop. The reference portal does
         not offer a patient-initiated QR mode.</p>
     </div>
     <div class="mode-card cross">
@@ -451,7 +451,7 @@
       <span class="swim-lane-title">Deliver the Request</span>
     </div>
     <div class="swim-lane-detail">
-      The shim starts a same-device transaction and receives a <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code> and <code>request_uri</code>, then opens a popup to the picker.
+      The shim starts a same-device transaction and receives a <code>request_uri</code>. It builds a bootstrap URL with just <code>client_id</code> and <code>request_uri</code>, then opens the picker. The reference portal uses a same-tab handoff; the shim also supports a popup handoff for compatibility.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -478,7 +478,7 @@
       <span class="swim-lane-title">Complete the Exchange</span>
     </div>
     <div class="swim-lane-detail">
-      The popup lands back on the Verifier's page with <code>#response_code=...</code>. The Verifier app uses that completion signal to obtain the encrypted response through its own application path.
+      The redirect lands back on the Verifier's page with <code>#response_code=...</code>. In same-tab mode, the landing page resumes the requester session and redeems the response directly. In popup mode, the return page signals the opener before closing.
     </div>
     <div class="swim-lane-note">In future, the W3C Digital Credentials API will handle this natively.</div>
   </div>
@@ -595,24 +595,30 @@
 <section>
   <h2 id="shim-api">Shim API</h2>
   <div class="data-box">
-    <pre>import { request, maybeHandleReturn } from 'smart-health-checkin';
+    <pre>import { request, completeSameDeviceRedirect, maybeHandleReturn } from 'smart-health-checkin';
 
-const result = await request(dcqlQuery, {
-  walletUrl: 'https://picker.example.com',
-  wellKnownClientUrl: 'https://clinic.example.com',
-  flow: 'same-device',   // or 'cross-device'
-  onRequestStart(info) {
-    // info.bootstrap  — { client_id, request_uri }
-    // info.launch_url — full URL for popup or QR
-    // info.transaction — implementation-specific request tracking details
-  }
-});
+const completion = await completeSameDeviceRedirect();
+if (completion) renderResult(completion.response);
+else await maybeHandleReturn();
 
-// result.credentials['coverage-1'][0] → FHIR Coverage resource</pre>
+function startCheckin() {
+  void request(dcqlQuery, {
+    walletUrl: 'https://picker.example.com',
+    wellKnownClientUrl: 'https://clinic.example.com',
+    flow: 'same-device',   // or 'cross-device'
+    sameDeviceLaunch: 'replace',
+    onRequestStart(info) {
+      // info.bootstrap  — { client_id, request_uri }
+      // info.launch_url — full URL for same-tab launch, popup, or QR
+      // info.transaction — implementation-specific request tracking details
+    }
+  });
+}
+
+// completion.response.credentials['coverage-1'][0] → FHIR Coverage resource</pre>
   </div>
-  <p>Both flows use the same <code>request()</code> call. The difference is in what the app does with
-    <code>onRequestStart</code>: same-device ignores it (the shim opens the popup), cross-device
-    renders <code>info.launch_url</code> as a QR code.</p>
+  <p>Both flows use the same <code>request()</code> call. Same-device can use a same-tab or popup handoff;
+    cross-device renders <code>info.launch_url</code> as a QR code.</p>
 </section>
 
 <!-- ======================================== -->

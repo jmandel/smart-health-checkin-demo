@@ -7,7 +7,7 @@
  * Supports same-device (popup) and cross-device (QR) flows.
  */
 
-import { generateKeyPair, exportJWK, compactDecrypt, type KeyLike } from 'jose';
+import { generateKeyPair, exportJWK, importJWK, compactDecrypt, type JWK, type KeyLike } from 'jose';
 
 // ============================================================================
 // Types
@@ -77,6 +77,8 @@ export interface RequestOptions {
   wellKnownClientUrl: string;
   /** Flow mode: same-device (popup) or cross-device (QR) */
   flow?: 'same-device' | 'cross-device';
+  /** Same-device browser handoff strategy. Defaults to opening the picker in a popup. */
+  sameDeviceLaunch?: 'popup' | 'replace';
   /** Callback invoked when OID4VP request is constructed */
   onRequestStart?: (info: RequestStartInfo) => void;
   /** If true (default), response includes rehydrated credentials object */
@@ -98,7 +100,13 @@ export interface RequestStartInfo {
   transaction: {
     transaction_id: string;
     request_id: string;
+    handoff_id?: string;
   };
+}
+
+export interface SameDeviceRedirectResult {
+  requestInfo: RequestStartInfo;
+  response: RawResponse | RehydratedResponse;
 }
 
 export interface SHLError extends Error {
@@ -117,11 +125,14 @@ function generateRandomHex(): string {
 }
 
 async function generateEphemeralKeyPair() {
-  const { publicKey, privateKey } = await generateKeyPair('ECDH-ES', { crv: 'P-256' });
+  const { publicKey, privateKey } = await generateKeyPair('ECDH-ES', { crv: 'P-256', extractable: true });
   const publicJwk = await exportJWK(publicKey);
+  const privateJwk = await exportJWK(privateKey);
   publicJwk.use = 'enc';
   publicJwk.alg = 'ECDH-ES';
-  return { publicKey, privateKey, publicJwk };
+  privateJwk.use = 'enc';
+  privateJwk.alg = 'ECDH-ES';
+  return { publicKey, privateKey, publicJwk, privateJwk };
 }
 
 async function decryptJwe(jwe: string, privateKey: KeyLike): Promise<unknown> {
@@ -201,6 +212,107 @@ function waitForResponseCode(channelName: string, timeout?: number): Promise<str
   });
 }
 
+const HANDOFF_STORAGE_PREFIX = 'smart-health-checkin:handoff:';
+const HANDOFF_STALE_MS = 10 * 60 * 1000;
+
+interface StoredSameDeviceHandoff {
+  version: 1;
+  created_at: number;
+  handoff_id: string;
+  well_known_client_url: string;
+  private_jwk: JWK;
+  rehydrate: boolean;
+  request_info: RequestStartInfo;
+}
+
+function storageKey(handoffId: string): string {
+  return `${HANDOFF_STORAGE_PREFIX}${handoffId}`;
+}
+
+function getLocalStorage(): Storage | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function pruneStoredHandoffs(storage: Storage, now = Date.now()) {
+  for (let i = storage.length - 1; i >= 0; i--) {
+    const key = storage.key(i);
+    if (!key?.startsWith(HANDOFF_STORAGE_PREFIX)) continue;
+    try {
+      const item = JSON.parse(storage.getItem(key) || '{}') as { created_at?: number };
+      if (!item.created_at || now - item.created_at > HANDOFF_STALE_MS) {
+        storage.removeItem(key);
+      }
+    } catch {
+      storage.removeItem(key);
+    }
+  }
+}
+
+function storeSameDeviceHandoff(handoff: StoredSameDeviceHandoff) {
+  const storage = getLocalStorage();
+  if (!storage) throw new Error('Browser storage unavailable for same-device handoff');
+  pruneStoredHandoffs(storage);
+  storage.setItem(storageKey(handoff.handoff_id), JSON.stringify(handoff));
+}
+
+function takeSameDeviceHandoff(handoffId: string): StoredSameDeviceHandoff {
+  const storage = getLocalStorage();
+  if (!storage) throw new Error('Browser storage unavailable for same-device handoff');
+  pruneStoredHandoffs(storage);
+
+  const key = storageKey(handoffId);
+  const raw = storage.getItem(key);
+  if (!raw) throw new Error('No pending same-device handoff found for this return');
+
+  const handoff = JSON.parse(raw) as StoredSameDeviceHandoff;
+  if (handoff.version !== 1 || handoff.handoff_id !== handoffId) {
+    storage.removeItem(key);
+    throw new Error('Invalid same-device handoff state');
+  }
+  if (Date.now() - handoff.created_at > HANDOFF_STALE_MS) {
+    storage.removeItem(key);
+    throw new Error('Same-device handoff expired');
+  }
+  return handoff;
+}
+
+function clearSameDeviceHandoff(handoffId: string) {
+  getLocalStorage()?.removeItem(storageKey(handoffId));
+}
+
+function broadcastHandoffState(handoffId: string, type: 'complete' | 'inactive') {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const bc = new BroadcastChannel(`shc-handoff-${handoffId}`);
+  bc.postMessage({ type });
+  bc.close();
+}
+
+function currentRequesterUrl(handoffId?: string): string {
+  const url = new URL(location.pathname, location.origin);
+  if (handoffId) url.searchParams.set('shc_handoff', handoffId);
+  return url.toString();
+}
+
+function cleanReturnUrl() {
+  const url = new URL(location.href);
+  url.hash = '';
+  url.searchParams.delete('shc_handoff');
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function responseCodeFromHash(): string | null {
+  return new URLSearchParams(window.location.hash.substring(1)).get('response_code');
+}
+
+function handoffIdFromSearch(): string | null {
+  return new URLSearchParams(window.location.search).get('shc_handoff');
+}
+
 // ============================================================================
 // Core Functions
 // ============================================================================
@@ -276,13 +388,17 @@ export async function request(
   const flow = opts.flow || 'same-device';
   const shouldRehydrate = opts.rehydrate !== false;
   const timeout = opts.timeout;
+  const sameDeviceLaunch = opts.sameDeviceLaunch || 'popup';
+  const handoffId = flow === 'same-device' && sameDeviceLaunch === 'replace'
+    ? generateRandomHex()
+    : undefined;
 
   // Generate ephemeral key pair for E2E encryption
-  const { privateKey, publicJwk } = await generateEphemeralKeyPair();
+  const { privateKey, privateJwk, publicJwk } = await generateEphemeralKeyPair();
 
   // Determine redirect_uri for same-device (the requester's own page)
   const redirect_uri = flow === 'same-device'
-    ? new URL(location.pathname, location.origin).toString()
+    ? currentRequesterUrl(handoffId)
     : undefined;
 
   // Initialize transaction with verifier backend
@@ -298,24 +414,47 @@ export async function request(
     client_id,
     request_uri: txn.request_uri,
   });
+  if (handoffId) {
+    bootstrapParams.set('shc_launch', 'replace');
+    bootstrapParams.set('shc_handoff', handoffId);
+  }
   const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
+  const requestInfo: RequestStartInfo = {
+    flow,
+    bootstrap: {
+      client_id,
+      request_uri: txn.request_uri,
+    },
+    launch_url,
+    transaction: {
+      transaction_id: txn.transaction_id,
+      request_id: txn.request_id,
+      handoff_id: handoffId,
+    },
+  };
 
   if (opts.onRequestStart) {
-    opts.onRequestStart({
-      flow,
-      bootstrap: {
-        client_id,
-        request_uri: txn.request_uri,
-      },
-      launch_url,
-      transaction: {
-        transaction_id: txn.transaction_id,
-        request_id: txn.request_id,
-      },
-    });
+    opts.onRequestStart(requestInfo);
   }
 
   if (flow === 'same-device') {
+    if (sameDeviceLaunch === 'replace') {
+      if (!handoffId) throw new Error('Missing same-device handoff id');
+      storeSameDeviceHandoff({
+        version: 1,
+        created_at: Date.now(),
+        handoff_id: handoffId,
+        well_known_client_url: wellKnownClientUrl,
+        private_jwk: privateJwk,
+        rehydrate: shouldRehydrate,
+        request_info: requestInfo,
+      });
+      location.replace(launch_url);
+      return new Promise<RawResponse | RehydratedResponse>(() => {
+        // The current document is navigating away; the redirect landing page resumes the transaction.
+      });
+    }
+
     const popup = window.open(launch_url, '_blank');
     if (!popup) throw new Error('Popup blocked - please allow popups for this site');
 
@@ -352,15 +491,48 @@ export async function request(
 }
 
 /**
+ * Resume a same-device redirect that was launched with sameDeviceLaunch: "replace".
+ * The redirected requester page takes over the session by redeeming response_code
+ * with handoff state that was parked before navigation to the picker.
+ */
+export async function completeSameDeviceRedirect(): Promise<SameDeviceRedirectResult | null> {
+  const response_code = responseCodeFromHash();
+  const handoffId = handoffIdFromSearch();
+  if (!response_code || !handoffId) return null;
+
+  const handoff = takeSameDeviceHandoff(handoffId);
+  const privateKey = await importJWK(handoff.private_jwk, 'ECDH-ES') as KeyLike;
+  const jweString = await fetchResult(handoff.well_known_client_url, 'same-device', {
+    transaction_id: handoff.request_info.transaction.transaction_id,
+    response_code,
+  });
+  const response = await decryptAndProcess(
+    jweString,
+    privateKey,
+    handoff.request_info.transaction.request_id,
+    handoff.rehydrate
+  );
+
+  clearSameDeviceHandoff(handoffId);
+  cleanReturnUrl();
+  broadcastHandoffState(handoffId, 'complete');
+
+  return {
+    requestInfo: handoff.request_info,
+    response,
+  };
+}
+
+/**
  * Handle return context in popup window.
  * Detects #response_code in the hash, signals the opener via postMessage.
  */
 export async function maybeHandleReturn(): Promise<boolean> {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const responseCode = params.get('response_code');
+  const responseCode = responseCodeFromHash();
 
   if (responseCode) {
+    if (handoffIdFromSearch()) return false;
+
     // Broadcast on a channel keyed by this page's URL (without the hash)
     const pageUrl = new URL(location.pathname, location.origin).toString();
     const bc = new BroadcastChannel(`shc-return-${pageUrl}`);
@@ -386,6 +558,7 @@ declare global {
   interface Window {
     SmartHealthCheckin?: {
       request: typeof request;
+      completeSameDeviceRedirect: typeof completeSameDeviceRedirect;
       maybeHandleReturn: typeof maybeHandleReturn;
       rehydrateResponse: typeof rehydrateResponse;
     };
@@ -393,5 +566,5 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SmartHealthCheckin = { request, maybeHandleReturn, rehydrateResponse };
+  window.SmartHealthCheckin = { request, completeSameDeviceRedirect, maybeHandleReturn, rehydrateResponse };
 }

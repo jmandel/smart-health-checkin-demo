@@ -87,6 +87,12 @@ header {
   font-size: 14px;
 }
 
+.return-warning {
+  margin: 12px 0 0;
+  color: #92400e;
+  font-size: 14px;
+}
+
 h1 {
   margin: 0 0 8px 0;
   font-size: 28px;

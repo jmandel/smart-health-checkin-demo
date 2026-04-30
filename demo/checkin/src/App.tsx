@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { config } from '../../config';
 import './styles.css';
 
@@ -21,6 +22,8 @@ interface BootstrapRequest {
   client_id: string;
   request_uri: string;
   request_uri_method?: string;
+  launchMode?: 'replace';
+  handoffId?: string;
 }
 
 function buildLaunchUrl(app: AppConfig, req: BootstrapRequest): string {
@@ -50,6 +53,8 @@ function parseRequest(): BootstrapRequest | { error: string } {
   const clientId = urlParams.get('client_id');
   const requestUri = urlParams.get('request_uri');
   const requestUriMethod = urlParams.get('request_uri_method');
+  const launchMode = urlParams.get('shc_launch') === 'replace' ? 'replace' : undefined;
+  const handoffId = urlParams.get('shc_handoff') || undefined;
 
   if (clientId?.startsWith('well_known:')) {
     if (!requestUri) {
@@ -60,6 +65,8 @@ function parseRequest(): BootstrapRequest | { error: string } {
       client_id: clientId,
       request_uri: requestUri,
       request_uri_method: requestUriMethod || undefined,
+      launchMode,
+      handoffId,
     };
     console.log('[Check-in] Bootstrap request:', req);
     return req;
@@ -68,7 +75,65 @@ function parseRequest(): BootstrapRequest | { error: string } {
   return { error: 'Missing or invalid client_id. Expected well_known: prefix.' };
 }
 
-function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest; disabled: boolean }) {
+function NativeLaunchScreen({ appName, launchUrl, installUrl, webFallbackUrl }: {
+  appName: string;
+  launchUrl: string;
+  installUrl?: string;
+  webFallbackUrl?: string;
+}) {
+  return (
+    <>
+      <header>
+        <div className="shield-icon">🛡️</div>
+        <h1>Opening {appName}</h1>
+        <div className="subtitle">You can close this picker tab after the app opens.</div>
+      </header>
+      <main>
+        <div className="empty-state">
+          <p>If the app did not open, use the button below.</p>
+          <div className="card-actions centered-actions" style={{ '--brand-color': '#2563eb' } as React.CSSProperties}>
+            <button type="button" className="card-action primary" onClick={() => { location.replace(launchUrl); }}>
+              Open app
+            </button>
+            {webFallbackUrl && <a className="card-action" href={webFallbackUrl}>Use web app</a>}
+            {installUrl && <a className="card-action" href={installUrl} target="_blank" rel="noreferrer">Install APK</a>}
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+function HandoffInactiveScreen() {
+  return (
+    <>
+      <header>
+        <div className="shield-icon">🛡️</div>
+        <h1>Check-in Continued</h1>
+        <div className="subtitle">This picker tab is no longer active.</div>
+      </header>
+      <main>
+        <div className="empty-state">
+          <p>The requester has received the shared check-in data in another browser tab.</p>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+function AppCard({
+  app,
+  req,
+  disabled,
+  onNativeLaunch,
+}: {
+  app: AppConfig;
+  req: BootstrapRequest;
+  disabled: boolean;
+  onNativeLaunch: (app: AppConfig, launchUrl: string) => void;
+}) {
   const handleClick = () => {
     if (disabled) return;
 
@@ -77,7 +142,12 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
     console.log('[Check-in] Launch URL:', launchUrl);
 
     if (isNativeLaunch(app)) {
-      location.href = launchUrl;
+      onNativeLaunch(app, launchUrl);
+      return;
+    }
+
+    if (req.launchMode === 'replace') {
+      location.replace(launchUrl);
       return;
     }
 
@@ -117,6 +187,24 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
 
 export default function App() {
   const parsed = useMemo(() => parseRequest(), []);
+  const [nativeLaunch, setNativeLaunch] = useState<{
+    appName: string;
+    launchUrl: string;
+    installUrl?: string;
+    webFallbackUrl?: string;
+  } | null>(null);
+  const [handoffInactive, setHandoffInactive] = useState(false);
+
+  useEffect(() => {
+    if ('error' in parsed || !parsed.handoffId || typeof BroadcastChannel === 'undefined') return;
+    const bc = new BroadcastChannel(`shc-handoff-${parsed.handoffId}`);
+    bc.onmessage = (event: MessageEvent) => {
+      if (event.data?.type === 'complete' || event.data?.type === 'inactive') {
+        setHandoffInactive(true);
+      }
+    };
+    return () => bc.close();
+  }, [parsed]);
 
   if ('error' in parsed) {
     return (
@@ -137,6 +225,29 @@ export default function App() {
   const apps = config.checkin.apps || [];
   const androidDevice = isAndroidDevice();
   const visibleApps = apps.filter((app: AppConfig) => shouldShowApp(app, androidDevice));
+
+  const launchNativeApp = (app: AppConfig, launchUrl: string) => {
+    const webFallbackUrl = app.fallbackUrl ? buildLaunchUrl({ ...app, launchBase: app.fallbackUrl }, parsed) : undefined;
+    flushSync(() => setNativeLaunch({
+      appName: app.name || app.id,
+      launchUrl,
+      installUrl: app.installUrl,
+      webFallbackUrl,
+    }));
+
+    setTimeout(() => {
+      try { window.close(); } catch { /* ignore */ }
+    }, 500);
+    location.replace(launchUrl);
+  };
+
+  if (handoffInactive) {
+    return <HandoffInactiveScreen />;
+  }
+
+  if (nativeLaunch) {
+    return <NativeLaunchScreen {...nativeLaunch} />;
+  }
 
   if (!visibleApps || visibleApps.length === 0) {
     return (
@@ -189,6 +300,7 @@ export default function App() {
                     app={app}
                     req={parsed}
                     disabled={app.id !== 'sample-health' && app.id !== 'sample-health-android-demo'}
+                    onNativeLaunch={launchNativeApp}
                   />
                 ))}
               </div>
