@@ -101,9 +101,7 @@
   </main>
   <script>
     const params = new URLSearchParams(location.search);
-    const fallbackBase = location.hostname === 'android-sample-app.smart-health-checkin.joshuamandel.com'
-      ? 'https://joshuamandel.com/smart-health-checkin-demo/source-app/'
-      : '/source-app/';
+    const fallbackBase = '/source-app/';
     const fallback = new URL(fallbackBase, location.origin);
     for (const key of ['client_id', 'request_uri', 'request_uri_method']) {
       const value = params.get(key);

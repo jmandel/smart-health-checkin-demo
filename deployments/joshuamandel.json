@@ -62,7 +62,7 @@
       "accentColor": "#22c55e",
       "logo": "A",
       "logoStyle": "bold",
-      "launchBase": "${ANDROID_APP_LINK_BASE:-https://android-sample-app.smart-health-checkin.joshuamandel.com/authorize}",
+      "launchBase": "${ANDROID_APP_LINK_BASE:-https://smart-health-checkin.joshuamandel.com/android/authorize}",
       "launchKind": "android-app-link",
       "platform": "android",
       "installUrl": "${ANDROID_RELEASE_URL:-https://github.com/jmandel/smart-health-checkin-demo/releases/latest}",

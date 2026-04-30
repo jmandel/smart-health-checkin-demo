@@ -45,7 +45,7 @@ For local phone testing, use a LAN-reachable origin:
 LOCAL_DEMO_ORIGIN=http://10.0.0.13:3000 bun run demo
 ```
 
-For a hosted demo, terminate TLS / proxy traffic for the selected profile's `serve.verifierOrigin` to the demo server. The Android App Links host `https://android-sample-app.smart-health-checkin.joshuamandel.com` must also serve the built `/.well-known/assetlinks.json` and `/authorize/` fallback path, either from the same build output or an equivalent static deployment.
+For a hosted demo, terminate TLS / proxy traffic for the selected profile's `serve.verifierOrigin` to the demo server. Hosted Android App Links default to Android-specific paths on reachable verifier hosts (`/android/authorize`). If `ANDROID_APP_LINK_BASE` points at a separate host, that host must resolve in DNS and serve the built `/.well-known/assetlinks.json` plus its authorize fallback path.
 
 ---
 
