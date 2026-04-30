@@ -72,9 +72,27 @@
       border-color: #2563eb;
       color: white;
     }
+    .hint {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    details {
+      margin-top: 16px;
+    }
+    summary {
+      color: #64748b;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 650;
+    }
     code {
       display: block;
-      margin-top: 18px;
+      margin-top: 8px;
       padding: 10px;
       border-radius: 8px;
       background: #f1f5f9;
@@ -87,26 +105,32 @@
 <body>
   <main>
     <div class="logo">A</div>
-    <h1>Sample Health Android Demo</h1>
+    <h1>Opening your Android app</h1>
     <p>
-      This link is intended to open the native Android demo app. If it opened in
-      the browser, install the APK from the latest GitHub Release or continue
-      with the web-based Sample Health App.
+      Your phone may leave this browser tab open after launching Sample Health
+      Android Demo. Once sharing is complete in the app, you can close this tab.
     </p>
+    <p class="hint">If the app did not open, use the button below.</p>
     <div class="actions">
-      <a class="primary" href="https://github.com/jmandel/smart-health-checkin-demo/releases/latest">Install APK</a>
+      <a id="openApp" class="primary" href="#">Open app</a>
       <a id="webFallback" href="/source-app/">Use web app</a>
+      <a href="https://github.com/jmandel/smart-health-checkin-demo/releases/latest">Install APK</a>
     </div>
-    <code id="requestInfo"></code>
+    <details>
+      <summary>Request details</summary>
+      <code id="requestInfo"></code>
+    </details>
   </main>
   <script>
     const params = new URLSearchParams(location.search);
+    const intentUrl = `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=${location.protocol.replace(':', '')};package=org.smarthealth.checkin.androiddemo;end`;
     const fallbackBase = '/source-app/';
     const fallback = new URL(fallbackBase, location.origin);
     for (const key of ['client_id', 'request_uri', 'request_uri_method']) {
       const value = params.get(key);
       if (value) fallback.searchParams.set(key, value);
     }
+    document.getElementById('openApp').href = intentUrl;
     document.getElementById('webFallback').href = fallback.toString();
     document.getElementById('requestInfo').textContent = params.toString()
       ? `Pending request: ${params.toString()}`
