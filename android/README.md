@@ -37,13 +37,15 @@ The manifest supports:
 - Legacy HTTPS App Link: `https://smart-health-checkin.exe.xyz/android/authorize?...`
 - Local testing scheme: `smart-health-checkin-sample://authorize?...`
 
-Default HTTPS handling requires a valid `/.well-known/assetlinks.json` on the App Link host. For device-only QA before that is deployed:
+Default HTTPS handling requires a valid `/.well-known/assetlinks.json` on the App Link host. For device-only QA with a debug APK, force-approve the domain on that specific device:
 
 ```bash
-adb shell pm set-app-links --package org.smarthealth.checkin.androiddemo 1 android-sample-app.smart-health-checkin.joshuamandel.com
-adb shell pm get-app-links org.smarthealth.checkin.androiddemo
+adb shell pm set-app-links --package org.smarthealth.checkin.androiddemo 2 android-sample-app.smart-health-checkin.joshuamandel.com
+adb shell pm set-app-links-allowed --user 0 --package org.smarthealth.checkin.androiddemo true
+adb shell pm set-app-links-user-selection --user 0 --package org.smarthealth.checkin.androiddemo true android-sample-app.smart-health-checkin.joshuamandel.com
+adb shell pm get-app-links --user cur org.smarthealth.checkin.androiddemo
 ```
 
-That force approval is local to the device/user. It is not a substitute for domain verification.
+That force approval is local to the device/user. It is not a portable property of the APK and is not a substitute for domain verification.
 
 The public verifier origin and Android App Link host are defined in `../deployments/public-demo.json`. The local defaults are in `../deployments/local.json`.

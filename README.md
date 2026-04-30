@@ -37,7 +37,7 @@ bun run serve
 
 The build step bakes the selected profile into the static browser bundles under `build/smart-health-checkin-demo/`. `bun run serve` serves that directory plus the verifier backend / response endpoint from one Bun server. By default, it reads `build/smart-health-checkin-demo/deployment-config.json`, so a split build/serve keeps the same origins. Setting `DEMO_CONFIG` while serving intentionally overrides that baked config.
 
-Each deployment can also append share-sheet apps with a top-level `extraApps` array. The Android demo app is configured this way, so local builds can launch `smart-health-checkin-sample://authorize` while the public demo can launch the verified Android App Link host. Apps marked with `"platform": "android"` only appear in the picker on Android browsers.
+Each deployment can also append share-sheet apps with a top-level `extraApps` array. These entries are merged into `clientConfig.checkin.apps` at load/build time and stripped from the emitted `deployment-config.json`, so they do not appear twice. The Android demo app is configured this way, so local builds can launch `smart-health-checkin-sample://authorize` while the hosted demo can launch the Android App Link host. Apps marked with `"platform": "android"` only appear in the picker on Android browsers.
 
 For local phone testing, use a LAN-reachable origin:
 

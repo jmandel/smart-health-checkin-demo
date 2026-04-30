@@ -5,12 +5,22 @@ on:
     branches:
       - main
     paths:
-      - 'android/**'
+      - 'android/app/**'
+      - 'android/gradle/**'
+      - 'android/*.gradle'
+      - 'android/gradle.properties'
+      - 'android/gradlew'
+      - 'android/gradlew.bat'
       - 'demo/shared-data/**'
       - '.github/workflows/android-apk.yml'
   pull_request:
     paths:
-      - 'android/**'
+      - 'android/app/**'
+      - 'android/gradle/**'
+      - 'android/*.gradle'
+      - 'android/gradle.properties'
+      - 'android/gradlew'
+      - 'android/gradlew.bat'
       - 'demo/shared-data/**'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
