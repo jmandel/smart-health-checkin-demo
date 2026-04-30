@@ -36,13 +36,14 @@ async function main() {
     console.log('\n=== Step 3: Click Sample Health App ===');
     await page.locator('.card:not(.disabled)').filter({ hasText: 'Sample Health App' }).click();
     await page.waitForURL(/\/source-app\//, { timeout: TIMEOUT });
-    await page.waitForSelector('.request-box', { timeout: TIMEOUT });
+    await page.locator('.technical-details-meta').filter({ hasText: 'signature verified' }).waitFor({ timeout: TIMEOUT });
     console.log('Source app loaded and request verified');
 
-    const sigStatus = await page.locator('.request-detail .value').filter({ hasText: 'Signature verified' }).count();
+    const sigStatus = await page.locator('.technical-details-meta').filter({ hasText: 'signature verified' }).count();
     console.log('Signature verified shown:', sigStatus > 0);
     assert(sigStatus > 0, 'Should show signature verified');
 
+    await page.locator('details.technical-details').evaluate(el => { el.open = true; });
     const clientIdShown = await page.locator('.request-detail .value').filter({ hasText: 'well_known:' }).count();
     assert(clientIdShown > 0, 'Should show well_known: client_id');
 
@@ -59,9 +60,9 @@ async function main() {
     console.log('Success:', successText);
     assert(successText.includes('Registration information received'), 'Should show success');
 
-    const memberId = await page.locator('.insurance-card-value').first().textContent();
-    console.log('Member ID:', memberId);
-    assert(memberId.includes('W123456789'), 'Correct member ID');
+    const receivedCount = await page.locator('.badge-received').count();
+    console.log('Received task count:', receivedCount);
+    assert(receivedCount === 4, 'All requested check-in tasks should be received');
 
     console.log('\n✅ ALL TESTS PASSED');
 

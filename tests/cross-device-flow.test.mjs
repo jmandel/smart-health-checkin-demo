@@ -57,10 +57,10 @@ async function main() {
     await patientPage.locator('.card:not(.disabled)').filter({ hasText: 'Sample Health App' }).click();
     const sourcePage = await sourcePromise;
 
-    await sourcePage.waitForSelector('.request-box', { timeout: TIMEOUT });
+    await sourcePage.locator('.technical-details-meta').filter({ hasText: 'signature verified' }).waitFor({ timeout: TIMEOUT });
     console.log('Source app loaded, request verified');
 
-    const sigVerified = await sourcePage.locator('.request-detail .value').filter({ hasText: 'Signature verified' }).count();
+    const sigVerified = await sourcePage.locator('.technical-details-meta').filter({ hasText: 'signature verified' }).count();
     assert(sigVerified > 0, 'Should show signature verified');
 
     // Step 5: Share data and wait for kiosk to receive it
