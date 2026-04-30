@@ -1,0 +1,143 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "chronic-migraine-followup",
+  "url": "https://smart-health-checkin.example.org/fhir/Questionnaire/chronic-migraine-followup",
+  "version": "2026.04",
+  "name": "ChronicMigraineFollowUp",
+  "title": "Chronic Migraine 3-Month Check-in - Dr. Mandel's Clinic",
+  "status": "active",
+  "experimental": true,
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-04-29",
+  "publisher": "SMART Health Check-in Demo",
+  "description": "Brief patient-reported chronic migraine follow-up for a recurring 3-month visit.",
+  "purpose": "Demonstrates a focused FHIR Questionnaire for longitudinal migraine status, treatment response, medication-use risk, function, and patient goals.",
+  "item": [
+    {
+      "linkId": "intro",
+      "text": "A quick check-in about how your migraines have been since your last visit. Your answers help your care team focus on what has changed, what is working, and what matters most today.",
+      "type": "display"
+    },
+    {
+      "linkId": "three-month-summary",
+      "text": "Since your last migraine follow-up",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "migraine-days-90",
+          "text": "In the past 90 days, about how many days had migraine symptoms?",
+          "type": "integer",
+          "required": true,
+          "code": [
+            {
+              "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+              "code": "migraine-days-90",
+              "display": "Migraine days in last 90 days"
+            }
+          ]
+        },
+        {
+          "linkId": "moderate-severe-days-90",
+          "text": "In the past 90 days, about how many days were moderate or severe?",
+          "type": "integer",
+          "required": true,
+          "code": [
+            {
+              "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+              "code": "moderate-severe-days-90",
+              "display": "Moderate or severe migraine days in last 90 days"
+            }
+          ]
+        },
+        {
+          "linkId": "acute-med-days-30",
+          "text": "In the past 30 days, on how many days did you take acute headache medicine?",
+          "type": "integer",
+          "required": true,
+          "code": [
+            {
+              "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+              "code": "acute-med-days-30",
+              "display": "Acute headache medication days in last 30 days"
+            }
+          ]
+        },
+        {
+          "linkId": "medication-overuse-note",
+          "text": "Medication-use pattern may be worth reviewing when acute medicines are used on 10 or more days per month.",
+          "type": "display",
+          "enableWhen": [
+            {
+              "question": "acute-med-days-30",
+              "operator": ">",
+              "answerInteger": 9
+            }
+          ]
+        },
+        {
+          "linkId": "overall-change",
+          "text": "Compared with your last visit, how are your migraines overall?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+                "code": "much-better",
+                "display": "Much better"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+                "code": "somewhat-better",
+                "display": "Somewhat better"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+                "code": "about-same",
+                "display": "About the same"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+                "code": "somewhat-worse",
+                "display": "Somewhat worse"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+                "code": "much-worse",
+                "display": "Much worse"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "visit-priority",
+          "text": "What is the main thing you want your migraine clinician to know or address today?",
+          "type": "text",
+          "required": true,
+          "code": [
+            {
+              "system": "https://smart-health-checkin.example.org/fhir/CodeSystem/migraine-checkin",
+              "code": "visit-priority",
+              "display": "Patient priority for migraine follow-up"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "69730-0",
+              "display": "Instructions"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

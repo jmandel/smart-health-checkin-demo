@@ -5,11 +5,16 @@
 
 import { join, resolve } from 'path';
 import { createRelayHandler } from './relay/handler.ts';
+import { loadDeploymentConfig } from './deployment-config.ts';
 
-const PORT = parseInt(process.env.PORT || '3003', 10);
-const VERIFIER_BASE = process.env.VERIFIER_BASE || `http://localhost:${PORT}`;
 const STATIC_DIR = process.env.STATIC_DIR || '';
-const CANONICAL_ORIGIN = process.env.CANONICAL_ORIGIN || '';
+const deployment = loadDeploymentConfig(join(import.meta.dir, '..'), {
+  builtConfigPath: STATIC_DIR ? join(resolve(STATIC_DIR), 'deployment-config.json') : undefined,
+});
+const DEFAULT_PORT = deployment.serve?.port || 3003;
+const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
+const VERIFIER_BASE = process.env.VERIFIER_BASE || deployment.serve?.verifierOrigin || `http://localhost:${PORT}`;
+const CANONICAL_ORIGIN = process.env.CANONICAL_ORIGIN || deployment.serve?.canonicalOrigin || '';
 
 // --- Staff session management (demo only) ---
 
@@ -30,7 +35,7 @@ function getSessionFromCookie(req: Request): string | null {
 // --- Relay with session binding ---
 
 // Allowed origins for same-device redirect_uri (supports cross-origin frontends like GH Pages)
-const ALLOWED_ORIGINS = (process.env.ALLOWED_SAME_DEVICE_ORIGINS || '').split(',').filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_SAME_DEVICE_ORIGINS || deployment.serve?.allowedSameDeviceOrigins?.join(',') || '').split(',').filter(Boolean);
 
 const { handler: relay } = await createRelayHandler({
   wellKnownClientUrl: VERIFIER_BASE,
@@ -137,6 +142,7 @@ const server = Bun.serve({
 
 console.log(`Demo server listening on ${server.url}`);
 console.log(`  VERIFIER_BASE: ${VERIFIER_BASE}`);
+console.log(`  Demo config: ${deployment.name}`);
 if (STATIC_DIR) console.log(`  Static files: ${STATIC_DIR}`);
 
 function shutdown() {

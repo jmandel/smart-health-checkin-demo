@@ -10,6 +10,10 @@ interface AppConfig {
   color: string;
   logo: string;
   launchBase: string;
+  launchKind?: 'web' | 'android-app-link' | 'custom-scheme';
+  platform?: 'android' | 'any';
+  installUrl?: string;
+  fallbackUrl?: string;
 }
 
 interface BootstrapRequest {
@@ -17,6 +21,28 @@ interface BootstrapRequest {
   client_id: string;
   request_uri: string;
   request_uri_method?: string;
+}
+
+function buildLaunchUrl(app: AppConfig, req: BootstrapRequest): string {
+  const appParams = new URLSearchParams();
+  appParams.set('client_id', req.client_id);
+  appParams.set('request_uri', req.request_uri);
+  if (req.request_uri_method) appParams.set('request_uri_method', req.request_uri_method);
+
+  const separator = app.launchBase.includes('?') ? '&' : '?';
+  return `${app.launchBase}${separator}${appParams.toString()}`;
+}
+
+function isNativeLaunch(app: AppConfig): boolean {
+  return app.launchKind === 'android-app-link' || app.launchKind === 'custom-scheme';
+}
+
+function isAndroidDevice(): boolean {
+  return /\bAndroid\b/i.test(navigator.userAgent);
+}
+
+function shouldShowApp(app: AppConfig, androidDevice: boolean): boolean {
+  return app.platform !== 'android' || androidDevice;
 }
 
 function parseRequest(): BootstrapRequest | { error: string } {
@@ -47,15 +73,13 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
     if (disabled) return;
 
     console.log('[Check-in] Launching app:', app.id);
-
-    // Forward only bootstrap params
-    const appParams = new URLSearchParams();
-    appParams.set('client_id', req.client_id);
-    appParams.set('request_uri', req.request_uri);
-    if (req.request_uri_method) appParams.set('request_uri_method', req.request_uri_method);
-
-    const launchUrl = app.launchBase + '?' + appParams.toString();
+    const launchUrl = buildLaunchUrl(app, req);
     console.log('[Check-in] Launch URL:', launchUrl);
+
+    if (isNativeLaunch(app)) {
+      location.href = launchUrl;
+      return;
+    }
 
     const w = window.open(launchUrl, '_blank');
     if (!w) {
@@ -66,9 +90,11 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
     }
   };
 
+  const nativeLaunch = isNativeLaunch(app);
+
   return (
     <div
-      className={`card ${disabled ? 'disabled' : ''}`}
+      className={`card ${disabled ? 'disabled' : ''} ${nativeLaunch ? 'native-card' : ''}`}
       style={{ '--brand-color': app.color } as React.CSSProperties}
       onClick={handleClick}
     >
@@ -77,6 +103,14 @@ function AppCard({ app, req, disabled }: { app: AppConfig; req: BootstrapRequest
       <div className="card-desc">
         {disabled ? '(Example - Click Sample Health App above)' : (app.description || 'Health data source')}
       </div>
+      {nativeLaunch && !disabled && (
+        <div className="card-actions" onClick={e => e.stopPropagation()}>
+          <button type="button" className="card-action primary" onClick={handleClick}>Open app</button>
+          {app.installUrl && (
+            <a className="card-action" href={app.installUrl} target="_blank" rel="noreferrer">Install APK</a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -100,9 +134,11 @@ export default function App() {
     );
   }
 
-  const apps = config.checkin.apps;
+  const apps = config.checkin.apps || [];
+  const androidDevice = isAndroidDevice();
+  const visibleApps = apps.filter((app: AppConfig) => shouldShowApp(app, androidDevice));
 
-  if (!apps || apps.length === 0) {
+  if (!visibleApps || visibleApps.length === 0) {
     return (
       <>
         <header>
@@ -124,7 +160,7 @@ export default function App() {
     'healthplan': { title: 'Health Plans', apps: [] }
   };
 
-  apps.forEach((app: AppConfig) => {
+  visibleApps.forEach((app: AppConfig) => {
     const category = app.category || 'phr';
     if (categories[category]) {
       categories[category].apps.push(app);
@@ -152,7 +188,7 @@ export default function App() {
                     key={app.id}
                     app={app}
                     req={parsed}
-                    disabled={app.id !== 'sample-health'}
+                    disabled={app.id !== 'sample-health' && app.id !== 'sample-health-android-demo'}
                   />
                 ))}
               </div>

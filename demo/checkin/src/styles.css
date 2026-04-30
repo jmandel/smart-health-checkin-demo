@@ -133,6 +133,43 @@ main {
   text-align: center;
 }
 
+.native-card {
+  border-style: dashed;
+}
+
+.card-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.card-action {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.card-action.primary {
+  border-color: var(--brand-color);
+  background: var(--brand-color);
+  color: white;
+}
+
+.card-action:hover {
+  border-color: var(--brand-color);
+}
+
 footer {
   padding: 24px 20px;
   text-align: center;

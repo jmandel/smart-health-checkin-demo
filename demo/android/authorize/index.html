@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sample Health Android Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    main {
+      width: min(100%, 520px);
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 28px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: #2563eb;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+    p {
+      margin: 0 0 18px;
+      color: #475569;
+      line-height: 1.5;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    a {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-weight: 650;
+      font-size: 14px;
+      text-decoration: none;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+      background: white;
+    }
+    a.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+    }
+    code {
+      display: block;
+      margin-top: 18px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo">A</div>
+    <h1>Sample Health Android Demo</h1>
+    <p>
+      This link is intended to open the native Android demo app. If it opened in
+      the browser, install the APK from the latest GitHub Release or continue
+      with the web-based Sample Health App.
+    </p>
+    <div class="actions">
+      <a class="primary" href="https://github.com/jmandel/smart-health-checkin-demo/releases/latest">Install APK</a>
+      <a id="webFallback" href="/source-app/">Use web app</a>
+    </div>
+    <code id="requestInfo"></code>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const fallbackBase = location.hostname === 'android-sample-app.smart-health-checkin.joshuamandel.com'
+      ? 'https://joshuamandel.com/smart-health-checkin-demo/source-app/'
+      : '/source-app/';
+    const fallback = new URL(fallbackBase, location.origin);
+    for (const key of ['client_id', 'request_uri', 'request_uri_method']) {
+      const value = params.get(key);
+      if (value) fallback.searchParams.set(key, value);
+    }
+    document.getElementById('webFallback').href = fallback.toString();
+    document.getElementById('requestInfo').textContent = params.toString()
+      ? `Pending request: ${params.toString()}`
+      : 'No SMART Health Check-in request parameters were provided.';
+  </script>
+</body>
+</html>

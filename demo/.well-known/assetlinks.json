@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.smarthealth.checkin.androiddemo",
+      "sha256_cert_fingerprints": [
+        "0C:E9:D0:3F:C0:29:17:D3:F5:A5:26:02:CE:57:0E:10:3D:C7:E7:B3:9F:DB:A4:DF:21:86:12:E1:46:3C:82:FC"
+      ]
+    }
+  }
+]

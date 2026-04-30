@@ -18,7 +18,9 @@
     "src"
   ],
   "scripts": {
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "serve": "STATIC_DIR=build/smart-health-checkin-demo bun demo/serve-demo.ts",
+    "demo": "bun run build && bun run serve"
   },
   "repository": {
     "type": "git",

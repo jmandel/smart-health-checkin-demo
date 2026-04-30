@@ -626,8 +626,8 @@ const result = await request(dcqlQuery, {
       <tr><td style="padding:8px;font-weight:600">Relay / Verifier</td><td style="padding:8px">Backend. Serves <code>.well-known</code>, signs Request Objects, stores encrypted responses, enforces session binding for cross-device.</td></tr>
     </table>
   </div>
-  <p>Everything runs on a single port via <code>bun demo/serve-demo.ts</code>. For local development,
-    <code>./start-local.sh</code> starts multi-origin servers to simulate real cross-origin security.</p>
+  <p>Everything runs on a single port via <code>bun run demo</code>. The selected JSON profile in
+    <code>deployments/</code> controls the hosted URLs and share-sheet apps.</p>
 </section>
 
 </div>

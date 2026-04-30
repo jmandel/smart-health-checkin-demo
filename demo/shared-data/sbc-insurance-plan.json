@@ -1,0 +1,410 @@
+{
+  "resourceType": "InsurancePlan",
+  "id": "sbc-plan-1",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-insurance-plan"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-metadata",
+      "extension": [
+        {
+          "url": "sbcVersionDate",
+          "valueDate": "2026-01-01"
+        },
+        {
+          "url": "minimumEssentialCoverage",
+          "valueBoolean": true
+        },
+        {
+          "url": "minimumValue",
+          "valueBoolean": true
+        }
+      ]
+    }
+  ],
+  "identifier": [
+    {
+      "system": "https://www.cms.gov/CCIIO/Resources/Data-Resources/hios",
+      "value": "12345CA0010001-01"
+    }
+  ],
+  "status": "active",
+  "name": "Aetna PPO Value Plan",
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-12-31"
+  },
+  "ownedBy": {
+    "display": "Aetna"
+  },
+  "administeredBy": {
+    "display": "Aetna"
+  },
+  "contact": [
+    {
+      "purpose": {
+        "text": "Member Services"
+      },
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "1-800-123-4567"
+        },
+        {
+          "system": "url",
+          "value": "https://www.aetna.com"
+        }
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "HIP",
+            "display": "health insurance plan policy"
+          }
+        ]
+      },
+      "benefit": [
+        {
+          "type": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "primary-care-visit",
+                "display": "Primary Care Visit"
+              }
+            ],
+            "text": "Primary Care Visit"
+          },
+          "requirement": "No referral required"
+        },
+        {
+          "type": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "specialist-visit",
+                "display": "Specialist Visit"
+              }
+            ],
+            "text": "Specialist Visit"
+          },
+          "requirement": "Referral may be required for some services"
+        },
+        {
+          "type": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "emergency-room-care",
+                "display": "Emergency Room Care"
+              }
+            ],
+            "text": "Emergency Room Care"
+          },
+          "requirement": "Copay waived if admitted"
+        }
+      ]
+    }
+  ],
+  "plan": [
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-plan-type",
+            "code": "PPO",
+            "display": "Preferred Provider Organization (PPO)"
+          }
+        ],
+        "text": "Preferred Provider Organization (PPO)"
+      },
+      "generalCost": [
+        {
+          "type": {
+            "text": "Individual deductible"
+          },
+          "cost": {
+            "value": 1500,
+            "currency": "USD"
+          },
+          "comment": "In-network"
+        },
+        {
+          "type": {
+            "text": "Family deductible"
+          },
+          "cost": {
+            "value": 3000,
+            "currency": "USD"
+          },
+          "comment": "In-network"
+        },
+        {
+          "type": {
+            "text": "Individual out-of-pocket maximum"
+          },
+          "cost": {
+            "value": 6000,
+            "currency": "USD"
+          },
+          "comment": "In-network"
+        },
+        {
+          "type": {
+            "text": "Family out-of-pocket maximum"
+          },
+          "cost": {
+            "value": 12000,
+            "currency": "USD"
+          },
+          "comment": "In-network"
+        }
+      ],
+      "specificCost": [
+        {
+          "category": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "preventive-care",
+                "display": "Preventive Care/Screening/Immunization"
+              }
+            ],
+            "text": "Preventive Care/Screening/Immunization"
+          },
+          "benefit": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                    "code": "preventive-care",
+                    "display": "Preventive Care/Screening/Immunization"
+                  }
+                ],
+                "text": "Preventive Care/Screening/Immunization"
+              },
+              "cost": [
+                {
+                  "type": {
+                    "text": "No charge"
+                  },
+                  "applicability": {
+                    "coding": [
+                      {
+                        "system": "http://terminology.hl7.org/CodeSystem/applicability",
+                        "code": "in-network",
+                        "display": "In Network"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "value": 0,
+                    "unit": "USD"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "primary-care-visit",
+                "display": "Primary Care Visit"
+              }
+            ],
+            "text": "Primary Care Visit"
+          },
+          "benefit": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                    "code": "primary-care-visit",
+                    "display": "Primary Care Visit"
+                  }
+                ],
+                "text": "Primary Care Visit"
+              },
+              "cost": [
+                {
+                  "type": {
+                    "text": "Copayment"
+                  },
+                  "applicability": {
+                    "coding": [
+                      {
+                        "system": "http://terminology.hl7.org/CodeSystem/applicability",
+                        "code": "in-network",
+                        "display": "In Network"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "value": 25,
+                    "unit": "USD"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "specialist-visit",
+                "display": "Specialist Visit"
+              }
+            ],
+            "text": "Specialist Visit"
+          },
+          "benefit": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                    "code": "specialist-visit",
+                    "display": "Specialist Visit"
+                  }
+                ],
+                "text": "Specialist Visit"
+              },
+              "cost": [
+                {
+                  "type": {
+                    "text": "Copayment"
+                  },
+                  "applicability": {
+                    "coding": [
+                      {
+                        "system": "http://terminology.hl7.org/CodeSystem/applicability",
+                        "code": "in-network",
+                        "display": "In Network"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "value": 50,
+                    "unit": "USD"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "emergency-room-care",
+                "display": "Emergency Room Care"
+              }
+            ],
+            "text": "Emergency Room Care"
+          },
+          "benefit": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                    "code": "emergency-room-care",
+                    "display": "Emergency Room Care"
+                  }
+                ],
+                "text": "Emergency Room Care"
+              },
+              "cost": [
+                {
+                  "type": {
+                    "text": "Copayment"
+                  },
+                  "applicability": {
+                    "coding": [
+                      {
+                        "system": "http://terminology.hl7.org/CodeSystem/applicability",
+                        "code": "in-network",
+                        "display": "In Network"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "value": 350,
+                    "unit": "USD"
+                  },
+                  "qualifiers": [
+                    {
+                      "text": "Waived if admitted"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                "code": "generic-drugs",
+                "display": "Generic Drugs"
+              }
+            ],
+            "text": "Generic Drugs"
+          },
+          "benefit": [
+            {
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/us/insurance-card/CodeSystem/sbc-benefit-category",
+                    "code": "generic-drugs",
+                    "display": "Generic Drugs"
+                  }
+                ],
+                "text": "Generic Drugs"
+              },
+              "cost": [
+                {
+                  "type": {
+                    "text": "Copayment"
+                  },
+                  "applicability": {
+                    "coding": [
+                      {
+                        "system": "http://terminology.hl7.org/CodeSystem/applicability",
+                        "code": "in-network",
+                        "display": "In Network"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "value": 10,
+                    "unit": "USD"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

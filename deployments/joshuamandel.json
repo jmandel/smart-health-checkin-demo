@@ -1,0 +1,72 @@
+{
+  "name": "joshuamandel",
+  "serve": {
+    "port": 3000,
+    "verifierOrigin": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}",
+    "canonicalOrigin": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}",
+    "allowedSameDeviceOrigins": ["*"]
+  },
+  "clientConfig": {
+    "mode": "single-origin",
+    "portal": {
+      "url": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/portal",
+      "walletUrl": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/checkin"
+    },
+    "kiosk": {
+      "url": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/kiosk",
+      "walletUrl": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/checkin"
+    },
+    "wellKnownClientUrl": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}",
+    "checkin": {
+      "url": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/checkin",
+      "apps": [
+        {
+          "id": "premera",
+          "name": "Premera Blue Cross",
+          "description": "Health insurance member portal",
+          "category": "healthplan",
+          "color": "#0099D8",
+          "logo": "P",
+          "launchBase": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/source-app"
+        },
+        {
+          "id": "sample-health",
+          "name": "Sample Health App",
+          "description": "Connected health data platform",
+          "category": "phr",
+          "color": "#0d9488",
+          "accentColor": "#84cc16",
+          "logo": "S",
+          "logoStyle": "bold",
+          "launchBase": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/source-app"
+        },
+        {
+          "id": "bwell",
+          "name": "b.well Connected Health",
+          "description": "AI-powered platform for connected care",
+          "category": "phr",
+          "color": "#2a2f74",
+          "logo": "b",
+          "launchBase": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/source-app"
+        }
+      ]
+    }
+  },
+  "extraApps": [
+    {
+      "id": "sample-health-android-demo",
+      "name": "Sample Health Android Demo",
+      "description": "Native Android app sharing the same demo health data",
+      "category": "phr",
+      "color": "#2563eb",
+      "accentColor": "#22c55e",
+      "logo": "A",
+      "logoStyle": "bold",
+      "launchBase": "${ANDROID_APP_LINK_BASE:-https://android-sample-app.smart-health-checkin.joshuamandel.com/authorize}",
+      "launchKind": "android-app-link",
+      "platform": "android",
+      "installUrl": "${ANDROID_RELEASE_URL:-https://github.com/jmandel/smart-health-checkin-demo/releases/latest}",
+      "fallbackUrl": "${JOSHUAMANDEL_DEMO_ORIGIN:-https://smart-health-checkin.joshuamandel.com}/source-app"
+    }
+  ]
+}

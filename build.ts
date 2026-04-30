@@ -9,11 +9,18 @@
 
 import { mkdirSync, existsSync, cpSync, rmSync } from 'fs';
 import { join } from 'path';
+import { loadDeploymentConfig } from './demo/deployment-config.ts';
 
 const ROOT = import.meta.dir;
 const DIST = join(ROOT, 'dist');
 const SRC = join(ROOT, 'src', 'smart-health-checkin.ts');
 const BUILD_DIR = join(ROOT, 'build', 'smart-health-checkin-demo');
+const deployment = loadDeploymentConfig(ROOT);
+const demoBuildDefine = {
+  __SMART_HEALTH_CHECKIN_DEMO_CONFIG__: JSON.stringify(deployment.clientConfig),
+};
+
+console.log(`Using demo config: ${deployment.name}`);
 
 // Ensure dist directory exists
 if (!existsSync(DIST)) {
@@ -116,6 +123,7 @@ for (const app of DEMO_APPS) {
     outdir,
     target: 'browser',
     minify: true,
+    define: demoBuildDefine,
   });
 
   if (result.success) {
@@ -129,13 +137,16 @@ for (const app of DEMO_APPS) {
 // With --gh-pages flag, overwrite with a redirect for GitHub Pages static hosting.
 const ghPages = process.argv.includes('--gh-pages');
 if (ghPages) {
+  const redirectOrigin = deployment.serve?.verifierOrigin
+    || (deployment.clientConfig as { wellKnownClientUrl?: string }).wellKnownClientUrl
+    || 'https://smart-health-checkin.example';
   const redirectHtml = `<!doctype html>
 <html><head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0;url=https://smart-health-checkin.exe.xyz/">
+<meta http-equiv="refresh" content="0;url=${redirectOrigin}/">
 <title>Redirecting...</title>
 </head><body>
-<p>Redirecting to <a href="https://smart-health-checkin.exe.xyz/">smart-health-checkin.exe.xyz</a>...</p>
+<p>Redirecting to <a href="${redirectOrigin}/">${redirectOrigin}</a>...</p>
 </body></html>`;
   await Bun.write(join(BUILD_DIR, 'index.html'), redirectHtml);
   console.log('  ✓ index.html (redirect to exe.xyz)');
@@ -156,6 +167,29 @@ if (existsSync(explainerSrc)) {
   console.log('  ✓ protocol/ (explainer)');
 }
 
+// Android App Link browser fallback page
+const androidFallbackSrc = join(DEMO_DIR, 'android');
+if (existsSync(androidFallbackSrc)) {
+  cpSync(androidFallbackSrc, join(BUILD_DIR, 'android'), { recursive: true });
+  console.log('  ✓ android/ (Android app fallback)');
+
+  const androidAuthorizeSrc = join(androidFallbackSrc, 'authorize');
+  if (existsSync(androidAuthorizeSrc)) {
+    cpSync(androidAuthorizeSrc, join(BUILD_DIR, 'authorize'), { recursive: true });
+    console.log('  ✓ authorize/ (dedicated Android App Link fallback)');
+  }
+}
+
+// Android App Links asset statements
+const wellKnownSrc = join(DEMO_DIR, '.well-known');
+if (existsSync(wellKnownSrc)) {
+  cpSync(wellKnownSrc, join(BUILD_DIR, '.well-known'), { recursive: true });
+  console.log('  ✓ .well-known/ (Android App Links)');
+}
+
+await Bun.write(join(BUILD_DIR, 'deployment-config.json'), JSON.stringify(deployment, null, 2));
+console.log('  ✓ deployment-config.json');
+
 // - Library dist files (for CDN-style access)
 cpSync(DIST, join(BUILD_DIR, 'dist'), { recursive: true });
 console.log('  ✓ dist/ (library files)');
@@ -172,6 +206,7 @@ if (existsSync(externalHtml)) {
     outdir: EXTERNAL_PORTAL_OUT,
     target: 'browser',
     minify: true,
+    define: demoBuildDefine,
   });
   if (epResult.success) {
     console.log('  ✓ external-portal/ (example)');
@@ -182,4 +217,4 @@ if (existsSync(externalHtml)) {
 
 console.log('\nBuild complete!');
 console.log(`\nStatic site ready at: build/smart-health-checkin-demo/`);
-console.log('Run ./start-local.sh to test locally');
+console.log('Run bun run serve to serve the built demo');

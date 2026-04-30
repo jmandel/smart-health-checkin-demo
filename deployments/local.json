@@ -1,0 +1,72 @@
+{
+  "name": "local",
+  "serve": {
+    "port": 3000,
+    "verifierOrigin": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}",
+    "canonicalOrigin": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}",
+    "allowedSameDeviceOrigins": ["*"]
+  },
+  "clientConfig": {
+    "mode": "single-origin",
+    "portal": {
+      "url": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/portal",
+      "walletUrl": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/checkin"
+    },
+    "kiosk": {
+      "url": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/kiosk",
+      "walletUrl": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/checkin"
+    },
+    "wellKnownClientUrl": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}",
+    "checkin": {
+      "url": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/checkin",
+      "apps": [
+        {
+          "id": "premera",
+          "name": "Premera Blue Cross",
+          "description": "Health insurance member portal",
+          "category": "healthplan",
+          "color": "#0099D8",
+          "logo": "P",
+          "launchBase": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/source-app"
+        },
+        {
+          "id": "sample-health",
+          "name": "Sample Health App",
+          "description": "Connected health data platform",
+          "category": "phr",
+          "color": "#0d9488",
+          "accentColor": "#84cc16",
+          "logo": "S",
+          "logoStyle": "bold",
+          "launchBase": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/source-app"
+        },
+        {
+          "id": "bwell",
+          "name": "b.well Connected Health",
+          "description": "AI-powered platform for connected care",
+          "category": "phr",
+          "color": "#2a2f74",
+          "logo": "b",
+          "launchBase": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/source-app"
+        }
+      ]
+    }
+  },
+  "extraApps": [
+    {
+      "id": "sample-health-android-demo",
+      "name": "Sample Health Android Demo",
+      "description": "Native Android app sharing the same demo health data",
+      "category": "phr",
+      "color": "#2563eb",
+      "accentColor": "#22c55e",
+      "logo": "A",
+      "logoStyle": "bold",
+      "launchBase": "smart-health-checkin-sample://authorize",
+      "launchKind": "custom-scheme",
+      "platform": "android",
+      "installUrl": "${ANDROID_RELEASE_URL:-https://github.com/jmandel/smart-health-checkin-demo/releases/latest}",
+      "fallbackUrl": "${LOCAL_DEMO_ORIGIN:-http://localhost:3000}/source-app"
+    }
+  ]
+}

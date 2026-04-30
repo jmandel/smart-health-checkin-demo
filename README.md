@@ -11,6 +11,41 @@ This repository contains:
   - cross-device front-desk kiosk
 - a demo verifier backend / response endpoint that serves metadata and signed Request Objects and stores opaque encrypted responses
 
+## Demo Deployments
+
+Demo host choices are explicit JSON profiles under `deployments/`. `DEMO_CONFIG` selects one JSON file:
+
+- `DEMO_CONFIG=local` loads `deployments/local.json`; this is the default.
+- `DEMO_CONFIG=public-demo` loads `deployments/public-demo.json`.
+- `DEMO_CONFIG=joshuamandel` loads `deployments/joshuamandel.json`.
+- `DEMO_CONFIG=./path/to/anything.json` loads a specific file.
+
+Build and serve in one command:
+
+```bash
+bun run demo
+DEMO_CONFIG=public-demo bun run demo
+DEMO_CONFIG=joshuamandel bun run demo
+```
+
+Or split build and serve:
+
+```bash
+bun run build
+bun run serve
+```
+
+The build step bakes the selected profile into the static browser bundles under `build/smart-health-checkin-demo/`. `bun run serve` serves that directory plus the verifier backend / response endpoint from one Bun server. By default, it reads `build/smart-health-checkin-demo/deployment-config.json`, so a split build/serve keeps the same origins. Setting `DEMO_CONFIG` while serving intentionally overrides that baked config.
+
+Each deployment can also append share-sheet apps with a top-level `extraApps` array. The Android demo app is configured this way, so local builds can launch `smart-health-checkin-sample://authorize` while the public demo can launch the verified Android App Link host. Apps marked with `"platform": "android"` only appear in the picker on Android browsers.
+
+For local phone testing, use a LAN-reachable origin:
+
+```bash
+LOCAL_DEMO_ORIGIN=http://10.0.0.13:3000 bun run demo
+```
+
+For a hosted demo, terminate TLS / proxy traffic for the selected profile's `serve.verifierOrigin` to the demo server. The Android App Links host `https://android-sample-app.smart-health-checkin.joshuamandel.com` must also serve the built `/.well-known/assetlinks.json` and `/authorize/` fallback path, either from the same build output or an equivalent static deployment.
 
 ---
 
@@ -380,14 +415,25 @@ This repository contains a fully functional reference implementation of the prot
 
 ### 4.2 Running the Demo
 
-To simulate the cross-origin security model locally:
+For the standard local demo, build and serve in one step:
 
 ```bash
-./start-local.sh
+bun run demo
 ```
 
-This starts all necessary servers on different ports (Portal + Verifier backend, Check-in picker, and Sample Health App).
-Visit **http://requester.localhost:3000** to reach the landing page, then choose:
+This builds with `deployments/local.json` and starts the demo at **http://localhost:3000**. For phone testing on the same network:
+
+```bash
+LOCAL_DEMO_ORIGIN=http://10.0.0.13:3000 bun run demo
+```
+
+If you already ran `bun run build`, serve the existing build directly:
+
+```bash
+bun run serve
+```
+
+Then choose:
 
 *   **Patient Portal** for the same-device flow
 *   **Front Desk Kiosk** for the cross-device flow

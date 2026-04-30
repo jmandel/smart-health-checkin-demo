@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { importJWK, CompactEncrypt, jwtVerify, createLocalJWKSet } from 'jose';
 import { carinCoverageExample, sbcInsurancePlanExample } from '../../shared/carinInsuranceExamples';
 import { clinicalHistoryBundleExample } from '../../shared/clinicalHistoryExamples';
+import migraineAutofillValues from '../../shared-data/migraine-autofill-values.json';
 import './styles.css';
 
 // ============================================================================
@@ -169,13 +170,7 @@ type CoverageExtension = {
 // Questionnaire helpers
 // ============================================================================
 
-const MIGRAINE_AUTOFILL_VALUES: QuestionnaireValues = {
-  'migraine-days-90': '24',
-  'moderate-severe-days-90': '9',
-  'acute-med-days-30': '12',
-  'overall-change': 'somewhat-better',
-  'visit-priority': 'Fewer missed workdays and an acute plan that reliably works within two hours.'
-};
+const MIGRAINE_AUTOFILL_VALUES = migraineAutofillValues as QuestionnaireValues;
 
 function answerOptionKey(option: QuestionnaireAnswerOption): string {
   if (option.valueCoding) return option.valueCoding.code || option.valueCoding.display || JSON.stringify(option.valueCoding);
