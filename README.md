@@ -162,7 +162,12 @@ The actual request parameters SHALL be conveyed in a signed Request Object fetch
 *   `aud`: Required. SHALL be `https://self-issued.me/v2` to comply with the OpenID4VP static-discovery Request Object requirements.
 *   `nonce`: Required. A cryptographically random string.
 *   `state`: Required. SHALL be an unguessable value with at least 128 bits of entropy.
-*   `dcql_query`: Required. A DCQL query object containing one `smart_health_checkin` credential query whose `meta.request` is the SMART clinical request object (defined in Section 2).
+*   `dcql_query`: Required. A DCQL query object containing exactly one Credential Query:
+    *   `id`: SHALL be `smart-checkin`.
+    *   `format`: SHALL be `smart_health_checkin`.
+    *   `meta.request`: SHALL be the SMART clinical request object defined in Section 2.
+
+The signed Request Object SHALL NOT include `redirect_uri` for this `direct_post.jwt` profile. Same-device continuation is represented by the response endpoint returning a continuation `redirect_uri` after the Wallet POSTs the encrypted response.
 
 **Example Signed Request Object Payload:**
 ```json
@@ -188,7 +193,32 @@ The actual request parameters SHALL be conveyed in a signed Request Object fetch
             "id": "checkin-request-123",
             "purpose": "Clinic check-in",
             "fhirVersions": ["4.0.1"],
-            "items": []
+            "items": [
+              {
+                "id": "coverage",
+                "title": "Insurance card",
+                "summary": "Member coverage and payer details.",
+                "required": false,
+                "content": {
+                  "kind": "selection.fhir",
+                  "profiles": [
+                    "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"
+                  ]
+                },
+                "accept": ["application/fhir+json"]
+              },
+              {
+                "id": "intake",
+                "title": "Migraine follow-up",
+                "summary": "Migraine follow-up form.",
+                "required": false,
+                "content": {
+                  "kind": "form.fhir",
+                  "questionnaireCanonical": "https://smart-health-checkin.example.org/fhir/Questionnaire/chronic-migraine-followup"
+                },
+                "accept": ["application/fhir+json"]
+              }
+            ]
           }
         }
       }
@@ -219,10 +249,56 @@ Wallet processing rules for this profile:
 3. Verify the Request Object signature using keys from the discovered `jwks_uri`.
 4. Use only the parameters from the signed Request Object for security-sensitive processing.
 5. Reject the request if `client_id` does not match the metadata, or other required values are missing.
+6. Treat `dcql_query.credentials[0].meta.request` as the authoritative SMART clinical request for this transaction.
+
+For clarity, these fields are not part of the SMART clinical request and are not nested under `meta.request`: `client_id`, `response_uri`, `state`, `nonce`, `client_metadata`, relay transaction ids, response codes, redirect/completion hints, and requester display metadata.
 
 ### 1.5 Authorization Response
 
-The Wallet processes the request, gathers the user's data, and builds a standard JSON response object containing `vp_token` and `state`.
+The Wallet processes the request, gathers the user's data, and builds a standard JSON response object containing `vp_token` and `state`. Because this profile uses DCQL, `vp_token` SHALL be a JSON object keyed by DCQL Credential Query `id`. This profile always uses the single Credential Query id `smart-checkin`, so the response has one key: `vp_token["smart-checkin"]`.
+
+The value of `vp_token["smart-checkin"]` SHALL be an array of Presentations, as required by OID4VP/DCQL. Because the SMART Health Check-in response is a single domain-level Presentation, this array SHALL contain exactly one object: the SMART clinical response.
+
+The response SHALL NOT include `presentation_submission`; that field belongs to Presentation Exchange flows. DCQL responses are correlated by the `vp_token` object keys.
+
+**Plaintext Authorization Response before JWE encryption:**
+```json
+{
+  "state": "req_abc123xyz",
+  "vp_token": {
+    "smart-checkin": [
+      {
+        "type": "smart-health-checkin-response",
+        "version": "1",
+        "requestId": "checkin-request-123",
+        "artifacts": [
+          {
+            "id": "artifact-coverage",
+            "mediaType": "application/fhir+json",
+            "fhirVersion": "4.0.1",
+            "fulfills": ["coverage"],
+            "value": {
+              "resourceType": "Coverage",
+              "id": "cov-123",
+              "status": "active"
+            }
+          }
+        ],
+        "requestStatus": [
+          {
+            "item": "coverage",
+            "status": "fulfilled"
+          },
+          {
+            "item": "intake",
+            "status": "declined"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 Because `direct_post.jwt` is requested, the Wallet SHALL encrypt this JSON payload into a JSON Web Encryption (JWE) string using the Ephemeral public key provided in the signed Request Object's `client_metadata.jwks`.
 
@@ -264,9 +340,27 @@ After retrieval, the frontend decrypts the JWE, validates `state`, validates the
 
 ## 2. SMART Clinical Payload in OID4VP
 
-This section defines the data profile carried by OID4VP. The OID4VP shell carries one custom DCQL credential query with `format: "smart_health_checkin"`. The clinical request itself is the transport-neutral SMART Health Check-in request object under `meta.request`.
+This section defines the data profile carried by OID4VP. The OID4VP shell carries exactly one custom DCQL Credential Query with `id: "smart-checkin"` and `format: "smart_health_checkin"`. The clinical request itself is the transport-neutral SMART Health Check-in request object under `meta.request`.
 
 The SMART request body SHALL NOT carry requester identity, verifier metadata, redirect/completion behavior, nonces, encryption details, handoff handles, or relay URLs. Those are OID4VP/OAuth envelope concerns.
+
+Clinical granularity belongs inside the SMART payload, not the DCQL shell. Implementations SHALL NOT create one DCQL Credential Query per clinical item. Instead:
+
+- Requested clinical units are `meta.request.items[]`.
+- Returned clinical artifacts identify fulfilled items through `artifacts[].fulfills[]`.
+- Item-level accounting is reported through `requestStatus[]`.
+
+**Wire contract summary:**
+
+- Request Object: exactly one DCQL Credential Query, `credentials[0].id === "smart-checkin"`.
+- Request Object: `credentials[0].format === "smart_health_checkin"`.
+- Request Object: SMART clinical request at `credentials[0].meta.request`.
+- Response: `vp_token` is keyed by the DCQL Credential Query id, so it contains `vp_token["smart-checkin"]`.
+- Response: `vp_token["smart-checkin"]` is a one-element array of Presentations.
+- Response: the sole Presentation is the SMART clinical response object.
+- Completion: `direct_post.jwt` uses `response_uri` in the Request Object; any continuation `redirect_uri` is returned by the response endpoint after the Wallet POST.
+
+Changing any of those protocol choices requires coordinated updates in the relay Request Object builder, source apps, requester response validation, demo transaction viewer, tests, and this documentation.
 
 ### 2.1 Request Shape
 
@@ -309,6 +403,8 @@ The SMART request body SHALL NOT carry requester identity, verifier metadata, re
 Each clinical request item is the Holder-review and response-accounting unit. It contains `id`, `title`, optional `summary`, advisory `required`, selector `content`, and non-empty ordered `accept[]`.
 
 FHIR profile selectors use `content.kind: "selection.fhir"` with `profiles[]`, `profilesFrom[]`, and/or `resourceTypes[]`. Questionnaire completion uses `content.kind: "form.fhir"` with `questionnaireCanonical`, `questionnaire`, or both.
+
+The DCQL Credential Query id is stable (`smart-checkin`) across requests. The SMART request `id` is the transaction-specific clinical request identifier and is echoed by the response as `requestId`.
 
 ### 2.2 Response Shape
 

@@ -130,7 +130,7 @@ POST /oid4vp/same-device/init
 }
 ```
 
-`redirect_uri` is required. The relay appends `#response_code=...` to it after the wallet posts.
+The init `redirect_uri` is required for same-device relay continuation. It is stored as relay transaction state, not placed in the signed Request Object. After the wallet posts to the Request Object's `response_uri`, the relay response endpoint returns this URI with `#response_code=...` appended.
 
 Response:
 
@@ -193,7 +193,7 @@ POST /oid4vp/cross-device/init
 }
 ```
 
-No init `redirect_uri` — the wallet won't receive a continuation URI from the response endpoint in cross-device mode.
+No init continuation `redirect_uri` is provided in cross-device mode, so the wallet receives an acknowledgement rather than a navigation target from the response endpoint.
 
 If `requireVerifierSessionForCrossDevice` is enabled, the request must carry a valid verifier session (resolved via the `getVerifierSessionId` callback).
 
@@ -258,7 +258,7 @@ Conflict (different payload after first submission):
 
 ### Same-device uses loop closure
 
-The phishing case to avoid is an attacker starting a real transaction, sending the launch URL to a victim, and then redeeming the victim's response. In the same-device flow, the launch URL is opened by the requesting browser as a popup. The requesting tab keeps `transaction_id` and the ephemeral private key. When the wallet posts the encrypted response, the relay returns a fresh `response_code` through the validated `redirect_uri`.
+The phishing case to avoid is an attacker starting a real transaction, sending the launch URL to a victim, and then redeeming the victim's response. In the same-device flow, the launch URL is opened by the requesting browser as a popup. The requesting tab keeps `transaction_id` and the ephemeral private key. When the wallet posts the encrypted response, the relay returns a fresh `response_code` through the relay-approved continuation `redirect_uri`.
 
 The `response_code` is not enough to decrypt the response. The same-device results endpoint also requires the `transaction_id` held by the initiating tab, and the returned ciphertext still requires the initiating tab's private key. This is browser loop closure; it is not a patient identity proof.
 

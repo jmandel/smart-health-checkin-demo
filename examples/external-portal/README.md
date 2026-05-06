@@ -7,7 +7,7 @@ A standalone static page that uses the SMART Health Check-in protocol with a sha
 - A third-party site can use the protocol without running its own relay
 - The shim library is loaded from the relay server's `/dist/` path
 - The `well_known:` verifier identity is the relay server's origin, not this page's domain
-- Same-device `redirect_uri` points back to this page — the relay must approve that origin
+- Same-device continuation returns to this page after the wallet POST — the relay must approve that return origin
 - End-to-end encryption still works: the relay never sees the plaintext
 
 ## How it works
@@ -17,7 +17,7 @@ A standalone static page that uses the SMART Health Check-in protocol with a sha
 3. The shim opens a popup to the picker (also on the relay server)
 4. The wallet/source app verifies the signed Request Object from the relay
 5. The wallet encrypts and POSTs the response to the relay's `response_uri`
-6. The relay redirects the popup back to this page with `#response_code=...`
+6. The relay's response endpoint returns a continuation `redirect_uri` pointing back to this page with `#response_code=...`
 7. This page's `maybeHandleReturn()` broadcasts via BroadcastChannel
 8. The shim fetches the encrypted result and decrypts it locally
 

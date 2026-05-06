@@ -247,7 +247,17 @@
 <!-- ======================================== -->
 <section>
   <h2 id="credentials">What Can Be Requested</h2>
-  <p>Requests use the <a href="https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#dcql_query" style="color:var(--blue)">DCQL query language</a> with one custom credential format called <code>smart_health_checkin</code>. The DCQL item carries an exact SMART Health Check-in clinical request at <code>meta.request</code>; clinical asks live in <code>items[]</code>.</p>
+  <p>Requests use the <a href="https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#dcql_query" style="color:var(--blue)">DCQL query language</a> with one custom Credential Query: <code>id: "smart-checkin"</code> and <code>format: "smart_health_checkin"</code>. That DCQL item carries an exact SMART Health Check-in clinical request at <code>meta.request</code>; clinical asks live in <code>items[]</code>.</p>
+
+  <div class="card" style="font-size:14px;border-left:4px solid var(--blue)">
+    <h3 style="margin-top:0">Profile Wire Contract</h3>
+    <p style="margin:0;color:var(--slate)">
+      The OID4VP shell always has one <code>smart-checkin</code> Credential Query. The response is keyed by that id as
+      <code>vp_token["smart-checkin"]</code>, whose value is a one-element Presentation array containing the SMART
+      clinical response object. If we ever split items into multiple DCQL queries or wrap the SMART response differently,
+      the relay, source apps, requester validation, tests, and this explainer must all change together.
+    </p>
+  </div>
 
   <div class="card" style="border-left:4px solid var(--blue)">
     <h3 id="fhir-resources" style="margin-top:0">FHIR Resources</h3>
@@ -362,7 +372,16 @@
           <span class="key">"type"</span>: <span class="val">"smart-health-checkin-request"</span>,
           <span class="key">"version"</span>: <span class="val">"1"</span>,
           <span class="key">"id"</span>: <span class="val">"checkin-request-123"</span>,
-          <span class="key">"items"</span>: [ ... ]
+          <span class="key">"purpose"</span>: <span class="val">"Clinic check-in"</span>,
+          <span class="key">"fhirVersions"</span>: [<span class="val">"4.0.1"</span>],
+          <span class="key">"items"</span>: [
+            { <span class="key">"id"</span>: <span class="val">"coverage"</span>, <span class="key">"title"</span>: <span class="val">"Insurance card"</span>,
+              <span class="key">"content"</span>: { <span class="key">"kind"</span>: <span class="val">"selection.fhir"</span>, <span class="key">"profiles"</span>: [<span class="val">"...C4DIC-Coverage"</span>] },
+              <span class="key">"accept"</span>: [<span class="val">"application/fhir+json"</span>] },
+            { <span class="key">"id"</span>: <span class="val">"intake"</span>, <span class="key">"title"</span>: <span class="val">"Migraine follow-up"</span>,
+              <span class="key">"content"</span>: { <span class="key">"kind"</span>: <span class="val">"form.fhir"</span>, <span class="key">"questionnaireCanonical"</span>: <span class="val">"https://.../Questionnaire/chronic-migraine-followup"</span> },
+              <span class="key">"accept"</span>: [<span class="val">"application/fhir+json"</span>] }
+          ]
         } } }
     ]
   },
@@ -374,7 +393,7 @@
     <span class="key">"encrypted_response_enc_values_supported"</span>: [<span class="val">"A256GCM"</span>]
   }
 }</div>
-        <p class="expand-desc">Because the JWT is signed by the Verifier's key, every value here — including <code>response_uri</code> — is authenticated by the signature. No separate metadata check is needed.</p>
+        <p class="expand-desc">Because the JWT is signed by the Verifier's key, every value here — including <code>response_uri</code> — is authenticated by the signature. No separate metadata check is needed. The signed Request Object does not include <code>redirect_uri</code>; same-device continuation is returned later by the response endpoint after the encrypted Wallet POST.</p>
       </div>
     </div>
   </div>
@@ -394,7 +413,7 @@
 
       <div class="expand-level l1">
         <div class="expand-header"><span class="arrow">&#9660;</span> Verifier decrypts the JWE</div>
-        <p class="expand-desc">Only a Verifier component that holds the ephemeral private key can decrypt. In this demo, that key is held by the Verifier browser. The result contains a DCQL <code>vp_token</code> keyed by the credential query id. Each value is an array of Presentations; our custom profile uses one SMART Health Check-in response object as that Presentation:</p>
+        <p class="expand-desc">Only a Verifier component that holds the ephemeral private key can decrypt. In this demo, that key is held by the Verifier browser. The result contains a DCQL <code>vp_token</code> keyed by the credential query id. Each value is an array of Presentations; our custom profile uses one SMART Health Check-in response object as that Presentation. There is no <code>presentation_submission</code> field in this DCQL response:</p>
         <div class="expand-code">{
   <span class="key">"state"</span>: <span class="val">"req_abc123"</span>,         <span class="comment">// validated against expected value</span>
   <span class="key">"vp_token"</span>: {
@@ -505,7 +524,7 @@
       <span class="swim-lane-title">Generate the Request</span>
     </div>
     <div class="swim-lane-detail">
-      Same as same-device: transaction created, ephemeral key pair generated. The difference is that no <code>redirect_uri</code> is needed because the source app will not navigate back to the kiosk.
+      Same as same-device: transaction created, ephemeral key pair generated. The difference is that no continuation <code>redirect_uri</code> is stored for the response endpoint because the source app will not navigate back to the kiosk.
     </div>
   </div>
 
