@@ -22,6 +22,12 @@ import {
   generateKeyPair, exportJWK, importJWK, SignJWT,
   type KeyLike, type JWK,
 } from 'jose';
+import {
+  SMART_HEALTH_CHECKIN_CREDENTIAL_ID,
+  SMART_HEALTH_CHECKIN_FORMAT,
+  validateSmartHealthCheckinRequest,
+  type SmartHealthCheckinRequest,
+} from '../../src/smart-health-checkin-protocol.ts';
 
 // ============================================================================
 // Config
@@ -72,7 +78,7 @@ interface Transaction {
   verifier_session_id?: string;
   redirect_uri?: string;
   ephemeral_pub_jwk: JWK;
-  dcql_query: object;
+  smart_health_checkin_request: SmartHealthCheckinRequest;
   nonce: string;
   response_code?: string;
   jwe?: string;
@@ -199,7 +205,7 @@ export async function createRelayHandler(config: RelayConfig) {
 
   function createTransaction(
     flow: 'same-device' | 'cross-device',
-    body: { redirect_uri?: string; ephemeral_pub_jwk: JWK; dcql_query: object },
+    body: { redirect_uri?: string; ephemeral_pub_jwk: JWK; smart_health_checkin_request: SmartHealthCheckinRequest },
     verifierSessionId?: string | null,
   ) {
     const txn: Transaction = {
@@ -210,7 +216,7 @@ export async function createRelayHandler(config: RelayConfig) {
       verifier_session_id: verifierSessionId || undefined,
       redirect_uri: body.redirect_uri,
       ephemeral_pub_jwk: body.ephemeral_pub_jwk,
-      dcql_query: body.dcql_query,
+      smart_health_checkin_request: body.smart_health_checkin_request,
       nonce: generateId(),
       created: Date.now(),
       waiters: [],
@@ -219,11 +225,41 @@ export async function createRelayHandler(config: RelayConfig) {
     return txn;
   }
 
+  function requestObjectClaims(txn: Transaction): Record<string, unknown> {
+    return {
+      iss: clientId,
+      aud: 'https://self-issued.me/v2',
+      client_id: clientId,
+      response_type: 'vp_token',
+      response_mode: 'direct_post.jwt',
+      response_uri: `${wellKnownClientUrl}/oid4vp/responses/${txn.write_token}`,
+      nonce: txn.nonce,
+      state: txn.request_id,
+      dcql_query: {
+        credentials: [
+          {
+            id: SMART_HEALTH_CHECKIN_CREDENTIAL_ID,
+            format: SMART_HEALTH_CHECKIN_FORMAT,
+            require_cryptographic_holder_binding: false,
+            meta: {
+              request: txn.smart_health_checkin_request,
+            },
+          },
+        ],
+      },
+      client_metadata: {
+        jwks: { keys: [txn.ephemeral_pub_jwk] },
+        encrypted_response_enc_values_supported: ['A256GCM'],
+      },
+    };
+  }
+
   function initResponse(txn: Transaction) {
     return Response.json({
       transaction_id: txn.transaction_id,
       request_id: txn.request_id,
       request_uri: `${wellKnownClientUrl}/oid4vp/requests/${txn.request_id}`,
+      request_object_claims: requestObjectClaims(txn),
     }, { headers: PUBLIC_CORS });
   }
 
@@ -280,20 +316,7 @@ export async function createRelayHandler(config: RelayConfig) {
       const txn = byRequestId.get(requestMatch[1]);
       if (!txn) return Response.json({ error: 'not_found' }, { status: 404, headers: PUBLIC_CORS });
 
-      const jwt = await new SignJWT({
-        iss: clientId, aud: 'https://self-issued.me/v2', client_id: clientId,
-        response_type: 'vp_token', response_mode: 'direct_post.jwt',
-        response_uri: `${wellKnownClientUrl}/oid4vp/responses/${txn.write_token}`,
-        nonce: txn.nonce, state: txn.request_id,
-        smart_health_checkin: {
-          completion: txn.flow === 'same-device' ? 'redirect' : 'deferred',
-        },
-        dcql_query: txn.dcql_query,
-        client_metadata: {
-          jwks: { keys: [txn.ephemeral_pub_jwk] },
-          encrypted_response_enc_values_supported: ['A256GCM'],
-        },
-      })
+      const jwt = await new SignJWT(requestObjectClaims(txn))
         .setProtectedHeader({ alg: 'ES256', kid: signingPubJwk.kid! })
         .setIssuedAt()
         .setExpirationTime('5m')
@@ -355,16 +378,24 @@ export async function createRelayHandler(config: RelayConfig) {
       const body = await req.json() as {
         redirect_uri: string;
         ephemeral_pub_jwk: JWK;
-        dcql_query: object;
+        smart_health_checkin_request: unknown;
       };
       if (!body.redirect_uri) {
         return Response.json({ error: 'redirect_uri required for same-device' }, { status: 400, headers: PUBLIC_CORS });
+      }
+      const requestValidation = validateSmartHealthCheckinRequest(body.smart_health_checkin_request);
+      if (!requestValidation.ok) {
+        return Response.json({ error: 'invalid_smart_health_checkin_request', error_description: requestValidation.error }, { status: 400, headers: PUBLIC_CORS });
       }
       const validationError = validateSameDeviceRedirectUri(body.redirect_uri);
       if (validationError) {
         return Response.json({ error: 'invalid_redirect_uri', error_description: validationError }, { status: 400, headers: PUBLIC_CORS });
       }
-      const txn = createTransaction('same-device', body);
+      const txn = createTransaction('same-device', {
+        redirect_uri: body.redirect_uri,
+        ephemeral_pub_jwk: body.ephemeral_pub_jwk,
+        smart_health_checkin_request: requestValidation.value,
+      });
       return initResponse(txn);
     }
 
@@ -395,9 +426,16 @@ export async function createRelayHandler(config: RelayConfig) {
       }
       const body = await req.json() as {
         ephemeral_pub_jwk: JWK;
-        dcql_query: object;
+        smart_health_checkin_request: unknown;
       };
-      const txn = createTransaction('cross-device', body, verifierSessionId);
+      const requestValidation = validateSmartHealthCheckinRequest(body.smart_health_checkin_request);
+      if (!requestValidation.ok) {
+        return Response.json({ error: 'invalid_smart_health_checkin_request', error_description: requestValidation.error }, { status: 400, headers: PUBLIC_CORS });
+      }
+      const txn = createTransaction('cross-device', {
+        ephemeral_pub_jwk: body.ephemeral_pub_jwk,
+        smart_health_checkin_request: requestValidation.value,
+      }, verifierSessionId);
       return initResponse(txn);
     }
 

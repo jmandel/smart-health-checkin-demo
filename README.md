@@ -63,20 +63,17 @@ The `response_uri` in the signed Request Object SHALL be a request-specific, wri
 
 **Same-device vs. cross-device completion:**
 
-This profile supports two completion modes. The protocol does not prescribe the Verifier's internal storage or retrieval architecture; it requires these shared behaviors:
+This profile supports same-device and cross-device ceremonies using standard OID4VP/OAuth envelope semantics. The protocol does not prescribe the Verifier's internal storage or retrieval architecture; it requires these shared behaviors:
 
 *   The Wallet encrypts and POSTs the response to `response_uri`.
 *   The Verifier obtains the encrypted response, decrypts it, and validates `state`.
-*   The Verifier performs the binding checks needed for the selected completion mode before using decrypted data.
-
-The signed Request Object SHALL tell the Wallet what to expect after it POSTs the encrypted response:
-
-*   `smart_health_checkin.completion = "redirect"` means the response endpoint will return a `redirect_uri` containing a fresh `response_code`. This is used when the check-in starts and finishes on one device.
-*   `smart_health_checkin.completion = "deferred"` means the response endpoint will return a simple acknowledgement. This is used when the check-in is completed from another device, such as a QR code at a front desk.
+*   The Verifier performs the binding checks needed for the selected OID4VP/OAuth completion path before using decrypted data.
+*   In same-device flows, the response endpoint can return a continuation `redirect_uri` containing a fresh `response_code`.
+*   In cross-device flows, the response endpoint returns an acknowledgement and the Verifier retrieves the ciphertext through its own authenticated application path.
 
 How the Verifier validates return URIs, authenticates result retrieval, and binds transactions to application sessions is an implementation concern, not a protocol requirement. The [reference relay implementation](demo/relay/README.md) provides one approach.
 
-Before decrypted response data is revealed downstream, including display to a user, persistence as clinical data, or onward sharing to another system, the Verifier SHALL confirm that the response is being completed in the expected application context. For `completion = "redirect"`, the Verifier SHALL bind the `response_code` to the initiating transaction and application session. For `completion = "deferred"`, the Verifier SHALL bind response access to an authenticated Verifier session authorized for that transaction, such as a valid staff session in a kiosk workflow.
+Before decrypted response data is revealed downstream, including display to a user, persistence as clinical data, or onward sharing to another system, the Verifier SHALL confirm that the response is being completed in the expected application context. For same-device redirects, the Verifier SHALL bind the `response_code` to the initiating transaction and application session. For deferred cross-device retrieval, the Verifier SHALL bind response access to an authenticated Verifier session authorized for that transaction, such as a valid staff session in a kiosk workflow.
 
 ### 1.2 Authenticated Verifier Discovery (`well_known:`)
 
@@ -165,9 +162,7 @@ The actual request parameters SHALL be conveyed in a signed Request Object fetch
 *   `aud`: Required. SHALL be `https://self-issued.me/v2` to comply with the OpenID4VP static-discovery Request Object requirements.
 *   `nonce`: Required. A cryptographically random string.
 *   `state`: Required. SHALL be an unguessable value with at least 128 bits of entropy.
-*   `dcql_query`: Required. A JSON-encoded DCQL query object (defined in Section 2).
-*   `smart_health_checkin`: Required. Object containing profile-specific completion hints.
-    *   `completion`: Required. SHALL be `"redirect"` or `"deferred"`.
+*   `dcql_query`: Required. A DCQL query object containing one `smart_health_checkin` credential query whose `meta.request` is the SMART clinical request object (defined in Section 2).
 
 **Example Signed Request Object Payload:**
 ```json
@@ -180,10 +175,25 @@ The actual request parameters SHALL be conveyed in a signed Request Object fetch
   "response_uri": "https://clinic.example.com/oid4vp/responses/req_abc123xyz",
   "nonce": "def456uvw",
   "state": "req_abc123xyz",
-  "smart_health_checkin": {
-    "completion": "redirect"
+  "dcql_query": {
+    "credentials": [
+      {
+        "id": "smart-checkin",
+        "format": "smart_health_checkin",
+        "require_cryptographic_holder_binding": false,
+        "meta": {
+          "request": {
+            "type": "smart-health-checkin-request",
+            "version": "1",
+            "id": "checkin-request-123",
+            "purpose": "Clinic check-in",
+            "fhirVersions": ["4.0.1"],
+            "items": []
+          }
+        }
+      }
+    ]
   },
-  "dcql_query": {...},
   "client_metadata": {
     "jwks": {
       "keys": [
@@ -230,7 +240,7 @@ The response endpoint SHALL identify the target transaction from the request-spe
 
 The endpoint SHALL NOT rely on reading `state` from the incoming POST because, in `direct_post.jwt`, `state` is carried inside the encrypted JWT payload. The Verifier frontend or backend component that later decrypts the response SHALL validate that the decrypted `state` matches the expected request `state` value.
 
-When `smart_health_checkin.completion` is `"redirect"`, the response endpoint SHALL return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That `redirect_uri` is not Verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. It is a continuation URI selected by the Verifier.
+For same-device completion, the response endpoint MAY return a JSON body containing a `redirect_uri` with a fresh `response_code` fragment or parameter. That returned URI is not Verifier identity evidence and is not required to be validated by the Wallet against Verifier metadata. It is a continuation URI selected by the Verifier.
 
 For example, the response endpoint could reply:
 
@@ -246,109 +256,99 @@ Cache-Control: no-store
 
 The `response_code` is a fresh, high-entropy, one-time value generated by the Verifier for that completion step. It is a signal to the Verifier frontend that a response has been posted; it is not Verifier identity evidence. The Verifier SHALL validate that the `response_code` is bound to the initiating transaction and application session before revealing decrypted data downstream.
 
-When `smart_health_checkin.completion` is `"deferred"`, the response endpoint SHALL return a success acknowledgement and SHALL NOT require the Wallet to follow a `redirect_uri`. The Verifier retrieves or processes the response through its own application path. Before revealing decrypted data downstream, that path SHALL require an authenticated Verifier session authorized for the transaction.
+For cross-device completion, the response endpoint SHALL return a success acknowledgement and SHALL NOT require the Wallet to follow a continuation URI. The Verifier retrieves or processes the response through its own application path. Before revealing decrypted data downstream, that path SHALL require an authenticated Verifier session authorized for the transaction.
 
-After retrieval, the frontend decrypts the JWE, validates `state`, resolves internal references, and continues application processing.
+After retrieval, the frontend decrypts the JWE, validates `state`, validates the SMART clinical response against the original SMART clinical request, and continues application processing.
 
 ---
 
-## 2. DCQL Profile for SMART Health Check-in
+## 2. SMART Clinical Payload in OID4VP
 
-This section defines the **Data Profile**, specifying the structure of the DCQL query and the `vp_token` response.
+This section defines the data profile carried by OID4VP. The OID4VP shell carries one custom DCQL credential query with `format: "smart_health_checkin"`. The clinical request itself is the transport-neutral SMART Health Check-in request object under `meta.request`.
 
-### 2.1 Credential Format: `smart_artifact`
+The SMART request body SHALL NOT carry requester identity, verifier metadata, redirect/completion behavior, nonces, encryption details, handoff handles, or relay URLs. Those are OID4VP/OAuth envelope concerns.
 
-This profile defines a single Credential Format Identifier: **`smart_artifact`**. Because health data without Cryptographic Holder Binding does not utilize standard cryptographic proofs, `require_cryptographic_holder_binding` SHALL be `false`.
+### 2.1 Request Shape
 
-This profile authenticates the request and provides encrypted response transport, but it does not by itself prove the provenance or authenticity of returned artifacts. Unless a returned artifact carries its own verifiable proof and the Verifier validates it, the decrypted payload should be treated as a submission correlated to the request via `state`, not as a cryptographically authenticated credential.
-
-The credential query object uses a standard DCQL structure. Properties specific to this profile are specified within the `meta` object:
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `id` | String | **Required by DCQL.** Unique ID for this request item. |
-| `format` | String | **Required by DCQL.** SHALL be `"smart_artifact"` for this profile. |
-| `require_cryptographic_holder_binding` | Boolean | **Required by this profile.** SHALL be `false`. |
-| `meta.profile` | String | **Optional.** Canonical URL of a FHIR StructureDefinition (e.g., for Patient, Coverage, InsurancePlan). |
-| `meta.questionnaire` | Object | **Optional.** Full FHIR Questionnaire JSON to be rendered/completed by the user. |
-| `meta.questionnaireUrl` | String | **Optional.** Alternative to `questionnaire`: URL reference to a Questionnaire resource. |
-| `meta.signingStrategy` | Array | **Optional.** Array of acceptable signing strategies. Defined values: `"none"` (unsigned FHIR resource), `"shc_v1"`, `"shc_v2"`. If omitted, the Wallet MAY return any format. If present, the Wallet SHALL use one of the listed strategies. Example: `["shc_v1", "none"]` accepts either signed or unsigned. |
-
-#### Handling Optionality
-To mark a credential as optional while remaining strictly compliant with generic DCQL parsers, requests SHALL wrap the targeted credential ID in a non-required `credential_sets` object.
-
-**Example: Requesting Optional Insurance Card, Plan Summary, and Patient:**
 ```json
 {
   "credentials": [
     {
-      "id": "req_insurance",
-      "format": "smart_artifact",
+      "id": "smart-checkin",
+      "format": "smart_health_checkin",
       "require_cryptographic_holder_binding": false,
-      "meta": { "profile": "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage" }
-    },
-    {
-      "id": "req_plan",
-      "format": "smart_artifact",
-      "require_cryptographic_holder_binding": false,
-      "meta": { "profile": "http://hl7.org/fhir/us/insurance-card/StructureDefinition/sbc-insurance-plan" }
-    },
-    {
-      "id": "req_history",
-      "format": "smart_artifact",
-      "require_cryptographic_holder_binding": false,
-      "meta": { "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient" }
+      "meta": {
+        "request": {
+          "type": "smart-health-checkin-request",
+          "version": "1",
+          "id": "checkin-request-123",
+          "purpose": "Clinic check-in",
+          "fhirVersions": ["4.0.1"],
+          "items": [
+            {
+              "id": "coverage",
+              "title": "Insurance card",
+              "summary": "Member coverage and payer details.",
+              "required": false,
+              "content": {
+                "kind": "selection.fhir",
+                "profiles": [
+                  "http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage"
+                ]
+              },
+              "accept": ["application/fhir+json"]
+            }
+          ]
+        }
+      }
     }
-  ],
-  "credential_sets": [
-    { "options": [["req_insurance"]], "required": false },
-    { "options": [["req_plan"]], "required": false },
-    { "options": [["req_history"]], "required": false }
   ]
 }
 ```
 
-### 2.2 Response Structure (Inline References)
+Each clinical request item is the Holder-review and response-accounting unit. It contains `id`, `title`, optional `summary`, advisory `required`, selector `content`, and non-empty ordered `accept[]`.
 
-To comply with OID4VP structure requirements while minimizing payload size and eliminating data duplication (e.g., when one FHIR Bundle satisfies multiple queries), this profile uses an **Inline Reference** pattern entirely contained within the `vp_token`.
+FHIR profile selectors use `content.kind: "selection.fhir"` with `profiles[]`, `profilesFrom[]`, and/or `resourceTypes[]`. Questionnaire completion uses `content.kind: "form.fhir"` with `questionnaireCanonical`, `questionnaire`, or both.
 
-A Presentation object inside the `vp_token` array SHALL take one of two shapes:
+### 2.2 Response Shape
 
-1.  **Full Artifact:** Contains `type` (e.g., `"fhir_resource"`, `"shc"`, `"shl"`), `data` (the payload), and an optional `artifact_id` (used if referenced elsewhere).
-2.  **Reference Artifact:** Contains only `artifact_ref`, pointing to an `artifact_id` defined elsewhere in the `vp_token`.
-
-The `artifact_id` is a transient string generated by the Wallet at presentation time. Its scope is strictly limited to the current `vp_token` payload and exists only to facilitate inline reference resolution.
-
-**Example Decrypted `vp_token` Payload:**
-Scenario: A single `Coverage` FHIR resource satisfies `req_insurance`, and is also referenced by `req_history` alongside a SMART Health Link.
+The encrypted OID4VP response carries one SMART clinical response object as the single Presentation in the `vp_token["smart-checkin"]` array:
 
 ```json
 {
+  "state": "abc123xyz",
   "vp_token": {
-    "req_insurance": [
+    "smart-checkin": [
       {
-        "artifact_id": "cov_1",
-        "type": "fhir_resource",
-        "data": {
-          "resourceType": "Coverage",
-          "id": "cov-123",
-          "status": "active"
-        }
-      }
-    ],
-    "req_history": [
-      {
-        "artifact_ref": "cov_1"
-      },
-      {
-        "type": "shl",
-        "data": "shlink:/eyJhbGci..."
+        "type": "smart-health-checkin-response",
+        "version": "1",
+        "requestId": "checkin-request-123",
+        "artifacts": [
+          {
+            "id": "artifact-coverage",
+            "mediaType": "application/fhir+json",
+            "fhirVersion": "4.0.1",
+            "fulfills": ["coverage"],
+            "value": {
+              "resourceType": "Coverage",
+              "id": "cov-123",
+              "status": "active"
+            }
+          }
+        ],
+        "requestStatus": [
+          {
+            "item": "coverage",
+            "status": "fulfilled"
+          }
+        ]
       }
     ]
-  },
-  "state": "abc123xyz"
+  }
 }
 ```
+
+The Verifier validates `requestId`, every `artifacts[].fulfills[]` reference, every artifact `mediaType` against the fulfilled item's `accept[]`, FHIR versions, and exactly one `requestStatus[]` entry per original request item.
 
 ### 2.3 Error Response
 
@@ -375,8 +375,8 @@ To enable this protocol in browser environments that do not yet support the W3C 
 2.  **Metadata Discovery**: The shim constructs a minimal bootstrap request using the custom `well_known:` client identifier and a `request_uri`, suitable for a same-tab launch, popup, or QR code.
 3.  **Request Verification**: The Wallet resolves `/.well-known/openid4vp-client`, fetches the signed Request Object, verifies it using the Verifier's `jwks_uri`, and extracts the authoritative OID4VP parameters.
 4.  **Response Delivery**: The Wallet encrypts the payload and POSTs the `{JWE}` to the Verifier-controlled `response_uri`.
-5.  **Completion Signal**: If the Request Object says `completion: "redirect"`, the response endpoint returns a `redirect_uri` containing a `response_code`. If it says `completion: "deferred"`, the response endpoint returns an acknowledgement and the Verifier app obtains the encrypted response through its own application path.
-6.  **Decryption**: The Verifier frontend or backend component decrypts the `{JWE}`, validates `state`, resolves internal references, and returns the unwrapped data to the application.
+5.  **Completion Signal**: The `direct_post.jwt` response endpoint returns either a continuation `redirect_uri` containing a `response_code` or a success acknowledgement. The SMART clinical request body does not carry this choice.
+6.  **Decryption**: The Verifier frontend or backend component decrypts the `{JWE}`, validates `state`, validates the SMART clinical response against the original SMART clinical request, and returns the unwrapped data to the application.
 
 ### 3.2 The Shim API
 
@@ -395,9 +395,9 @@ if (completion) {
   await maybeHandleReturn();
 }
 
-function startCheckin() {
+function startCheckin(smartRequest) {
   // In replace mode, this navigates away; the redirect return above receives the result.
-  void request(dcqlQuery, {
+  void request(smartRequest, {
     walletUrl: 'https://picker.example.com',
     wellKnownClientUrl: 'https://clinic.example.com',
     flow: 'same-device',
@@ -473,28 +473,30 @@ MIT License
 ```javascript
 import { request } from 'smart-health-checkin';
 
-const result = await request(dcqlQuery, options);
+const result = await request(smartRequest, options);
 ```
 
 **Parameters:**
-- `dcqlQuery` (Object, required): A standard DCQL query object. See the DCQL profile below for structure.
+- `smartRequest` (Object, required): A SMART Health Check-in clinical request with `type`, `version`, `id`, `items[]`, selectors, and `accept[]`.
 - `options` (Object, required):
   - `walletUrl` (String, required): URL of the health app picker (e.g., `'https://picker.example.com'`).
   - `wellKnownClientUrl` (String, required): Bare HTTPS origin for the Verifier named by `well_known:` (e.g., `'https://clinic.example.com'`). The shim derives `client_id`, metadata resolution, request, response, and result endpoints from this base URL by convention.
   - `onRequestStart` (Function, optional): Callback invoked when the OID4VP request is constructed.
-  - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response resolves all internal references to output flat, easy-to-consume data arrays.
+  - `rehydrate` (Boolean, optional, default: `true`): If `true`, the response groups returned Artifacts by fulfilled request item and exposes their values as convenience arrays.
 
 **Response (Promise resolution)**
 ```javascript
 {
   state: '...',           // Echoed from request (decrypted)
-  vp_token: {...},        // Map from credential IDs to Presentation objects (decrypted)
-  credentials: {...}      // Rehydrated: map from credential IDs to unwrapped data (if rehydrate=true)
+  vp_token: {...},        // OID4VP map with the SMART response array under "smart-checkin"
+  smartResponse: {...},   // SMART Health Check-in response
+  artifactsByItem: {...}, // Rehydrated: map from request item IDs to Artifact objects
+  credentials: {...}      // Rehydrated: map from request item IDs to Artifact values
 }
 ```
 
-When `rehydrate` is `true` (default), the `credentials` object maps credential IDs to arrays of unwrapped credential data, making it easy to consume:
+When `rehydrate` is `true` (default), the `credentials` object maps request item IDs to arrays of unwrapped Artifact values, making it easy to consume:
 ```javascript
 const { credentials } = result;
-const coverageData = credentials['req_insurance'][0]; // Direct access to the decrypted FHIR resource
+const coverageData = credentials.coverage[0]; // Direct access to the decrypted FHIR resource
 ```

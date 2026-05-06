@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { importJWK, CompactEncrypt, jwtVerify, createLocalJWKSet } from 'jose';
+import {
+  SMART_HEALTH_CHECKIN_FORMAT,
+  extractSmartHealthCheckinRequest,
+  validateResponseAgainstRequest,
+  type RawFhirJsonArtifact,
+  type RequestItemStatus,
+  type SmartHealthCheckinRequest,
+  type SmartHealthCheckinRequestItem,
+  type SmartHealthCheckinResponse,
+} from 'smart-health-checkin';
 import { carinCoverageExample, sbcInsurancePlanExample } from '../../shared/carinInsuranceExamples';
 import { clinicalHistoryBundleExample } from '../../shared/clinicalHistoryExamples';
 import migraineAutofillValues from '../../shared-data/migraine-autofill-values.json';
@@ -73,22 +83,14 @@ interface Questionnaire {
   item: QuestionnaireItem[];
 }
 
-interface CredentialMeta {
-  profile?: string;
-  profiles?: string[];
-  questionnaire?: Questionnaire;
-  questionnaireUrl?: string;
-}
-
-interface Credential {
-  id: string;
-  format: string;
-  meta?: CredentialMeta;
-}
-
 interface DCQLQuery {
-  credentials: Credential[];
-  credential_sets?: Array<{ options: string[][]; required: boolean }>;
+  credentials: Array<{
+    id: string;
+    format: string;
+    meta?: {
+      request?: unknown;
+    };
+  }>;
 }
 
 interface ClientMetadata {
@@ -102,40 +104,18 @@ interface VerifierMetadata {
   jwks_uri: string;
 }
 
-type CompletionMode = 'redirect' | 'deferred';
-
-interface RequestItem {
-  type: 'fhir-profile' | 'fhir-questionnaire';
-  id: string;
-  profile?: string;
-  profiles?: string[];
-  questionnaire?: Questionnaire;
-  questionnaireUrl?: string;
-}
-
 interface VerifiedRequest {
   verifierOrigin: string;
   verifierMetadata: VerifierMetadata;
   state: string;
   nonce: string;
   responseUri: string;
-  completion: CompletionMode;
   clientMetadata: ClientMetadata;
   dcqlQuery: DCQLQuery;
-  requestItems: RequestItem[];
+  smartCredentialId: string;
+  smartRequest: SmartHealthCheckinRequest;
+  requestItems: SmartHealthCheckinRequestItem[];
 }
-
-interface FullArtifactPresentation {
-  type: string;
-  data: unknown;
-  artifact_id?: string;
-}
-
-interface RefArtifactPresentation {
-  artifact_ref: string;
-}
-
-type Presentation = FullArtifactPresentation | RefArtifactPresentation;
 type QuestionnaireValue = string | boolean | string[];
 type QuestionnaireValues = Record<string, QuestionnaireValue>;
 type QuestionnaireAnswer = {
@@ -416,23 +396,10 @@ async function resolveRequest(): Promise<VerifiedRequest | { error: string }> {
     return { error: 'Request Object missing dcql_query' };
   }
 
-  const profileHints = payload.smart_health_checkin as { completion?: string } | undefined;
-  const completion = profileHints?.completion;
-  if (completion !== 'redirect' && completion !== 'deferred') {
-    return { error: 'Request Object missing smart_health_checkin.completion' };
+  const smartRequestResult = extractSmartHealthCheckinRequest(dcqlQuery);
+  if (!smartRequestResult.ok) {
+    return { error: `Request Object must contain a ${SMART_HEALTH_CHECKIN_FORMAT} credential query: ${smartRequestResult.error}` };
   }
-
-  const requestItems: RequestItem[] = (dcqlQuery.credentials || []).map(c => {
-    const meta = c.meta || {};
-    return {
-      type: (meta.questionnaire || meta.questionnaireUrl) ? 'fhir-questionnaire' as const : 'fhir-profile' as const,
-      id: c.id,
-      profile: meta.profile,
-      profiles: meta.profiles,
-      questionnaire: meta.questionnaire,
-      questionnaireUrl: meta.questionnaireUrl,
-    };
-  });
 
   return {
     verifierOrigin,
@@ -440,11 +407,22 @@ async function resolveRequest(): Promise<VerifiedRequest | { error: string }> {
     state: payload.state as string,
     nonce: payload.nonce as string,
     responseUri,
-    completion,
     clientMetadata,
     dcqlQuery,
-    requestItems,
+    smartCredentialId: smartRequestResult.value.credentialId,
+    smartRequest: smartRequestResult.value.request,
+    requestItems: smartRequestResult.value.request.items,
   };
+}
+
+let currentResolveRequest: { href: string; promise: Promise<VerifiedRequest | { error: string }> } | null = null;
+
+function resolveCurrentRequest(): Promise<VerifiedRequest | { error: string }> {
+  const href = location.href;
+  if (!currentResolveRequest || currentResolveRequest.href !== href) {
+    currentResolveRequest = { href, promise: resolveRequest() };
+  }
+  return currentResolveRequest.promise;
 }
 
 // ============================================================================
@@ -500,8 +478,24 @@ function RequesterOrigin({ verifierOrigin }: { verifierOrigin: string }) {
   );
 }
 
-function TechnicalDetails({ state, nonce, requestItems, verifierOrigin, responseUri, completion }: {
-  state: string; nonce: string; requestItems: RequestItem[]; verifierOrigin: string; responseUri: string; completion: CompletionMode;
+function itemSelectorLines(item: SmartHealthCheckinRequestItem): string[] {
+  const content = item.content;
+  if (content.kind === 'form.fhir') {
+    return [
+      content.questionnaireCanonical,
+      content.questionnaire?.url,
+      content.questionnaire ? 'Inline Questionnaire' : undefined,
+    ].filter((line): line is string => Boolean(line));
+  }
+  return [
+    ...(content.profiles || []),
+    ...(content.profilesFrom || []).map(profile => `Profiles from ${profile}`),
+    ...(content.resourceTypes || []).map(resourceType => `Resource type ${resourceType}`),
+  ];
+}
+
+function TechnicalDetails({ state, nonce, requestItems, verifierOrigin, responseUri }: {
+  state: string; nonce: string; requestItems: SmartHealthCheckinRequestItem[]; verifierOrigin: string; responseUri: string;
 }) {
   return (
     <details className="technical-details">
@@ -525,8 +519,8 @@ function TechnicalDetails({ state, nonce, requestItems, verifierOrigin, response
           <div className="value">direct_post.jwt</div>
         </div>
         <div className="request-detail">
-          <div className="label">completion:</div>
-          <div className="value">{completion}</div>
+          <div className="label">response handling:</div>
+          <div className="value">direct_post.jwt response endpoint may return redirect_uri</div>
         </div>
         <div className="request-detail">
           <div className="label">response_uri:</div>
@@ -549,12 +543,11 @@ function TechnicalDetails({ state, nonce, requestItems, verifierOrigin, response
           {requestItems.map(item => (
             <div key={item.id} className="request-item">
               <div className="request-item-type">
-                {item.type === 'fhir-profile' ? '📋 Profile' : '📝 Questionnaire'}: {item.id}
+                {item.content.kind === 'selection.fhir' ? '📋 Profile' : '📝 Questionnaire'}: {item.id}
               </div>
               <div className="value">
-                {item.profiles?.length
-                  ? item.profiles.map(profile => <div key={profile}>{profile}</div>)
-                  : item.profile || item.questionnaireUrl || 'Inline questionnaire'}
+                <strong>{item.title}</strong>
+                {itemSelectorLines(item).map((line, index) => <div key={`${index}-${line}`}>{line}</div>)}
               </div>
             </div>
           ))}
@@ -692,10 +685,10 @@ function ClinicalSection({ checked, onChange }: { checked: boolean; onChange: (v
 function QuestionnaireSection({
   item, idx, checked, onChange, values, onValueChange
 }: {
-  item: RequestItem; idx: number; checked: boolean; onChange: (v: boolean) => void;
+  item: SmartHealthCheckinRequestItem; idx: number; checked: boolean; onChange: (v: boolean) => void;
   values: QuestionnaireValues; onValueChange: (linkId: string, value: QuestionnaireValue) => void;
 }) {
-  const questionnaire = item.questionnaire;
+  const questionnaire = item.content.kind === 'form.fhir' ? item.content.questionnaire : undefined;
   if (!questionnaire) return null;
   const shareId = `share-${idx}-${item.id}`;
 
@@ -946,6 +939,61 @@ function ChoiceInput({
 // Main App
 // ============================================================================
 
+function profileTextForItem(item: SmartHealthCheckinRequestItem): string {
+  if (item.content.kind !== 'selection.fhir') return '';
+  return [
+    ...(item.content.profiles || []),
+    ...(item.content.profilesFrom || []),
+    ...(item.content.resourceTypes || []),
+  ].join(' ').toLowerCase();
+}
+
+function questionnaireForItem(item: SmartHealthCheckinRequestItem): Questionnaire | undefined {
+  return item.content.kind === 'form.fhir'
+    ? item.content.questionnaire as Questionnaire | undefined
+    : undefined;
+}
+
+function resourceTypeForItem(item: SmartHealthCheckinRequestItem): string | null {
+  if (item.content.kind === 'form.fhir') return 'QuestionnaireResponse';
+
+  const lower = profileTextForItem(item);
+  if (item.id === 'coverage' || lower.includes('coverage')) return 'Coverage';
+  if (item.id === 'plan' || lower.includes('sbc-insurance-plan') || lower.includes('insuranceplan')) return 'InsurancePlan';
+  if (
+    item.id === 'clinical-history' ||
+    (
+      lower.includes('patient') &&
+      (lower.includes('allergyintolerance') || lower.includes('condition-problems-health-concerns'))
+    )
+  ) return 'ClinicalHistoryBundle';
+  if (lower.includes('patient')) return 'Patient';
+  return null;
+}
+
+function fhirArtifact(
+  id: string,
+  fulfills: string,
+  value: unknown,
+  fhirVersion: string
+): RawFhirJsonArtifact {
+  return {
+    id,
+    mediaType: 'application/fhir+json',
+    fhirVersion,
+    fulfills: [fulfills],
+    value: value as RawFhirJsonArtifact['value'],
+  };
+}
+
+function validateLocalSmartResponse(
+  smartRequest: SmartHealthCheckinRequest,
+  smartResponse: SmartHealthCheckinResponse
+) {
+  const validation = validateResponseAgainstRequest(smartRequest, smartResponse);
+  if (!validation.ok) throw new Error(`Generated SMART response failed validation: ${validation.error}`);
+}
+
 export default function App() {
   const [parsed, setParsed] = useState<VerifiedRequest | { error: string } | null>(null);
   const [resolving, setResolving] = useState(true);
@@ -959,20 +1007,21 @@ export default function App() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    resolveRequest().then(result => {
+    resolveCurrentRequest().then(result => {
       setParsed(result);
       setResolving(false);
 
       // Initialize questionnaire states
       if (!('error' in result)) {
-        const qItems = result.requestItems.filter(i => i.type === 'fhir-questionnaire');
+        const qItems = result.requestItems.filter(i => i.content.kind === 'form.fhir');
         const initialShare: Record<string, boolean> = {};
         const initialValues: Record<string, QuestionnaireValues> = {};
 
         qItems.forEach(item => {
+          const questionnaire = questionnaireForItem(item);
           initialShare[item.id] = true;
-          initialValues[item.id] = item.questionnaire?.item
-            ? collectInitialValues(item.questionnaire.item)
+          initialValues[item.id] = questionnaire?.item
+            ? collectInitialValues(questionnaire.item)
             : {};
         });
 
@@ -1008,7 +1057,16 @@ export default function App() {
     );
   }
 
-  const { verifierOrigin, state, nonce, requestItems, dcqlQuery, responseUri, completion, clientMetadata } = parsed;
+  const {
+    verifierOrigin,
+    state,
+    nonce,
+    requestItems,
+    smartRequest,
+    responseUri,
+    clientMetadata,
+    smartCredentialId,
+  } = parsed;
 
   if (submitted) {
     return (
@@ -1023,21 +1081,11 @@ export default function App() {
     );
   }
 
-  const profiles = requestItems.filter(i => i.type === 'fhir-profile');
-  const questionnaires = requestItems.filter(i => i.type === 'fhir-questionnaire');
-  const hasCoverage = profiles.some(p => p.profile?.includes('C4DIC-Coverage') || p.profile?.toLowerCase().includes('coverage'));
-  const hasInsurancePlan = profiles.some(p => {
-    const profile = p.profile?.toLowerCase() || '';
-    return profile.includes('sbc-insurance-plan') || profile.includes('insuranceplan');
-  });
-  const hasClinicalHistory = profiles.some(p => {
-    const profileList = [p.profile, ...(p.profiles || [])].filter(Boolean).map(profile => profile!.toLowerCase());
-    return profileList.some(profile =>
-      profile.includes('patient') ||
-      profile.includes('allergyintolerance') ||
-      profile.includes('condition-problems-health-concerns')
-    );
-  });
+  const profiles = requestItems.filter(i => i.content.kind === 'selection.fhir');
+  const questionnaires = requestItems.filter(i => i.content.kind === 'form.fhir');
+  const hasCoverage = profiles.some(item => resourceTypeForItem(item) === 'Coverage');
+  const hasInsurancePlan = profiles.some(item => resourceTypeForItem(item) === 'InsurancePlan');
+  const hasClinicalHistory = profiles.some(item => ['Patient', 'ClinicalHistoryBundle'].includes(resourceTypeForItem(item) || ''));
 
   const tryCloseOrShowDone = () => {
     setSubmitted(true);
@@ -1047,14 +1095,20 @@ export default function App() {
   const handleCancel = async () => {
     setSubmitting(true);
     try {
-      const payload = { error: 'access_denied', error_description: 'User declined to share', state };
+      const smartResponse: SmartHealthCheckinResponse = {
+        type: 'smart-health-checkin-response',
+        version: '1',
+        requestId: smartRequest.id,
+        artifacts: [],
+        requestStatus: smartRequest.items.map(item => ({ item: item.id, status: 'declined' })),
+      };
+      validateLocalSmartResponse(smartRequest, smartResponse);
+      const payload = { vp_token: { [smartCredentialId]: [smartResponse] }, state };
       const postResult = await encryptAndPost(payload, clientMetadata, responseUri);
-      if (completion === 'redirect') {
-        if (!postResult.redirect_uri) throw new Error('Expected redirect_uri for redirect completion');
+      if (postResult.redirect_uri) {
         window.location.replace(postResult.redirect_uri);
         return;
       }
-      if (postResult.redirect_uri) throw new Error('Unexpected redirect_uri for deferred completion');
     } catch (err) {
       console.error('Failed to post cancel response:', err);
     }
@@ -1064,93 +1118,76 @@ export default function App() {
   const handleShare = async () => {
     setSubmitting(true);
     try {
-      const vp_token: Record<string, Presentation[]> = {};
-      const artifactIdCache = new Map<string, string>();
+      const artifacts: RawFhirJsonArtifact[] = [];
+      const requestStatus: RequestItemStatus[] = [];
       let artifactCounter = 0;
+      const fhirVersion = smartRequest.fhirVersions?.[0] || '4.0.1';
 
-      const addPresentation = (type: string, data: unknown): Presentation => {
-        const hash = JSON.stringify({ type, data });
-        const existingId = artifactIdCache.get(hash);
-        if (existingId) return { artifact_ref: existingId };
-        const artifact_id = `art_${artifactCounter++}`;
-        artifactIdCache.set(hash, artifact_id);
-        return { artifact_id, type, data };
-      };
-
-      dcqlQuery.credentials.forEach(cred => {
-        const meta = cred.meta || {};
-        const profile = meta.profile;
-        const questionnaire = meta.questionnaire;
-
-        let resourceType: string | null = null;
-        if (meta.profiles?.length) {
-          const lowerProfiles = meta.profiles.map(item => item.toLowerCase());
-          if (
-            lowerProfiles.some(item => item.includes('patient')) &&
-            lowerProfiles.some(item => item.includes('allergyintolerance')) &&
-            lowerProfiles.some(item => item.includes('condition-problems-health-concerns'))
-          ) {
-            resourceType = 'ClinicalHistoryBundle';
-          }
-        }
-        if (!resourceType && profile) {
-          const match = profile.match(/StructureDefinition\/([A-Za-z0-9-]+)/);
-          if (match) {
-            const def = match[1];
-            if (def.includes('Coverage')) resourceType = 'Coverage';
-            else if (def === 'sbc-insurance-plan' || def.includes('InsurancePlan')) resourceType = 'InsurancePlan';
-            else if (def.toLowerCase().includes('patient')) resourceType = 'Patient';
-            else resourceType = def;
-          }
-        }
-        if (questionnaire) resourceType = 'QuestionnaireResponse';
+      smartRequest.items.forEach(item => {
+        const resourceType = resourceTypeForItem(item);
+        const questionnaire = questionnaireForItem(item);
 
         let isShared = false;
         if (resourceType === 'Coverage') isShared = shareInsurance;
         else if (resourceType === 'InsurancePlan') isShared = sharePlan;
         else if (resourceType === 'Patient' || resourceType === 'ClinicalHistoryBundle') isShared = shareClinical;
-        else if (resourceType === 'QuestionnaireResponse') isShared = shareQuestionnaires[cred.id] ?? false;
+        else if (resourceType === 'QuestionnaireResponse') isShared = shareQuestionnaires[item.id] ?? false;
 
-        if (!isShared) return;
+        if (!isShared) {
+          requestStatus.push({ item: item.id, status: 'declined' });
+          return;
+        }
 
-        const presentations: Presentation[] = [];
+        let data: unknown;
 
         if (resourceType === 'Coverage') {
-          presentations.push(addPresentation('fhir_resource', carinCoverageExample));
+          data = carinCoverageExample;
         } else if (resourceType === 'InsurancePlan') {
-          presentations.push(addPresentation('fhir_resource', sbcInsurancePlanExample));
+          data = sbcInsurancePlanExample;
         } else if (resourceType === 'ClinicalHistoryBundle') {
-          presentations.push(addPresentation('fhir_resource', clinicalHistoryBundleExample));
+          data = clinicalHistoryBundleExample;
         } else if (resourceType === 'Patient') {
-          presentations.push(addPresentation('fhir_resource', {
+          data = {
             resourceType: 'Patient', id: 'patient-1',
             name: [{ text: 'Jane Doe', family: 'Doe', given: ['Jane'] }],
             birthDate: '1985-06-15'
-          }));
+          };
         } else if (resourceType === 'QuestionnaireResponse') {
-          const values = questionnaireValues[cred.id] || {};
+          const values = questionnaireValues[item.id] || {};
           const items = buildQuestionnaireResponseItems(questionnaire?.item || [], values);
-          presentations.push(addPresentation('fhir_resource', {
+          data = {
             resourceType: 'QuestionnaireResponse',
             status: 'completed',
             questionnaire: questionnaire?.url || (questionnaire?.id ? `Questionnaire/${questionnaire.id}` : undefined),
             authored: new Date().toISOString(),
             item: items
-          }));
+          };
         }
 
-        vp_token[cred.id] = presentations;
+        if (!data) {
+          requestStatus.push({ item: item.id, status: 'unsupported' });
+          return;
+        }
+
+        artifacts.push(fhirArtifact(`art_${artifactCounter++}`, item.id, data, fhirVersion));
+        requestStatus.push({ item: item.id, status: 'fulfilled' });
       });
 
-      const payload = { vp_token, state };
+      const smartResponse: SmartHealthCheckinResponse = {
+        type: 'smart-health-checkin-response',
+        version: '1',
+        requestId: smartRequest.id,
+        artifacts,
+        requestStatus,
+      };
+      validateLocalSmartResponse(smartRequest, smartResponse);
+      const payload = { vp_token: { [smartCredentialId]: [smartResponse] }, state };
       const postResult = await encryptAndPost(payload, clientMetadata, responseUri);
 
-      if (completion === 'redirect') {
-        if (!postResult.redirect_uri) throw new Error('Expected redirect_uri for redirect completion');
+      if (postResult.redirect_uri) {
         window.location.replace(postResult.redirect_uri);
         return;
       }
-      if (postResult.redirect_uri) throw new Error('Unexpected redirect_uri for deferred completion');
 
       tryCloseOrShowDone();
     } catch (err) {
@@ -1169,7 +1206,7 @@ export default function App() {
 
       <RequesterOrigin verifierOrigin={verifierOrigin} />
       <TechnicalDetails state={state} nonce={nonce} requestItems={requestItems}
-        verifierOrigin={verifierOrigin} responseUri={responseUri} completion={completion} />
+        verifierOrigin={verifierOrigin} responseUri={responseUri} />
 
       {profiles.length > 0 && (
         <RequestedRecordsSection

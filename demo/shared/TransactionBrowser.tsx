@@ -462,6 +462,7 @@ function CollapsibleJson({ title, data }: { title: string; data: object | null }
 interface RequestInfo {
   flow?: string;
   bootstrap?: { client_id?: string; request_uri?: string; request_uri_method?: string };
+  request_object_claims?: object;
   launch_url?: string;
   transaction?: object;
   [key: string]: unknown;
@@ -523,6 +524,8 @@ export function TransactionBrowser({
   const credentials = resp?.credentials;
   const wireResponse = resp?.vp_token ? { state: resp.state, vp_token: resp.vp_token } : null;
   const requestUri = reqInfo?.bootstrap?.request_uri;
+  const completed = Boolean(wireResponse || credentials);
+  const requestObjectClaims = reqInfo?.request_object_claims;
 
   return (
     <div className="transaction-browser">
@@ -539,9 +542,9 @@ export function TransactionBrowser({
         </div>
       )}
 
-      <CollapsibleJson title="Bootstrap Request (sent to wallet/picker)" data={reqInfo?.bootstrap || null} />
-      {requestUri && <SignedRequestPanel requestUri={requestUri} />}
-      <CollapsibleJson title="Shim Transaction (internal, not sent to wallet)" data={reqInfo?.transaction || null} />
+      <CollapsibleJson title="OID4VP Bootstrap Request (sent as URL params)" data={reqInfo?.bootstrap || null} />
+      <CollapsibleJson title="OID4VP Request Object (signed JWT payload at request_uri)" data={requestObjectClaims || null} />
+      {requestUri && !requestObjectClaims && !completed && <SignedRequestPanel requestUri={requestUri} />}
       <CollapsibleJson title="Wire Response (vp_token)" data={wireResponse} />
     </div>
   );

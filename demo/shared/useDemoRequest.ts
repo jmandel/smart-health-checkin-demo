@@ -7,9 +7,9 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   completeSameDeviceRedirect,
   request,
-  type DCQLQuery,
   type RehydratedResponse,
   type RequestStartInfo,
+  type SmartHealthCheckinRequest,
 } from 'smart-health-checkin';
 
 export interface DemoRequestState {
@@ -22,7 +22,7 @@ export interface DemoRequestState {
   result: RehydratedResponse | null;
 }
 
-export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
+export function useDemoRequest(smartRequest: SmartHealthCheckinRequest, opts: {
   walletUrl: string;
   wellKnownClientUrl: string;
   flow: 'same-device' | 'cross-device';
@@ -75,7 +75,7 @@ export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
     setState(s => ({ ...s, loading: true, error: null, requestInfo: null }));
 
     try {
-      const result = await request(dcqlQuery, {
+      const result = await request(smartRequest, {
         walletUrl: opts.walletUrl,
         wellKnownClientUrl: opts.wellKnownClientUrl,
         flow: opts.flow,
@@ -104,7 +104,7 @@ export function useDemoRequest(dcqlQuery: DCQLQuery, opts: {
         error: err instanceof Error ? err.message : 'Unknown error',
       }));
     }
-  }, [dcqlQuery, opts.walletUrl, opts.wellKnownClientUrl, opts.flow, opts.sameDeviceLaunch]);
+  }, [smartRequest, opts.walletUrl, opts.wellKnownClientUrl, opts.flow, opts.sameDeviceLaunch]);
 
   return { ...state, start };
 }

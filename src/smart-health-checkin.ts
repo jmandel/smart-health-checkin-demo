@@ -8,58 +8,40 @@
  */
 
 import { generateKeyPair, exportJWK, importJWK, compactDecrypt, type JWK, type KeyLike } from 'jose';
+import {
+  SMART_HEALTH_CHECKIN_CREDENTIAL_ID,
+  artifactValuesByItem,
+  artifactsByItem,
+  buildSmartHealthCheckinDCQLQuery,
+  extractSmartHealthCheckinResponse,
+  validateResponseAgainstRequest,
+  validateSmartHealthCheckinRequest,
+  type DCQLQuery,
+  type SmartArtifact,
+  type SmartHealthCheckinRequest,
+  type SmartHealthCheckinResponse,
+} from './smart-health-checkin-protocol';
+
+export * from './smart-health-checkin-protocol';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface CredentialQuery {
-  id: string;
-  format: 'smart_artifact';
-  require_cryptographic_holder_binding?: boolean;
-  meta: {
-    profile?: string;
-    profiles?: string[];
-    questionnaire?: object;
-    questionnaireUrl?: string;
-    signingStrategy?: string[];
-  };
-}
-
-export interface CredentialSet {
-  options: string[][];
-  required: boolean;
-}
-
-export interface DCQLQuery {
-  credentials: CredentialQuery[];
-  credential_sets?: CredentialSet[];
-}
-
-export type ArtifactType = 'fhir_resource' | 'shc' | 'shl';
-
-export interface FullArtifactPresentation {
-  type: ArtifactType;
-  data: unknown;
-  artifact_id?: string;
-}
-
-export interface RefArtifactPresentation {
-  artifact_ref: string;
-}
-
-export type Presentation = FullArtifactPresentation | RefArtifactPresentation;
-
 export interface VPToken {
-  [credentialId: string]: Presentation[];
+  [credentialId: string]: SmartHealthCheckinResponse[];
 }
 
 export interface RawResponse {
   state: string;
   vp_token: VPToken;
+  smartResponse: SmartHealthCheckinResponse;
 }
 
 export interface RehydratedResponse extends RawResponse {
+  artifactsByItem: {
+    [itemId: string]: SmartArtifact[];
+  };
   credentials: {
     [credentialId: string]: unknown[];
   };
@@ -89,11 +71,17 @@ export interface RequestOptions {
 
 export interface RequestStartInfo {
   flow: 'same-device' | 'cross-device';
+  /** Transport-neutral SMART clinical request carried inside OID4VP */
+  smart_request: SmartHealthCheckinRequest;
+  /** OID4VP DCQL profile wrapper for the SMART clinical request */
+  dcql_query: DCQLQuery;
   /** The protocol-level bootstrap request (what the wallet/picker sees) */
   bootstrap: {
     client_id: string;
     request_uri: string;
   };
+  /** OID4VP Request Object JWT payload served from request_uri */
+  request_object_claims: Record<string, unknown>;
   /** Full launch URL including bootstrap params */
   launch_url: string;
   /** Shim-internal transaction state (not sent to wallet) */
@@ -148,6 +136,7 @@ interface TransactionInit {
   transaction_id: string;
   request_id: string;
   request_uri: string;
+  request_object_claims: Record<string, unknown>;
 }
 
 async function initTransaction(
@@ -156,7 +145,7 @@ async function initTransaction(
   params: {
     redirect_uri?: string;
     ephemeral_pub_jwk: object;
-    dcql_query: DCQLQuery;
+    smart_health_checkin_request: SmartHealthCheckinRequest;
   }
 ): Promise<TransactionInit> {
   const resp = await fetch(`${wellKnownClientUrl}/oid4vp/${flow}/init`, {
@@ -223,6 +212,7 @@ interface StoredSameDeviceHandoff {
   private_jwk: JWK;
   rehydrate: boolean;
   request_info: RequestStartInfo;
+  smart_request: SmartHealthCheckinRequest;
 }
 
 function storageKey(handoffId: string): string {
@@ -318,32 +308,19 @@ function handoffIdFromSearch(): string | null {
 // ============================================================================
 
 export function rehydrateResponse(response: RawResponse): RehydratedResponse {
-  const credentials: { [id: string]: unknown[] } = {};
-  const catalog = new Map<string, unknown>();
-
-  for (const presentations of Object.values(response.vp_token)) {
-    for (const p of presentations) {
-      if ('type' in p && 'data' in p && 'artifact_id' in p && p.artifact_id) {
-        catalog.set(p.artifact_id, (p as FullArtifactPresentation).data);
-      }
-    }
-  }
-
-  for (const [id, presentations] of Object.entries(response.vp_token)) {
-    credentials[id] = presentations.map(p => {
-      if ('artifact_ref' in p) return catalog.get((p as RefArtifactPresentation).artifact_ref);
-      return (p as FullArtifactPresentation).data;
-    });
-  }
-
-  return { ...response, credentials };
+  return {
+    ...response,
+    artifactsByItem: artifactsByItem(response.smartResponse),
+    credentials: artifactValuesByItem(response.smartResponse),
+  };
 }
 
 async function decryptAndProcess(
   jweString: string,
   privateKey: KeyLike,
   expectedState: string,
-  shouldRehydrate: boolean
+  shouldRehydrate: boolean,
+  smartRequest: SmartHealthCheckinRequest
 ): Promise<RawResponse | RehydratedResponse> {
   const decrypted = await decryptJwe(jweString, privateKey) as {
     state: string;
@@ -365,7 +342,17 @@ async function decryptAndProcess(
 
   if (!decrypted.vp_token) throw new Error('No vp_token in decrypted response');
 
-  const response: RawResponse = { state: decrypted.state, vp_token: decrypted.vp_token };
+  const smartResponseResult = extractSmartHealthCheckinResponse(decrypted.vp_token, SMART_HEALTH_CHECKIN_CREDENTIAL_ID);
+  if (!smartResponseResult.ok) throw new Error(smartResponseResult.error);
+
+  const validation = validateResponseAgainstRequest(smartRequest, smartResponseResult.value);
+  if (!validation.ok) throw new Error(`SMART Health Check-in response validation failed: ${validation.error}`);
+
+  const response: RawResponse = {
+    state: decrypted.state,
+    vp_token: decrypted.vp_token,
+    smartResponse: validation.value,
+  };
   return shouldRehydrate ? rehydrateResponse(response) : response;
 }
 
@@ -373,7 +360,7 @@ async function decryptAndProcess(
  * Initiate a SMART Health Check-in credential request.
  */
 export async function request(
-  dcqlQuery: DCQLQuery,
+  smartRequest: SmartHealthCheckinRequest,
   opts: RequestOptions
 ): Promise<RawResponse | RehydratedResponse> {
   const walletUrl = opts.walletUrl.replace(/\/+$/, '');
@@ -381,9 +368,10 @@ export async function request(
   if (!walletUrl) throw new Error('walletUrl required');
   if (!wellKnownClientUrl) throw new Error('wellKnownClientUrl required');
 
-  if (!dcqlQuery || !Array.isArray(dcqlQuery.credentials)) {
-    throw new Error('dcqlQuery must be an object with a credentials array');
-  }
+  const requestValidation = validateSmartHealthCheckinRequest(smartRequest);
+  if (!requestValidation.ok) throw new Error(`Invalid SMART Health Check-in request: ${requestValidation.error}`);
+  const validatedSmartRequest = requestValidation.value;
+  const dcqlQuery = buildSmartHealthCheckinDCQLQuery(validatedSmartRequest);
 
   const flow = opts.flow || 'same-device';
   const shouldRehydrate = opts.rehydrate !== false;
@@ -405,7 +393,7 @@ export async function request(
   const txn = await initTransaction(wellKnownClientUrl, flow, {
     redirect_uri,
     ephemeral_pub_jwk: publicJwk,
-    dcql_query: dcqlQuery,
+    smart_health_checkin_request: validatedSmartRequest,
   });
 
   // Build minimal bootstrap URL
@@ -421,10 +409,13 @@ export async function request(
   const launch_url = `${walletUrl}/?${bootstrapParams.toString()}`;
   const requestInfo: RequestStartInfo = {
     flow,
+    smart_request: validatedSmartRequest,
+    dcql_query: dcqlQuery,
     bootstrap: {
       client_id,
       request_uri: txn.request_uri,
     },
+    request_object_claims: txn.request_object_claims,
     launch_url,
     transaction: {
       transaction_id: txn.transaction_id,
@@ -448,6 +439,7 @@ export async function request(
         private_jwk: privateJwk,
         rehydrate: shouldRehydrate,
         request_info: requestInfo,
+        smart_request: validatedSmartRequest,
       });
       location.replace(launch_url);
       return new Promise<RawResponse | RehydratedResponse>(() => {
@@ -465,7 +457,7 @@ export async function request(
         transaction_id: txn.transaction_id,
         response_code,
       });
-      return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+      return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate, validatedSmartRequest);
     } finally {
       try { if (popup && !popup.closed) popup.close(); } catch { /* ignore */ }
     }
@@ -480,7 +472,7 @@ export async function request(
         const jweString = await fetchResult(wellKnownClientUrl, flow, {
           transaction_id: txn.transaction_id,
         });
-        return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate);
+        return decryptAndProcess(jweString, privateKey, txn.request_id, shouldRehydrate, validatedSmartRequest);
       } catch (err) {
         if (err instanceof Error && err.message === 'pending') continue;
         throw err;
@@ -510,7 +502,8 @@ export async function completeSameDeviceRedirect(): Promise<SameDeviceRedirectRe
     jweString,
     privateKey,
     handoff.request_info.transaction.request_id,
-    handoff.rehydrate
+    handoff.rehydrate,
+    handoff.smart_request
   );
 
   clearSameDeviceHandoff(handoffId);

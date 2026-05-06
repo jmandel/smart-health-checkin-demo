@@ -1,40 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { type DCQLQuery } from 'smart-health-checkin';
 import { config } from '../../config';
 import { useDemoRequest } from '../../shared/useDemoRequest';
 import { TransactionBrowser } from '../../shared/TransactionBrowser';
-import { migraineQuestionnaire } from '../../shared/migraineQuestionnaire';
-import { C4DIC_COVERAGE_PROFILE, SBC_INSURANCE_PLAN_PROFILE } from '../../shared/carinInsuranceExamples';
-import { CLINICAL_HISTORY_PROFILES } from '../../shared/clinicalHistoryExamples';
+import { demoSmartHealthCheckinRequest } from '../../shared/smartRequests';
 import './styles.css';
-
-const dcqlQuery: DCQLQuery = {
-  credentials: [
-    {
-      id: 'coverage-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: C4DIC_COVERAGE_PROFILE }
-    },
-    {
-      id: 'sbc-insurance-plan-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: SBC_INSURANCE_PLAN_PROFILE }
-    },
-    {
-      id: 'clinical-history-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profiles: [...CLINICAL_HISTORY_PROFILES] }
-    },
-    {
-      id: 'migraine-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { questionnaire: migraineQuestionnaire }
-    }
-  ],
-  credential_sets: [
-    { options: [['coverage-1']], required: false },
-    { options: [['sbc-insurance-plan-1']], required: false },
-    { options: [['clinical-history-1']], required: false },
-    { options: [['migraine-questionnaire-1']], required: false }
-  ]
-};
 
 // ============================================================================
 // Login gate
@@ -128,7 +98,7 @@ export default function App() {
     hasSessionCookie() ? 'Staff' : null
   );
 
-  const demo = useDemoRequest(dcqlQuery, {
+  const demo = useDemoRequest(demoSmartHealthCheckinRequest, {
     walletUrl: config.kiosk.walletUrl,
     wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'cross-device',

@@ -1,28 +1,12 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { request, maybeHandleReturn, type DCQLQuery, type RehydratedResponse } from 'smart-health-checkin';
+import { request, maybeHandleReturn, type RehydratedResponse } from 'smart-health-checkin';
+import { externalPortalSmartHealthCheckinRequest } from '../../../demo/shared/smartRequests';
 
 // In production, set this to your relay's URL.
 // For local testing, override via the build or query param.
 const VERIFIER_BASE = new URLSearchParams(location.search).get('verifier')
   || 'https://smart-health-checkin.exe.xyz';
 const CHECKIN_BASE = VERIFIER_BASE + '/checkin';
-
-const dcqlQuery: DCQLQuery = {
-  credentials: [
-    {
-      id: 'coverage-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/insurance-card/StructureDefinition/C4DIC-Coverage' }
-    },
-    {
-      id: 'patient-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: 'http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient' }
-    }
-  ],
-  credential_sets: [
-    { options: [['coverage-1']], required: false },
-    { options: [['patient-1']], required: false }
-  ]
-};
 
 function Field({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
@@ -76,7 +60,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await request(dcqlQuery, {
+      const res = await request(externalPortalSmartHealthCheckinRequest, {
         walletUrl: CHECKIN_BASE,
         wellKnownClientUrl: VERIFIER_BASE,
         flow: 'same-device',

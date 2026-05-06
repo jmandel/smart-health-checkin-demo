@@ -121,7 +121,12 @@ POST /oid4vp/same-device/init
 {
   "redirect_uri": "https://clinic.example.com/checkin",
   "ephemeral_pub_jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." },
-  "dcql_query": { "credentials": [...] }
+  "smart_health_checkin_request": {
+    "type": "smart-health-checkin-request",
+    "version": "1",
+    "id": "checkin-request-123",
+    "items": [...]
+  }
 }
 ```
 
@@ -133,9 +138,27 @@ Response:
 {
   "transaction_id": "...",
   "request_id": "...",
-  "request_uri": "https://clinic.example.com/oid4vp/requests/..."
+  "request_uri": "https://clinic.example.com/oid4vp/requests/...",
+  "request_object_claims": {
+    "response_type": "vp_token",
+    "response_mode": "direct_post.jwt",
+    "response_uri": "https://clinic.example.com/oid4vp/responses/...",
+    "dcql_query": {
+      "credentials": [
+        {
+          "id": "smart-checkin",
+          "format": "smart_health_checkin",
+          "meta": {
+            "request": { "type": "smart-health-checkin-request", "...": "..." }
+          }
+        }
+      ]
+    }
+  }
 }
 ```
+
+`request_object_claims` is included for verifier-side demo/protocol introspection. The wallet still obtains the signed JWT by resolving `request_uri`.
 
 ### Same-device results
 
@@ -161,13 +184,20 @@ POST /oid4vp/cross-device/init
 ```json
 {
   "ephemeral_pub_jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." },
-  "dcql_query": { "credentials": [...] }
+  "smart_health_checkin_request": {
+    "type": "smart-health-checkin-request",
+    "version": "1",
+    "id": "checkin-request-123",
+    "items": [...]
+  }
 }
 ```
 
-No `redirect_uri` — the wallet doesn't redirect back in cross-device mode.
+No init `redirect_uri` — the wallet won't receive a continuation URI from the response endpoint in cross-device mode.
 
 If `requireVerifierSessionForCrossDevice` is enabled, the request must carry a valid verifier session (resolved via the `getVerifierSessionId` callback).
+
+The init response has the same shape as same-device init. `request_object_claims` never includes `redirect_uri` because `direct_post.jwt` uses `response_uri`; same-device continuation is returned by the response endpoint after the wallet POST.
 
 ### Cross-device results
 

@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { maybeHandleReturn, type DCQLQuery } from 'smart-health-checkin';
+import { maybeHandleReturn } from 'smart-health-checkin';
 import { config } from '../../config';
 import { useDemoRequest } from '../../shared/useDemoRequest';
 import { TransactionBrowser } from '../../shared/TransactionBrowser';
-import { migraineQuestionnaire } from '../../shared/migraineQuestionnaire';
-import { C4DIC_COVERAGE_PROFILE, SBC_INSURANCE_PLAN_PROFILE } from '../../shared/carinInsuranceExamples';
-import { CLINICAL_HISTORY_PROFILES } from '../../shared/clinicalHistoryExamples';
+import { demoSmartHealthCheckinRequest } from '../../shared/smartRequests';
 import './styles.css';
 
 function hasResponseCodeHash(): boolean {
@@ -59,39 +57,12 @@ function ReturnCompleteScreen() {
   );
 }
 
-const dcqlQuery: DCQLQuery = {
-  credentials: [
-    {
-      id: 'coverage-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: C4DIC_COVERAGE_PROFILE }
-    },
-    {
-      id: 'sbc-insurance-plan-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profile: SBC_INSURANCE_PLAN_PROFILE }
-    },
-    {
-      id: 'clinical-history-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { profiles: [...CLINICAL_HISTORY_PROFILES] }
-    },
-    {
-      id: 'migraine-questionnaire-1', format: 'smart_artifact', require_cryptographic_holder_binding: false,
-      meta: { questionnaire: migraineQuestionnaire }
-    }
-  ],
-  credential_sets: [
-    { options: [['coverage-1']], required: false },
-    { options: [['sbc-insurance-plan-1']], required: false },
-    { options: [['clinical-history-1']], required: false },
-    { options: [['migraine-questionnaire-1']], required: false }
-  ]
-};
-
 export default function App() {
   const [returnHandled, setReturnHandled] = useState(
     () => !hasSameDeviceHandoff() && (hasResponseCodeHash() || sessionStorage.getItem('shc-return-tab') === '1')
   );
 
-  const demo = useDemoRequest(dcqlQuery, {
+  const demo = useDemoRequest(demoSmartHealthCheckinRequest, {
     walletUrl: config.portal.walletUrl,
     wellKnownClientUrl: config.wellKnownClientUrl,
     flow: 'same-device',

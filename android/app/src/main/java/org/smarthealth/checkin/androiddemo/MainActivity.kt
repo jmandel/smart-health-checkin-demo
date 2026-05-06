@@ -218,20 +218,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun complete(request: VerifiedRequest, postResult: JSONObject) {
-        if (request.completion == "redirect") {
-            val redirectUri = postResult.optString("redirect_uri", "")
-            if (redirectUri.isBlank()) {
-                screenState = ScreenState.Error("Expected redirect_uri for redirect completion.")
-                return
-            }
+        val redirectUri = postResult.optString("redirect_uri", "")
+        if (redirectUri.isNotBlank()) {
             screenState = ScreenState.Submitting("Returning to requester", "Completing the same-device check-in in your browser.")
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(redirectUri)))
             finish()
-            return
-        }
-
-        if (postResult.optString("redirect_uri", "").isNotBlank()) {
-            screenState = ScreenState.Error("Unexpected redirect_uri for deferred completion.")
             return
         }
 
@@ -274,12 +265,6 @@ class MainActivity : ComponentActivity() {
         require(payload.optString("response_mode") == "direct_post.jwt") { "Unsupported response_mode." }
         require(audienceIsValid(payload.opt("aud"))) { "Request Object audience is invalid." }
 
-        val profileHints = payload.optJSONObject("smart_health_checkin")
-        val completion = profileHints?.optString("completion").orEmpty()
-        require(completion == "redirect" || completion == "deferred") {
-            "Missing smart_health_checkin.completion."
-        }
-
         val clientMetadata = payload.optJSONObject("client_metadata")
         val keys = clientMetadata
             ?.optJSONObject("jwks")
@@ -290,6 +275,9 @@ class MainActivity : ComponentActivity() {
 
         val dcqlQuery = payload.optJSONObject("dcql_query")
         require(dcqlQuery != null) { "Request Object missing dcql_query." }
+        val smartCredential = extractSmartCredential(dcqlQuery)
+        val smartRequest = smartCredential.getJSONObject("request")
+        validateSmartRequest(smartRequest)
 
         return VerifiedRequest(
             verifierOrigin = verifierOrigin,
@@ -298,10 +286,10 @@ class MainActivity : ComponentActivity() {
             responseUri = requireString(payload, "response_uri"),
             state = requireString(payload, "state"),
             nonce = requireString(payload, "nonce"),
-            completion = completion,
             clientMetadata = clientMetadata,
-            dcqlQuery = dcqlQuery,
-            items = extractRequestItems(dcqlQuery),
+            smartCredentialId = smartCredential.getString("id"),
+            smartRequest = smartRequest,
+            items = extractRequestItems(smartRequest),
         )
     }
 
@@ -323,55 +311,111 @@ class MainActivity : ComponentActivity() {
         return JSONObject(jwt.payload.toString())
     }
 
-    private fun extractRequestItems(dcqlQuery: JSONObject): List<RequestItem> {
-        val credentials = dcqlQuery.optJSONArray("credentials") ?: return emptyList()
-        val items = mutableListOf<RequestItem>()
-
+    private fun extractSmartCredential(dcqlQuery: JSONObject): JSONObject {
+        val credentials = dcqlQuery.optJSONArray("credentials")
+            ?: error("dcql_query.credentials must be present.")
         for (index in 0 until credentials.length()) {
             val credential = credentials.optJSONObject(index) ?: continue
-            val meta = credential.optJSONObject("meta") ?: JSONObject()
-            val id = credential.optString("id", "credential-${index + 1}")
+            if (credential.optString("format") != "smart_health_checkin") continue
+            val request = credential.optJSONObject("meta")?.optJSONObject("request")
+                ?: error("smart_health_checkin credential missing meta.request.")
+            return JSONObject()
+                .put("id", credential.optString("id", "smart-checkin").ifBlank { "smart-checkin" })
+                .put("request", request)
+        }
+        error("dcql_query missing smart_health_checkin credential.")
+    }
 
-            val item = if (meta.optJSONObject("questionnaire") != null || meta.optString("questionnaireUrl").isNotBlank()) {
-                val questionnaire = meta.optJSONObject("questionnaire")
+    private fun validateSmartRequest(request: JSONObject) {
+        require(request.optString("type") == "smart-health-checkin-request") {
+            "SMART request type must be smart-health-checkin-request."
+        }
+        require(request.optString("version") == "1") { "SMART request version must be 1." }
+        require(request.optString("id").isNotBlank()) { "SMART request id is required." }
+        val items = request.optJSONArray("items") ?: error("SMART request items must be present.")
+        val ids = mutableSetOf<String>()
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: error("SMART request item $index must be an object.")
+            val id = item.optString("id")
+            require(id.isNotBlank()) { "SMART request item $index id is required." }
+            require(ids.add(id)) { "SMART request item $id is duplicated." }
+            require(item.optString("title").isNotBlank()) { "SMART request item $id title is required." }
+            val accept = item.optJSONArray("accept")
+            require(accept != null && accept.length() > 0) { "SMART request item $id accept[] is required." }
+            val content = item.optJSONObject("content") ?: error("SMART request item $id content is required.")
+            when (content.optString("kind")) {
+                "selection.fhir" -> {
+                    require(content.optJSONObject("questionnaire") == null && content.optString("questionnaireCanonical").isBlank()) {
+                        "selection.fhir item $id must not include form fields."
+                    }
+                }
+                "form.fhir" -> {
+                    require(content.optString("questionnaireCanonical").isNotBlank() || content.optJSONObject("questionnaire") != null) {
+                        "form.fhir item $id requires questionnaireCanonical or questionnaire."
+                    }
+                    val questionnaire = content.optJSONObject("questionnaire")
+                    require(questionnaire == null || questionnaire.optString("resourceType") == "Questionnaire") {
+                        "form.fhir item $id questionnaire must be a FHIR Questionnaire."
+                    }
+                }
+                else -> error("SMART request item $id content.kind must be selection.fhir or form.fhir.")
+            }
+        }
+    }
+
+    private fun extractRequestItems(smartRequest: JSONObject): List<RequestItem> {
+        val itemsArray = smartRequest.optJSONArray("items") ?: return emptyList()
+        val items = mutableListOf<RequestItem>()
+
+        for (index in 0 until itemsArray.length()) {
+            val requestItem = itemsArray.optJSONObject(index) ?: continue
+            val content = requestItem.optJSONObject("content") ?: JSONObject()
+            val id = requestItem.optString("id", "item-${index + 1}")
+            val title = requestItem.optString("title", id)
+            val summary = requestItem.optString("summary", "")
+
+            val item = if (content.optString("kind") == "form.fhir") {
+                val questionnaire = content.optJSONObject("questionnaire")
                 RequestItem(
                     id = id,
-                    title = questionnaire?.optString("title", "Questionnaire").orEmpty().ifBlank { "Questionnaire" },
-                    subtitle = questionnaire?.optString("description", "").orEmpty().ifBlank { "Form answers requested by the verifier." },
+                    title = title,
+                    subtitle = summary.ifBlank {
+                        questionnaire?.optString("description", "").orEmpty().ifBlank { "Form answers requested by the verifier." }
+                    },
                     kind = RequestKind.Questionnaire,
-                    meta = meta,
+                    meta = content,
                 )
             } else {
-                val profileText = "${meta.optString("profile")} ${meta.optJSONArray("profiles")?.toString().orEmpty()}"
+                val profileText = "${content.optJSONArray("profiles")?.toString().orEmpty()} ${content.optJSONArray("profilesFrom")?.toString().orEmpty()} ${content.optJSONArray("resourceTypes")?.toString().orEmpty()}"
                 val lower = profileText.lowercase()
                 when {
                     "coverage" in lower -> RequestItem(
                         id = id,
-                        title = "Digital Insurance Card",
-                        subtitle = "Member coverage and payer details.",
+                        title = title,
+                        subtitle = summary.ifBlank { "Member coverage and payer details." },
                         kind = RequestKind.Coverage,
-                        meta = meta,
+                        meta = content,
                     )
                     "insuranceplan" in lower || "sbc-insurance-plan" in lower -> RequestItem(
                         id = id,
-                        title = "Plan Benefits Summary",
-                        subtitle = "Benefits, cost sharing, and plan limits.",
+                        title = title,
+                        subtitle = summary.ifBlank { "Benefits, cost sharing, and plan limits." },
                         kind = RequestKind.Plan,
-                        meta = meta,
+                        meta = content,
                     )
                     "patient" in lower || "allergyintolerance" in lower || "condition-problems" in lower -> RequestItem(
                         id = id,
-                        title = "Clinical History",
-                        subtitle = "Patient summary, conditions, medications, and allergies.",
+                        title = title,
+                        subtitle = summary.ifBlank { "Patient summary, conditions, medications, and allergies." },
                         kind = RequestKind.Clinical,
-                        meta = meta,
+                        meta = content,
                     )
                     else -> RequestItem(
                         id = id,
-                        title = id,
-                        subtitle = "Requested sample artifact.",
+                        title = title,
+                        subtitle = summary.ifBlank { "Requested sample artifact." },
                         kind = RequestKind.Unknown,
-                        meta = meta,
+                        meta = content,
                     )
                 }
             }
@@ -439,9 +483,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildErrorPayload(request: VerifiedRequest): JSONObject {
+        val response = JSONObject()
+            .put("type", "smart-health-checkin-response")
+            .put("version", "1")
+            .put("requestId", request.smartRequest.getString("id"))
+            .put("artifacts", JSONArray())
+            .put("requestStatus", JSONArray().also { statuses ->
+                request.items.forEach { item ->
+                    statuses.put(JSONObject().put("item", item.id).put("status", "declined"))
+                }
+            })
         return JSONObject()
-            .put("error", "access_denied")
-            .put("error_description", "User declined to share")
+            .put("vp_token", JSONObject().put(request.smartCredentialId, JSONArray().put(response)))
             .put("state", request.state)
     }
 
@@ -450,20 +503,41 @@ class MainActivity : ComponentActivity() {
         selectedSnapshot: Map<String, Boolean>,
         answerSnapshot: Map<String, Any>,
     ): JSONObject {
-        val vpToken = JSONObject()
-        val artifactIds = LinkedHashMap<String, String>()
+        val artifacts = JSONArray()
+        val statuses = JSONArray()
         var counter = 0
+        val fhirVersion = request.smartRequest.optJSONArray("fhirVersions")?.optString(0, "4.0.1") ?: "4.0.1"
 
         request.items.forEach { item ->
-            if (selectedSnapshot[item.id] == false) return@forEach
-            val data = dataForItem(item, answerSnapshot) ?: return@forEach
-            val presentations = JSONArray()
-            presentations.put(presentationFor("fhir_resource", data, artifactIds) { "art_${counter++}" })
-            vpToken.put(item.id, presentations)
+            if (selectedSnapshot[item.id] == false) {
+                statuses.put(JSONObject().put("item", item.id).put("status", "declined"))
+                return@forEach
+            }
+            val data = dataForItem(item, answerSnapshot)
+            if (data == null) {
+                statuses.put(JSONObject().put("item", item.id).put("status", "unsupported"))
+                return@forEach
+            }
+            artifacts.put(
+                JSONObject()
+                    .put("id", "art_${counter++}")
+                    .put("mediaType", "application/fhir+json")
+                    .put("fhirVersion", fhirVersion)
+                    .put("fulfills", JSONArray().put(item.id))
+                    .put("value", data)
+            )
+            statuses.put(JSONObject().put("item", item.id).put("status", "fulfilled"))
         }
 
+        val smartResponse = JSONObject()
+            .put("type", "smart-health-checkin-response")
+            .put("version", "1")
+            .put("requestId", request.smartRequest.getString("id"))
+            .put("artifacts", artifacts)
+            .put("requestStatus", statuses)
+
         return JSONObject()
-            .put("vp_token", vpToken)
+            .put("vp_token", JSONObject().put(request.smartCredentialId, JSONArray().put(smartResponse)))
             .put("state", request.state)
     }
 
@@ -475,23 +549,6 @@ class MainActivity : ComponentActivity() {
             RequestKind.Questionnaire -> buildQuestionnaireResponse(item, answerSnapshot)
             RequestKind.Unknown -> null
         }
-    }
-
-    private fun presentationFor(
-        type: String,
-        data: JSONObject,
-        artifactIds: MutableMap<String, String>,
-        nextArtifactId: () -> String,
-    ): JSONObject {
-        val key = "$type:${data}"
-        artifactIds[key]?.let { return JSONObject().put("artifact_ref", it) }
-
-        val artifactId = nextArtifactId()
-        artifactIds[key] = artifactId
-        return JSONObject()
-            .put("artifact_id", artifactId)
-            .put("type", type)
-            .put("data", data)
     }
 
     private fun buildQuestionnaireResponse(requestItem: RequestItem, answerSnapshot: Map<String, Any>): JSONObject {
@@ -1424,7 +1481,7 @@ private fun TechnicalSummary(request: VerifiedRequest) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "${request.completion.replaceFirstChar { it.uppercase() }} completion. State ${request.state.take(8)}. Nonce ${request.nonce.take(8)}.",
+            text = "direct_post.jwt. State ${request.state.take(8)}. Nonce ${request.nonce.take(8)}.",
             style = MaterialTheme.typography.bodySmall,
             color = AppColors.Muted,
         )
@@ -1708,9 +1765,9 @@ private data class VerifiedRequest(
     val responseUri: String,
     val state: String,
     val nonce: String,
-    val completion: String,
     val clientMetadata: JSONObject,
-    val dcqlQuery: JSONObject,
+    val smartCredentialId: String,
+    val smartRequest: JSONObject,
     val items: List<RequestItem>,
 )
 
